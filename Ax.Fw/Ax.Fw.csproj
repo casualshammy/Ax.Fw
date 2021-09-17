@@ -5,11 +5,10 @@
     <PackageId>Ax.Fw</PackageId>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Description>A set of useful tools</Description>
-    <Version>1.0.2</Version>
+    <Version>$(Version)</Version>
     <Authors>Axio</Authors>
     <Company>Axio.Lab</Company>
     <LangVersion>latest</LangVersion>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
