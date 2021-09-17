@@ -1,0 +1,10 @@
+/.vs
+Ax.Fw.Tests/bin
+Ax.Fw.Tests/obj
+Ax.Fw.Windows.GUI/bin
+Ax.Fw.Windows.GUI/obj
+Ax.Fw.Windows/bin
+Ax.Fw.Windows/obj
+/Ax.Fw/_nuget-push.bat
+Ax.Fw/bin
+Ax.Fw/obj

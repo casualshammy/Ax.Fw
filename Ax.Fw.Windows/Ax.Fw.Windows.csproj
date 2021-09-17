@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <PackageId>Ax.Fw.Windows</PackageId>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>A set of useful tools for Windows</Description>
+    <Version>1.0.5</Version>
+    <Authors>Axio</Authors>
+    <Company>Axio.Lab</Company>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="_nuget-push.bat" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="WinAPI\Toolkit\" />
+    <Folder Include="WinAPI\TCPTable\" />
+    <Folder Include="WMIProcessManager\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Management" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+</Project>

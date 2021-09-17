@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup />
+  <ItemGroup>
+    <Compile Update="Controls\CheckBoxExt.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\DataGridViewExt.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\Line.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Controls\ListBoxDoubleBuffered.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\MetroComboboxAlt.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\MetroComboboxExt.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\MetroTextboxExt.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\MetroTileExt.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\MetroToggleExt.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Controls\PictureBoxExt.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Forms\BorderedMetroForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\CustomScriptEdit.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\InputBox.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\WaitingOverlay.cs">
+      <SubType>Form</SubType>
+    </Compile>
+  </ItemGroup>
+</Project>
