@@ -20,12 +20,12 @@ namespace Ax.Fw.Bus
         public Guid Id { get; }
     }
 
-    public class SBus
+    public class PBus : IPBus
     {
         private readonly Subject<IBusMsgSerial> p_msgFlow = new();
         private readonly EventLoopScheduler p_scheduler = new();
 
-        public SBus(ILifetime _lifetime)
+        public PBus(ILifetime _lifetime)
         {
             _lifetime.DisposeOnCompleted(p_msgFlow);
             _lifetime.DisposeOnCompleted(p_scheduler);
@@ -53,8 +53,8 @@ namespace Ax.Fw.Bus
                 .Cast<T>();
         }
 
-        public TRes PostReqRes<TReq, TRes>(TReq _req, TimeSpan _timeout) 
-            where TReq : IBusMsg 
+        public TRes PostReqRes<TReq, TRes>(TReq _req, TimeSpan _timeout)
+            where TReq : IBusMsg
             where TRes : IBusMsg
         {
             var mre = new ManualResetEvent(false);
