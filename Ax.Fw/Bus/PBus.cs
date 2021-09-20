@@ -1,5 +1,6 @@
 ﻿using Ax.Fw.Interfaces;
 using System;
+using System.Collections.Concurrent;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -24,6 +25,7 @@ namespace Ax.Fw.Bus
     {
         private readonly Subject<IBusMsgSerial> p_msgFlow = new();
         private readonly EventLoopScheduler p_scheduler = new();
+        private readonly ConcurrentDictionary<Type, IBusMsg> p_lastMsg = new();
 
         public PBus(ILifetime _lifetime)
         {
@@ -41,16 +43,25 @@ namespace Ax.Fw.Bus
 
         private void PostMsg(IBusMsgSerial _msg)
         {
+            p_lastMsg.AddOrUpdate(_msg.Data.GetType(), _msg.Data, (_, _) => _msg.Data);
             p_msgFlow.OnNext(_msg);
         }
 
-        public IObservable<T> OfType<T>() where T : IBusMsg
+        public IObservable<T> OfType<T>(bool includeLastValue = false) where T : IBusMsg
         {
-            return p_msgFlow
-                .ObserveOn(p_scheduler)
-                .Where(x => x.Data.GetType() == typeof(T))
-                .Select(x => x.Data)
-                .Cast<T>();
+            if (includeLastValue && p_lastMsg.TryGetValue(typeof(T), out var msg))
+                return p_msgFlow
+                    .ObserveOn(p_scheduler)
+                    .Where(x => x.Data.GetType() == typeof(T))
+                    .Select(x => x.Data)
+                    .Merge(Observable.Return(msg))
+                    .Cast<T>();
+            else
+                return p_msgFlow
+                    .ObserveOn(p_scheduler)
+                    .Where(x => x.Data.GetType() == typeof(T))
+                    .Select(x => x.Data)
+                    .Cast<T>();
         }
 
         public TRes PostReqRes<TReq, TRes>(TReq _req, TimeSpan _timeout)
@@ -86,7 +97,7 @@ namespace Ax.Fw.Bus
                 {
                     var guid = x.Id;
                     var result = await _func((TReq)x.Data);
-                    p_msgFlow.OnNext(new IBusMsgSerial(result, guid));
+                    PostMsg(new IBusMsgSerial(result, guid));
                 });
         }
 
@@ -101,7 +112,7 @@ namespace Ax.Fw.Bus
                 {
                     var guid = x.Id;
                     var result = await _func((TReq)x.Data);
-                    p_msgFlow.OnNext(new IBusMsgSerial(result, guid));
+                    PostMsg(new IBusMsgSerial(result, guid));
                 }, _lifetime.Token);
         }
 

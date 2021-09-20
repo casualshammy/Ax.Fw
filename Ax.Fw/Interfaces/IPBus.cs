@@ -11,7 +11,7 @@ namespace Ax.Fw.Interfaces
         void OfReqRes<TReq, TRes>(Func<TReq, Task<TRes>> _func, ILifetime _lifetime)
             where TReq : IBusMsg
             where TRes : IBusMsg;
-        IObservable<T> OfType<T>() where T : IBusMsg;
+        IObservable<T> OfType<T>(bool includeLastValue = false) where T : IBusMsg;
         void PostMsg(IBusMsg _data);
         TRes PostReqRes<TReq, TRes>(TReq _req, TimeSpan _timeout)
             where TReq : IBusMsg
