@@ -21,7 +21,7 @@ namespace Ax.Fw.Bus
         public Guid Id { get; }
     }
 
-    public class PBus : IPBus
+    public class PBus : IBus
     {
         private readonly Subject<IBusMsgSerial> p_msgFlow = new();
         private readonly EventLoopScheduler p_scheduler = new();

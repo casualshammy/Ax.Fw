@@ -5,16 +5,17 @@ namespace Ax.Fw.SingletoneExport
     [AttributeUsage(AttributeTargets.Class)]
     public class SingletoneActivatorAutoExportAttribute : Attribute
     {
-        public SingletoneActivatorAutoExportAttribute(Type interfaceType, bool singleton, bool activateOnStart)
+        public SingletoneActivatorAutoExportAttribute(Type InterfaceType, bool ActivateOnStart = false, bool DisposeRequired = false)
         {
-            InterfaceType = interfaceType;
-            Singleton = singleton;
-            ActivateOnStart = activateOnStart;
+            this.InterfaceType = InterfaceType;
+            this.ActivateOnStart = ActivateOnStart;
+            this.DisposeRequired = DisposeRequired;
         }
 
         public Type InterfaceType { get; }
-        public bool Singleton { get; }
         public bool ActivateOnStart { get; }
+        public bool DisposeRequired { get; }
+
     }
 
 }

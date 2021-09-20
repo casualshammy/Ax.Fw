@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace Ax.Fw.Interfaces
 {
-    public interface IPBus
+    public interface IBus
     {
         IDisposable OfReqRes<TReq, TRes>(Func<TReq, Task<TRes>> _func)
             where TReq : IBusMsg

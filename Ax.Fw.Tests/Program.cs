@@ -1,12 +1,7 @@
 ﻿using Ax.Fw.SingletoneExport;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reactive.Concurrency;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -26,7 +21,7 @@ namespace Ax.Fw.Tests
             ConsoleWriteLineThreadId($"{nameof(MainAsync)}: Entering method...");
 
             var sc = new ServiceCollection();
-            var activator = new SingletoneActivator(sc);
+            var activator = new SingletoneActivator(new Lifetime(), sc);
 
             ConsoleWriteLineThreadId($"{nameof(MainAsync)}: Exiting method...");
             Console.ReadLine();
