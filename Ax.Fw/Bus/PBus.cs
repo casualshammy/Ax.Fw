@@ -68,22 +68,8 @@ namespace Ax.Fw.Bus
             where TReq : IBusMsg
             where TRes : IBusMsg
         {
-            var mre = new ManualResetEvent(false);
-            var guid = Guid.NewGuid();
-            TRes result = default;
-            using var subscription = p_msgFlow
-                .ObserveOn(p_scheduler)
-                .Where(x => x.Id == guid && x.Data.GetType() == typeof(TRes))
-                .Subscribe(x =>
-                {
-                    result = (TRes)x.Data;
-                    mre.Set();
-                });
-            PostMsg(new IBusMsgSerial(_req, guid));
-            if (mre.WaitOne(_timeout))
-                return result;
-
-            throw new TimeoutException();
+            var result = PostReqResOrDefault<TReq, TRes>(_req, _timeout);
+            return result ?? throw new TimeoutException();
         }
 
         public TRes? PostReqResOrDefault<TReq, TRes>(TReq _req, TimeSpan _timeout)
