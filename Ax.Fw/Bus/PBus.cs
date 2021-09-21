@@ -24,13 +24,12 @@ namespace Ax.Fw.Bus
     public class PBus : IBus
     {
         private readonly Subject<IBusMsgSerial> p_msgFlow = new();
-        private readonly EventLoopScheduler p_scheduler = new();
+        private readonly ThreadPoolScheduler p_scheduler = ThreadPoolScheduler.Instance;
         private readonly ConcurrentDictionary<Type, IBusMsg> p_lastMsg = new();
 
         public PBus(ILifetime _lifetime)
         {
             _lifetime.DisposeOnCompleted(p_msgFlow);
-            _lifetime.DisposeOnCompleted(p_scheduler);
         }
 
         public void PostMsg(IBusMsg _data)
@@ -73,7 +72,7 @@ namespace Ax.Fw.Bus
             TRes result = default;
             using var subscription = p_msgFlow
                 .ObserveOn(p_scheduler)
-                .Where(x => x.Id == guid)
+                .Where(x => x.Id == guid && x.Data.GetType() == typeof(TRes))
                 .Subscribe(x =>
                 {
                     result = (TRes)x.Data;
