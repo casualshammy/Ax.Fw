@@ -16,5 +16,8 @@ namespace Ax.Fw.Interfaces
         TRes PostReqRes<TReq, TRes>(TReq _req, TimeSpan _timeout)
             where TReq : IBusMsg
             where TRes : IBusMsg;
+        TRes? PostReqResOrDefault<TReq, TRes>(TReq _req, TimeSpan _timeout)
+            where TReq : IBusMsg
+            where TRes : IBusMsg;
     }
 }

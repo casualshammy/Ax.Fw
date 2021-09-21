@@ -1,4 +1,5 @@
-﻿using Ax.Fw.Interfaces;
+﻿#nullable enable
+using Ax.Fw.Interfaces;
 using System;
 using System.Collections.Concurrent;
 using System.Reactive.Concurrency;
@@ -83,6 +84,28 @@ namespace Ax.Fw.Bus
                 return result;
 
             throw new TimeoutException();
+        }
+
+        public TRes? PostReqResOrDefault<TReq, TRes>(TReq _req, TimeSpan _timeout)
+            where TReq : IBusMsg
+            where TRes : IBusMsg
+        {
+            var mre = new ManualResetEvent(false);
+            var guid = Guid.NewGuid();
+            TRes? result = default;
+            using var subscription = p_msgFlow
+                .ObserveOn(p_scheduler)
+                .Where(x => x.Id == guid && x.Data.GetType() == typeof(TRes))
+                .Subscribe(x =>
+                {
+                    result = (TRes)x.Data;
+                    mre.Set();
+                });
+            PostMsg(new IBusMsgSerial(_req, guid));
+            if (mre.WaitOne(_timeout))
+                return result;
+
+            return default;
         }
 
         public IDisposable OfReqRes<TReq, TRes>(Func<TReq, Task<TRes>> _func)
