@@ -34,12 +34,36 @@ namespace Ax.Fw
         /// <returns>
         /// Instance of <see cref="T"/>
         /// </returns>
-        public async Task<T> Load(Func<Task<T>> _defaultFactory)
+        public async Task<T> LoadAsync(Func<Task<T>> _defaultFactory)
         {
             bool fileExist = File.Exists(JsonFilePath);
             if (!fileExist)
             {
                 T newInstance = await _defaultFactory();
+                Save(newInstance);
+                return newInstance;
+            }
+            else
+            {
+                return JsonConvert.DeserializeObject<T>(File.ReadAllText(JsonFilePath, Encoding.UTF8)) ?? throw new InvalidCastException($"Can't parse file!");
+            }
+        }
+
+        /// <summary>
+        /// Loads data from JSON file
+        /// </summary>
+        /// <param name="_defaultFactory">
+        /// If file doesn't exist, this method will be invoked to produce default value
+        /// </param>
+        /// <returns>
+        /// Instance of <see cref="T"/>
+        /// </returns>
+        public T Load(Func<T> _defaultFactory)
+        {
+            bool fileExist = File.Exists(JsonFilePath);
+            if (!fileExist)
+            {
+                T newInstance = _defaultFactory();
                 Save(newInstance);
                 return newInstance;
             }
