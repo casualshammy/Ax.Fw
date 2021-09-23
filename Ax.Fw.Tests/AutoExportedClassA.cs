@@ -1,4 +1,4 @@
-﻿using Ax.Fw.SingletoneExport;
+﻿using Ax.Fw.ClassExport;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Ax.Fw.Tests
 {
-    [SingletoneActivatorAutoExport(typeof(IAutoExportedClassA), true, true)]
+    [AutoActivatorExportAttribute(typeof(IAutoExportedClassA), true, true)]
     public class AutoExportedClassA : IAutoExportedClassA
     {
         public AutoExportedClassA(IAutoExportedClassB autoExportedClassB)
@@ -24,7 +24,7 @@ namespace Ax.Fw.Tests
         string TestString { get; }
     }
 
-    [SingletoneActivatorAutoExport(typeof(IAutoExportedClassB), true, false)]
+    [AutoActivatorExportAttribute(typeof(IAutoExportedClassB), true, false)]
     public class AutoExportedClassB : IAutoExportedClassB
     {
         public AutoExportedClassB()

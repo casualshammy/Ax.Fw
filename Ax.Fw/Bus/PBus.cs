@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using Ax.Fw.Bus.Parts;
 using Ax.Fw.Interfaces;
 using System;
 using System.Collections.Concurrent;
@@ -10,21 +11,12 @@ using System.Threading.Tasks;
 
 namespace Ax.Fw.Bus
 {
-    internal class IBusMsgSerial
-    {
-        public IBusMsgSerial(IBusMsg data, Guid id)
-        {
-            Data = data;
-            Id = id;
-        }
-
-        public IBusMsg Data { get; }
-        public Guid Id { get; }
-    }
-
+    /// <summary>
+    /// Class what provides message-way of communication between classes
+    /// </summary>
     public class PBus : IBus
     {
-        private readonly Subject<IBusMsgSerial> p_msgFlow = new();
+        private readonly Subject<BusMsgSerial> p_msgFlow = new();
         private readonly ThreadPoolScheduler p_scheduler = ThreadPoolScheduler.Instance;
         private readonly ConcurrentDictionary<Type, IBusMsg> p_lastMsg = new();
 
@@ -33,37 +25,55 @@ namespace Ax.Fw.Bus
             _lifetime.DisposeOnCompleted(p_msgFlow);
         }
 
+        /// <summary>
+        /// Send message to bus
+        /// </summary>
+        /// <param name="_data"></param>
         public void PostMsg(IBusMsg _data)
         {
             if (_data == null)
                 throw new ArgumentNullException(nameof(_data));
 
-            PostMsg(new IBusMsgSerial(_data, Guid.NewGuid()));
+            PostMsg(new BusMsgSerial(_data, Guid.NewGuid()));
         }
 
-        private void PostMsg(IBusMsgSerial _msg)
+        private void PostMsg(BusMsgSerial _msg)
         {
             p_lastMsg.AddOrUpdate(_msg.Data.GetType(), _msg.Data, (_, _) => _msg.Data);
             p_msgFlow.OnNext(_msg);
         }
 
+        /// <summary>
+        /// Get Observable of messages by type
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="includeLastValue"></param>
+        /// <returns></returns>
         public IObservable<T> OfType<T>(bool includeLastValue = false) where T : IBusMsg
         {
             if (includeLastValue && p_lastMsg.TryGetValue(typeof(T), out var msg))
                 return p_msgFlow
-                    .ObserveOn(p_scheduler)
                     .Where(x => x.Data.GetType() == typeof(T))
                     .Select(x => x.Data)
                     .Merge(Observable.Return(msg))
-                    .Cast<T>();
+                    .Cast<T>()
+                    .ObserveOn(p_scheduler);
             else
                 return p_msgFlow
-                    .ObserveOn(p_scheduler)
                     .Where(x => x.Data.GetType() == typeof(T))
                     .Select(x => x.Data)
-                    .Cast<T>();
+                    .Cast<T>()
+                    .ObserveOn(p_scheduler);
         }
 
+        /// <summary>
+        /// Send message and wait for answer
+        /// </summary>
+        /// <typeparam name="TReq"></typeparam>
+        /// <typeparam name="TRes"></typeparam>
+        /// <param name="_req"></param>
+        /// <param name="_timeout"></param>
+        /// <returns></returns>
         public TRes PostReqRes<TReq, TRes>(TReq _req, TimeSpan _timeout)
             where TReq : IBusMsg
             where TRes : IBusMsg
@@ -72,6 +82,14 @@ namespace Ax.Fw.Bus
             return result ?? throw new TimeoutException();
         }
 
+        /// <summary>
+        /// Send message and wait for answer
+        /// </summary>
+        /// <typeparam name="TReq"></typeparam>
+        /// <typeparam name="TRes"></typeparam>
+        /// <param name="_req"></param>
+        /// <param name="_timeout"></param>
+        /// <returns></returns>
         public TRes? PostReqResOrDefault<TReq, TRes>(TReq _req, TimeSpan _timeout)
             where TReq : IBusMsg
             where TRes : IBusMsg
@@ -80,47 +98,63 @@ namespace Ax.Fw.Bus
             var guid = Guid.NewGuid();
             TRes? result = default;
             using var subscription = p_msgFlow
-                .ObserveOn(p_scheduler)
                 .Where(x => x.Id == guid && x.Data.GetType() == typeof(TRes))
+                .ObserveOn(p_scheduler)
                 .Subscribe(x =>
                 {
                     result = (TRes)x.Data;
                     mre.Set();
                 });
-            PostMsg(new IBusMsgSerial(_req, guid));
+            PostMsg(new BusMsgSerial(_req, guid));
             if (mre.WaitOne(_timeout))
                 return result;
 
             return default;
         }
 
+        /// <summary>
+        /// Create a handler of messages of specific type ('server')
+        /// </summary>
+        /// <typeparam name="TReq"></typeparam>
+        /// <typeparam name="TRes"></typeparam>
+        /// <param name="_func"></param>
+        /// <returns></returns>
         public IDisposable OfReqRes<TReq, TRes>(Func<TReq, Task<TRes>> _func)
             where TReq : IBusMsg
             where TRes : IBusMsg
         {
             return p_msgFlow
-                .ObserveOn(p_scheduler)
                 .Where(x => x.Data.GetType() == typeof(TReq))
+                .ObserveOn(p_scheduler)
                 .Subscribe(async x =>
                 {
                     var guid = x.Id;
                     var result = await _func((TReq)x.Data);
-                    PostMsg(new IBusMsgSerial(result, guid));
+
+                    PostMsg(new BusMsgSerial(result, guid));
                 });
         }
 
+        /// <summary>
+        /// Create a handler of messages of specific type ('server')
+        /// </summary>
+        /// <typeparam name="TReq"></typeparam>
+        /// <typeparam name="TRes"></typeparam>
+        /// <param name="_func"></param>
+        /// <param name="_lifetime"></param>
         public void OfReqRes<TReq, TRes>(Func<TReq, Task<TRes>> _func, ILifetime _lifetime)
             where TReq : IBusMsg
             where TRes : IBusMsg
         {
             p_msgFlow
-                .ObserveOn(p_scheduler)
                 .Where(x => x.Data.GetType() == typeof(TReq))
+                .ObserveOn(p_scheduler)
                 .Subscribe(async x =>
                 {
                     var guid = x.Id;
                     var result = await _func((TReq)x.Data);
-                    PostMsg(new IBusMsgSerial(result, guid));
+
+                    PostMsg(new BusMsgSerial(result, guid));
                 }, _lifetime.Token);
         }
 

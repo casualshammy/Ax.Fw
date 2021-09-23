@@ -1,17 +1,17 @@
-﻿using Newtonsoft.Json;
+﻿#nullable enable
+using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Ax.Fw
 {
     /// <summary>
     /// Simple storage for data in JSON files
     /// </summary>
-    public class JsonStorage<T> where T : new()
+    public class JsonStorage<T>
     {
-        public string JsonFilePath { get; private set; }
-
         /// <summary>
         ///
         /// </summary>
@@ -23,31 +23,29 @@ namespace Ax.Fw
             JsonFilePath = jsonFilePath;
         }
 
+        public string JsonFilePath { get; }
+
         /// <summary>
-        /// Load data from JSON file
+        /// Loads data from JSON file
         /// </summary>
-        /// <typeparam name="T">Type of readed data</typeparam>
-        /// <param name="createNewFile">
-        /// If TRUE, new file will be created if doesn't exist. If FALSE, method will throw <see
-        /// cref="FileNotFoundException"/> if file doesn't exist
+        /// <param name="_defaultFactory">
+        /// If file doesn't exist, this method will be invoked to produce default value
         /// </param>
         /// <returns>
-        /// Instance of <see cref="T"/>. If new file is created, will return new instance of <see cref="T"/>
+        /// Instance of <see cref="T"/>
         /// </returns>
-        public T Load(bool createNewFile = true)
+        public async Task<T> Load(Func<Task<T>> _defaultFactory)
         {
             bool fileExist = File.Exists(JsonFilePath);
-            if (!createNewFile && !fileExist)
-                throw new FileNotFoundException();
             if (!fileExist)
             {
-                T newInstance = new T();
+                T newInstance = await _defaultFactory();
                 Save(newInstance);
                 return newInstance;
             }
             else
             {
-                return JsonConvert.DeserializeObject<T>(File.ReadAllText(JsonFilePath, Encoding.UTF8));
+                return JsonConvert.DeserializeObject<T>(File.ReadAllText(JsonFilePath, Encoding.UTF8)) ?? throw new InvalidCastException($"Can't parse file!");
             }
         }
 
