@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using Ax.Fw.Interfaces;
 using Newtonsoft.Json;
 using System;
 using System.IO;
@@ -10,7 +11,7 @@ namespace Ax.Fw
     /// <summary>
     /// Simple storage for data in JSON files
     /// </summary>
-    public class JsonStorage<T>
+    public class JsonStorage<T> : IJsonStorage<T>
     {
         /// <summary>
         ///
@@ -23,6 +24,9 @@ namespace Ax.Fw
             JsonFilePath = jsonFilePath;
         }
 
+        /// <summary>
+        /// Path to file
+        /// </summary>
         public string JsonFilePath { get; }
 
         /// <summary>

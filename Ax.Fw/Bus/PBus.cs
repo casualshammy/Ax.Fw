@@ -141,6 +141,29 @@ namespace Ax.Fw.Bus
         /// <typeparam name="TReq"></typeparam>
         /// <typeparam name="TRes"></typeparam>
         /// <param name="_func"></param>
+        /// <returns></returns>
+        public IDisposable OfReqRes<TReq, TRes>(Func<TReq, TRes> _func)
+            where TReq : IBusMsg
+            where TRes : IBusMsg
+        {
+            return p_msgFlow
+                .Where(x => x.Data.GetType() == typeof(TReq))
+                .ObserveOn(p_scheduler)
+                .Subscribe(x =>
+                {
+                    var guid = x.Id;
+                    var result = _func((TReq)x.Data);
+
+                    PostMsg(new BusMsgSerial(result, guid));
+                });
+        }
+
+        /// <summary>
+        /// Create a handler of messages of specific type ('server')
+        /// </summary>
+        /// <typeparam name="TReq"></typeparam>
+        /// <typeparam name="TRes"></typeparam>
+        /// <param name="_func"></param>
         /// <param name="_lifetime"></param>
         public void OfReqRes<TReq, TRes>(Func<TReq, Task<TRes>> _func, ILifetime _lifetime)
             where TReq : IBusMsg
@@ -153,6 +176,29 @@ namespace Ax.Fw.Bus
                 {
                     var guid = x.Id;
                     var result = await _func((TReq)x.Data);
+
+                    PostMsg(new BusMsgSerial(result, guid));
+                }, _lifetime.Token);
+        }
+
+        /// <summary>
+        /// Create a handler of messages of specific type ('server')
+        /// </summary>
+        /// <typeparam name="TReq"></typeparam>
+        /// <typeparam name="TRes"></typeparam>
+        /// <param name="_func"></param>
+        /// <param name="_lifetime"></param>
+        public void OfReqRes<TReq, TRes>(Func<TReq, TRes> _func, ILifetime _lifetime)
+            where TReq : IBusMsg
+            where TRes : IBusMsg
+        {
+            p_msgFlow
+                .Where(x => x.Data.GetType() == typeof(TReq))
+                .ObserveOn(p_scheduler)
+                .Subscribe(x =>
+                {
+                    var guid = x.Id;
+                    var result = _func((TReq)x.Data);
 
                     PostMsg(new BusMsgSerial(result, guid));
                 }, _lifetime.Token);

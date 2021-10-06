@@ -4,6 +4,9 @@ using System.Threading;
 
 namespace Ax.Fw
 {
+    /// <summary>
+    /// Very precise and very expensive timer (utilizes 1 thread)
+    /// </summary>
     public class AccurateTimer : IDisposable
     {
         private readonly Stopwatch p_balancingStopwatch;
