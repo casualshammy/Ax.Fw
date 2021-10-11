@@ -1,32 +1,29 @@
-﻿using System;
+﻿#nullable enable
+using System;
 
 namespace Ax.Fw.Cache
 {
     public class SyncCacheSettings
     {
-        public SyncCacheSettings() { }
+        public SyncCacheSettings() : this(1000, 100, TimeSpan.FromDays(1)) { }
 
         public SyncCacheSettings(int _capacity, int _overhead, TimeSpan _ttl)
         {
+            if (_capacity <= 0)
+                throw new ArgumentOutOfRangeException(nameof(Capacity), $"{nameof(Capacity)} must be bigger than 0");
+            if (_overhead <= 0)
+                throw new ArgumentOutOfRangeException(nameof(Overhead), $"{nameof(Overhead)} must be bigger than 0");
+            if (_ttl.TotalMilliseconds <= 0)
+                throw new ArgumentOutOfRangeException(nameof(TTL), $"{nameof(TTL)} must be bigger than 0ms");
+
             Capacity = _capacity;
             Overhead = _overhead;
             TTL = _ttl;
         }
 
-        public int Capacity { get; private set; } = 1000;
-        public int Overhead { get; private set; } = 100;
-        public TimeSpan TTL { get; private set; } = TimeSpan.FromDays(1);
-
-        public SyncCacheSettings Validate()
-        {
-            if (Capacity <= 0)
-                throw new ArgumentOutOfRangeException(nameof(Capacity), $"{nameof(Capacity)} must be bigger than 0");
-            if (Overhead <= 0)
-                throw new ArgumentOutOfRangeException(nameof(Overhead), $"{nameof(Overhead)} must be bigger than 0");
-            if (TTL.TotalMilliseconds <= 0)
-                throw new ArgumentOutOfRangeException(nameof(TTL), $"{nameof(TTL)} must be bigger than 0ms");
-            return this;
-        }
+        public int Capacity { get; }
+        public int Overhead { get; }
+        public TimeSpan TTL { get; }
 
     }
 }

@@ -17,11 +17,16 @@ namespace Ax.Fw.Bus
     public class PBus : IBus
     {
         private readonly Subject<BusMsgSerial> p_msgFlow = new();
-        private readonly ThreadPoolScheduler p_scheduler = ThreadPoolScheduler.Instance;
+        private readonly IScheduler p_scheduler;
         private readonly ConcurrentDictionary<Type, IBusMsg> p_lastMsg = new();
 
-        public PBus(ILifetime _lifetime)
+        public PBus(ILifetime _lifetime) : this(_lifetime, _lifetime.DisposeOnCompleted(new EventLoopScheduler()))
         {
+        }
+
+        public PBus(ILifetime _lifetime, IScheduler _scheduler)
+        {
+            p_scheduler = _scheduler;
             _lifetime.DisposeOnCompleted(p_msgFlow);
         }
 

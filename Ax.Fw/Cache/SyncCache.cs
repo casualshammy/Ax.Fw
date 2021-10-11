@@ -1,4 +1,5 @@
-﻿using Ax.Fw.Internals;
+﻿#nullable enable
+using Ax.Fw.Internals;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
@@ -11,20 +12,20 @@ namespace Ax.Fw.Cache
     {
         public SyncCache(SyncCacheSettings _settings)
         {
-            p_settings = _settings.Validate();
+            p_settings = _settings;
         }
 
         public int Count => p_table.Count;
 
-        private readonly ConcurrentDictionary<TKey, SyncCacheEntry<TValue>> p_table = new ConcurrentDictionary<TKey, SyncCacheEntry<TValue>>();
+        private readonly ConcurrentDictionary<TKey, SyncCacheEntry<TValue?>> p_table = new();
         private readonly SyncCacheSettings p_settings;
-        private readonly object p_addRemoveLock = new object();
-        private long sharedIndex = 0;
+        private readonly object p_addRemoveLock = new();
+        private long p_sharedIndex = 0;
 
-        public bool TryGet(TKey _key, out TValue _value)
+        public bool TryGet(TKey _key, out TValue? _value)
         {
-            DateTimeOffset now = DateTimeOffset.UtcNow;
-            if (p_table.TryGetValue(_key, out SyncCacheEntry<TValue> entry))
+            var now = DateTimeOffset.UtcNow;
+            if (p_table.TryGetValue(_key, out SyncCacheEntry<TValue?> entry))
             {
                 if (entry.ValidUntil > now)
                 {
@@ -36,9 +37,9 @@ namespace Ax.Fw.Cache
             return false;
         }
 
-        public async Task<TValue> Get(TKey _key, Func<TKey, Task<TValue>> _factory, TimeSpan _overrideTtl)
+        public async Task<TValue?> Get(TKey _key, Func<TKey, Task<TValue?>> _factory, TimeSpan _overrideTtl)
         {
-            if (!TryGet(_key, out TValue value))
+            if (!TryGet(_key, out var value))
             {
                 value = await _factory(_key);
                 Put(_key, value, _overrideTtl);
@@ -46,18 +47,18 @@ namespace Ax.Fw.Cache
             return value;
         }
 
-        public async Task<TValue> Get(TKey _key, Func<TKey, Task<TValue>> _factory)
+        public async Task<TValue?> Get(TKey _key, Func<TKey, Task<TValue?>> _factory)
         {
             return await Get(_key, _factory, p_settings.TTL);
         }
 
-        public void Put(TKey _key, TValue _value, TimeSpan _overrideTtl)
+        public void Put(TKey _key, TValue? _value, TimeSpan _overrideTtl)
         {
-            DateTimeOffset now = DateTimeOffset.UtcNow;
+            var now = DateTimeOffset.UtcNow;
 
             lock (p_addRemoveLock)
             {
-                var newEntry = new SyncCacheEntry<TValue>(now + _overrideTtl, _value, Interlocked.Increment(ref sharedIndex));
+                var newEntry = new SyncCacheEntry<TValue?>(now + _overrideTtl, _value, Interlocked.Increment(ref p_sharedIndex));
                 p_table.AddOrUpdate(_key, newEntry, (_x, _y) => newEntry);
             }
 
@@ -77,7 +78,7 @@ namespace Ax.Fw.Cache
                     }
         }
 
-        public void Put(TKey _key, TValue _value)
+        public void Put(TKey _key, TValue? _value)
         {
             Put(_key, _value, p_settings.TTL);
         }
