@@ -51,7 +51,7 @@ namespace Ax.Fw.Tests
                 });
                 p_output.WriteLine($"Time: {sw.ElapsedMilliseconds}ms");
                 Assert.Equal(_num, counter);
-                Assert.InRange(sw.ElapsedMilliseconds, 0, _num * 100);
+                Assert.InRange(sw.ElapsedMilliseconds, 0, _num * 150);
             }
             finally
             {
