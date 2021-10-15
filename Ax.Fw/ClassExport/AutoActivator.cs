@@ -1,4 +1,5 @@
-﻿using Ax.Fw.Interfaces;
+﻿#nullable enable
+using Ax.Fw.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
