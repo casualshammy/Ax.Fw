@@ -17,13 +17,10 @@
 
   <ItemGroup>
     <Folder Include="Cache\" />
-    <Folder Include="Extensions\" />
     <Folder Include="Internals\" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="H.Formatters.Json" Version="12.0.3.6" />
-    <PackageReference Include="H.Pipes" Version="1.14.8" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="5.0.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="System.Collections.Immutable" Version="5.0.0" />

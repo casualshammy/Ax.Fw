@@ -1,11 +1,14 @@
 ﻿#nullable enable
+using Ax.Fw.Attributes;
 using Ax.Fw.Bus.Parts;
+using Ax.Fw.Extensions;
 using Ax.Fw.Interfaces;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -16,12 +19,11 @@ using WatsonTcp;
 
 namespace Ax.Fw.Bus
 {
-    public class EBusClient
+    public class EBusClient : IBus
     {
-        
         private readonly WatsonTcpClient p_client;
         private readonly Subject<BusMsgSerial> p_msgFlow = new();
-        
+
         private readonly ConcurrentDictionary<Type, IBusMsg> p_lastMsg = new();
         private readonly IScheduler p_scheduler;
         private readonly IReadOnlyDictionary<string, Type> p_typesCache;
@@ -29,7 +31,7 @@ namespace Ax.Fw.Bus
         public EBusClient(ILifetime _lifetime, IScheduler _scheduler, int _port)
         {
             var typesCache = new Dictionary<string, Type>();
-            foreach (var type in GetTypesWith<EBusMsgAttribute>(true))
+            foreach (var type in Utilities.GetTypesWith<EBusMsgAttribute>(true))
                 typesCache.Add(type.ToString(), type);
             p_typesCache = typesCache;
 
@@ -48,19 +50,14 @@ namespace Ax.Fw.Bus
         private void MessageReceived(object sender, MessageReceivedEventArgs args)
         {
             var bytes = args.Data;
-            if (!bytes.Any())
-                return;
-
-            if (args.Metadata == null)
-                return;
-
-            if (!args.Metadata.TryGetValue("data_type", out var typeObject) || !args.Metadata.TryGetValue("guid", out var guidObject))
-                return;
-
-            if (typeObject is not string typeString || guidObject is not string guidString || !Guid.TryParse(guidString, out var guid))
-                return;
-
-            if (!p_typesCache.TryGetValue(typeString, out var type))
+            if (bytes.Length == 0 ||
+                args.Metadata == null ||
+                !args.Metadata.TryGetValue("data_type", out var typeObject) ||
+                typeObject is not string typeString ||
+                !p_typesCache.TryGetValue(typeString, out var type) ||
+                !args.Metadata.TryGetValue("guid", out var guidObject) ||
+                guidObject is not string guidString ||
+                !Guid.TryParse(guidString, out var guid))
                 return;
 
             var json = Encoding.UTF8.GetString(bytes);
@@ -118,7 +115,9 @@ namespace Ax.Fw.Bus
         {
             p_lastMsg.AddOrUpdate(_msg.Data.GetType(), _msg.Data, (_, _) => _msg.Data);
             p_msgFlow.OnNext(_msg);
-            p_client.Send(JsonConvert.SerializeObject(_msg.Data), new Dictionary<object, object> { { "data_type", _msg.Data.GetType().ToString() }, { "guid", _msg.Id.ToString() } });
+            p_client.Send(
+                JsonConvert.SerializeObject(_msg.Data), 
+                new Dictionary<object, object> { { "data_type", _msg.Data.GetType().ToString() }, { "guid", _msg.Id.ToString() } });
         }
 
         /// <summary>
@@ -152,6 +151,22 @@ namespace Ax.Fw.Bus
         }
 
         /// <summary>
+        /// Send message and wait for answer
+        /// </summary>
+        /// <typeparam name="TReq"></typeparam>
+        /// <typeparam name="TRes"></typeparam>
+        /// <param name="_req"></param>
+        /// <param name="_timeout"></param>
+        /// <returns></returns>
+        public TRes PostReqRes<TReq, TRes>(TReq _req, TimeSpan _timeout)
+            where TReq : IBusMsg
+            where TRes : IBusMsg
+        {
+            var result = PostReqResOrDefault<TReq, TRes>(_req, _timeout);
+            return result ?? throw new TimeoutException();
+        }
+
+        /// <summary>
         /// Create a handler of messages of specific type ('server')
         /// </summary>
         /// <typeparam name="TReq"></typeparam>
@@ -174,9 +189,77 @@ namespace Ax.Fw.Bus
                 });
         }
 
-        private static IEnumerable<Type> GetTypesWith<TAttribute>(bool inherit) where TAttribute : Attribute
+        /// <summary>
+        /// Create a handler of messages of specific type ('server')
+        /// </summary>
+        /// <typeparam name="TReq"></typeparam>
+        /// <typeparam name="TRes"></typeparam>
+        /// <param name="_func"></param>
+        /// <returns></returns>
+        public IDisposable OfReqRes<TReq, TRes>(Func<TReq, Task<TRes>> _func)
+            where TReq : IBusMsg
+            where TRes : IBusMsg
         {
-            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()).Where(x => x.IsDefined(typeof(TAttribute), inherit));
+            return p_msgFlow
+                .Where(x => x.Data.GetType() == typeof(TReq))
+                .ObserveOn(p_scheduler)
+                .SelectAsync(async x =>
+                {
+                    var guid = x.Id;
+                    var result = await _func((TReq)x.Data);
+
+                    PostMsg(new BusMsgSerial(result, guid));
+                    return Unit.Default;
+                })
+                .Subscribe();
+        }
+
+        /// <summary>
+        /// Create a handler of messages of specific type ('server')
+        /// </summary>
+        /// <typeparam name="TReq"></typeparam>
+        /// <typeparam name="TRes"></typeparam>
+        /// <param name="_func"></param>
+        /// <param name="_lifetime"></param>
+        public void OfReqRes<TReq, TRes>(Func<TReq, TRes> _func, ILifetime _lifetime)
+            where TReq : IBusMsg
+            where TRes : IBusMsg
+        {
+            p_msgFlow
+                .Where(x => x.Data.GetType() == typeof(TReq))
+                .ObserveOn(p_scheduler)
+                .Subscribe(x =>
+                {
+                    var guid = x.Id;
+                    var result = _func((TReq)x.Data);
+
+                    PostMsg(new BusMsgSerial(result, guid));
+                }, _lifetime.Token);
+        }
+
+        /// <summary>
+        /// Create a handler of messages of specific type ('server')
+        /// </summary>
+        /// <typeparam name="TReq"></typeparam>
+        /// <typeparam name="TRes"></typeparam>
+        /// <param name="_func"></param>
+        /// <param name="_lifetime"></param>
+        public void OfReqRes<TReq, TRes>(Func<TReq, Task<TRes>> _func, ILifetime _lifetime)
+            where TReq : IBusMsg
+            where TRes : IBusMsg
+        {
+            p_msgFlow
+                .Where(x => x.Data.GetType() == typeof(TReq))
+                .ObserveOn(p_scheduler)
+                .SelectAsync(async x =>
+                {
+                    var guid = x.Id;
+                    var result = await _func((TReq)x.Data);
+
+                    PostMsg(new BusMsgSerial(result, guid));
+                    return Unit.Default;
+                })
+                .Subscribe(_lifetime.Token);
         }
 
     }

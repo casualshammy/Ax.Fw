@@ -1,9 +1,9 @@
 ﻿#nullable enable
+using Ax.Fw.Attributes;
 using Ax.Fw.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Ax.Fw.ClassExport
 {
@@ -13,7 +13,7 @@ namespace Ax.Fw.ClassExport
 
         public AutoActivator(ILifetime _lifetime, ServiceCollection _serviceCollection)
         {
-            foreach (var type in GetTypesWith<AutoActivatorExportAttribute>(true))
+            foreach (var type in Utilities.GetTypesWith<AutoActivatorExportAttribute>(true))
             {
                 var exportInfo = (AutoActivatorExportAttribute)Attribute.GetCustomAttribute(type, typeof(AutoActivatorExportAttribute));
                 if (exportInfo.Singletone)
@@ -22,7 +22,7 @@ namespace Ax.Fw.ClassExport
                     _serviceCollection = (ServiceCollection)_serviceCollection.AddTransient(exportInfo.InterfaceType, type);
             }
             ServiceProvider = _serviceCollection.BuildServiceProvider();
-            foreach (var type in GetTypesWith<AutoActivatorExportAttribute>(true))
+            foreach (var type in Utilities.GetTypesWith<AutoActivatorExportAttribute>(true))
             {
                 var exportInfo = (AutoActivatorExportAttribute)Attribute.GetCustomAttribute(type, typeof(AutoActivatorExportAttribute));
                 if (exportInfo.ActivateOnStart && exportInfo.Singletone)
@@ -37,10 +37,6 @@ namespace Ax.Fw.ClassExport
 
         public IServiceProvider ServiceProvider { get; }
 
-        private static IEnumerable<Type> GetTypesWith<TAttribute>(bool inherit) where TAttribute : Attribute
-        {
-            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()).Where(x => x.IsDefined(typeof(TAttribute), inherit));
-        }
     }
 
 }

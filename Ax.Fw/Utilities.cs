@@ -91,5 +91,10 @@ namespace Ax.Fw
             return builder.ToString();
         }
 
+        public static IEnumerable<Type> GetTypesWith<TAttribute>(bool inherit) where TAttribute : Attribute
+        {
+            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()).Where(x => x.IsDefined(typeof(TAttribute), inherit));
+        }
+
     }
 }

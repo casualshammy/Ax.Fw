@@ -1,6 +1,7 @@
-﻿using System;
+﻿#nullable enable
+using System;
 
-namespace Ax.Fw.Bus
+namespace Ax.Fw.Attributes
 {
     [AttributeUsage(AttributeTargets.Class)]
     public class EBusMsgAttribute : Attribute
