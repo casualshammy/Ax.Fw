@@ -1,8 +1,8 @@
 ﻿#nullable enable
 using Ax.Fw.Attributes;
-using Ax.Fw.Bus.Parts;
 using Ax.Fw.Extensions;
 using Ax.Fw.Interfaces;
+using Ax.Fw.TcpBus.Parts;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
@@ -31,7 +31,7 @@ namespace Ax.Fw.Bus
         public TcpBusClient(ILifetime _lifetime, IScheduler _scheduler, int _port)
         {
             var typesCache = new Dictionary<string, Type>();
-            foreach (var type in Utilities.GetTypesWith<EBusMsgAttribute>(true))
+            foreach (var type in Utilities.GetTypesWith<TcpBusMsgAttribute>(true))
                 typesCache.Add(type.ToString(), type);
             p_typesCache = typesCache;
 
@@ -46,6 +46,9 @@ namespace Ax.Fw.Bus
             if (!p_client.Connected)
                 throw new InvalidOperationException("Can't connect to server!");
         }
+
+        public TcpBusClient(ILifetime _lifetime, int _port) : this(_lifetime, _lifetime.DisposeOnCompleted(new EventLoopScheduler()), _port)
+        { }
 
         private void MessageReceived(object sender, MessageReceivedEventArgs args)
         {

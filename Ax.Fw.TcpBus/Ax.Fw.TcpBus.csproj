@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.1;net472</TargetFrameworks>
+    <PackageId>Ax.Fw.TcpBus</PackageId>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>TcpBusTcpBus - observavble bus for interprocess communications</Description>
+    <Version>$(Version)</Version>
+    <Authors>Axio</Authors>
+    <Company>Axio.Lab</Company>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ax.Fw" Version="3.0.4" />
+  </ItemGroup>
+
+</Project>

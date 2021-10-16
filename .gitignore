@@ -8,3 +8,7 @@ Ax.Fw.Windows/obj
 /Ax.Fw/_nuget-push.bat
 Ax.Fw/bin
 Ax.Fw/obj
+Ax.Fw.TcpBus.Tests/bin
+Ax.Fw.TcpBus.Tests/obj
+Ax.Fw.TcpBus/bin
+Ax.Fw.TcpBus/obj
