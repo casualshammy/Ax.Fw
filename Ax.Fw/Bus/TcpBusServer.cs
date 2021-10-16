@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
+using System.Collections.Immutable;
 using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
@@ -19,16 +19,17 @@ using WatsonTcp;
 
 namespace Ax.Fw.Bus
 {
-    public class EBusClient : IBus
+    public class TcpBusServer : ITcpBus
     {
-        private readonly WatsonTcpClient p_client;
+        private readonly WatsonTcpServer p_server;
+        private ImmutableHashSet<string> p_clients = ImmutableHashSet<string>.Empty;
         private readonly Subject<BusMsgSerial> p_msgFlow = new();
-
         private readonly ConcurrentDictionary<Type, IBusMsg> p_lastMsg = new();
         private readonly IScheduler p_scheduler;
         private readonly IReadOnlyDictionary<string, Type> p_typesCache;
+        private readonly bool p_includeClient;
 
-        public EBusClient(ILifetime _lifetime, IScheduler _scheduler, int _port)
+        public TcpBusServer(ILifetime _lifetime, IScheduler _scheduler, int _port, bool _includeClient)
         {
             var typesCache = new Dictionary<string, Type>();
             foreach (var type in Utilities.GetTypesWith<EBusMsgAttribute>(true))
@@ -37,44 +38,56 @@ namespace Ax.Fw.Bus
 
             p_scheduler = _scheduler;
             _lifetime.DisposeOnCompleted(p_msgFlow);
+            p_includeClient = _includeClient;
 
-            p_client = _lifetime.DisposeOnCompleted(new WatsonTcpClient("127.0.0.1", _port));
-            p_client.Events.ServerDisconnected += ServerDisconnected;
-            p_client.Events.MessageReceived += MessageReceived;
-            p_client.Connect();
-
-            if (!p_client.Connected)
-                throw new InvalidOperationException("Can't connect to server!");
+            p_server = _lifetime.DisposeOnCompleted(new WatsonTcpServer("127.0.0.1", _port));
+            p_server.Events.ClientConnected += ClientConnected;
+            p_server.Events.ClientDisconnected += ClientDisconnected;
+            p_server.Events.MessageReceived += MessageReceived;
+            p_server.Start();
         }
 
-        private void MessageReceived(object sender, MessageReceivedEventArgs args)
+        private void ClientConnected(object sender, ConnectionEventArgs args)
         {
-            var bytes = args.Data;
-            if (bytes.Length == 0 ||
-                args.Metadata == null ||
-                !args.Metadata.TryGetValue("data_type", out var typeObject) ||
-                typeObject is not string typeString ||
-                !p_typesCache.TryGetValue(typeString, out var type) ||
-                !args.Metadata.TryGetValue("guid", out var guidObject) ||
-                guidObject is not string guidString ||
-                !Guid.TryParse(guidString, out var guid))
-                return;
-
-            var json = Encoding.UTF8.GetString(bytes);
-            if (json == null)
-                return;
-
-            if (JsonConvert.DeserializeObject(json, type) is not IBusMsg userData)
-                return;
-
-            p_lastMsg[type] = userData;
-            p_msgFlow.OnNext(new BusMsgSerial(userData, guid));
+            p_clients = p_clients.Add(args.IpPort);
         }
 
-        private void ServerDisconnected(object sender, EventArgs args)
+        private void ClientDisconnected(object sender, DisconnectionEventArgs args)
         {
-            p_client.Connect();
+            p_clients = p_clients.Remove(args.IpPort);
         }
+
+        private async void MessageReceived(object sender, MessageReceivedEventArgs args)
+        {
+            if (p_includeClient)
+            {
+                var bytes = args.Data;
+                if (bytes.Length == 0 ||
+                    args.Metadata == null ||
+                    !args.Metadata.TryGetValue("data_type", out var typeObject) ||
+                    typeObject is not string typeString ||
+                    !p_typesCache.TryGetValue(typeString, out var type) ||
+                    !args.Metadata.TryGetValue("guid", out var guidObject) ||
+                    guidObject is not string guidString ||
+                    !Guid.TryParse(guidString, out var guid))
+                    return;
+
+                var json = Encoding.UTF8.GetString(bytes);
+                if (json == null)
+                    return;
+
+                if (JsonConvert.DeserializeObject(json, type) is not IBusMsg userData)
+                    return;
+
+                p_lastMsg[type] = userData;
+                p_msgFlow.OnNext(new BusMsgSerial(userData, guid));
+            }
+
+            foreach (var ipPort in p_clients)
+                if (ipPort != args.IpPort)
+                    await p_server.SendAsync(ipPort, args.Data, args.Metadata);
+        }
+
 
         /// <summary>
         /// Get Observable of messages by type
@@ -84,6 +97,9 @@ namespace Ax.Fw.Bus
         /// <returns></returns>
         public IObservable<T> OfType<T>(bool includeLastValue = false) where T : IBusMsg
         {
+            if (!p_includeClient)
+                throw new InvalidOperationException($"Client features is not enabled! See constructor parameters.");
+
             if (includeLastValue && p_lastMsg.TryGetValue(typeof(T), out var msg))
                 return p_msgFlow
                     .Where(x => x.Data.GetType() == typeof(T))
@@ -105,6 +121,9 @@ namespace Ax.Fw.Bus
         /// <param name="_data"></param>
         public void PostMsg(IBusMsg _data)
         {
+            if (!p_includeClient)
+                throw new InvalidOperationException($"Client features is not enabled! See constructor parameters.");
+
             if (_data == null)
                 throw new ArgumentNullException(nameof(_data));
 
@@ -113,11 +132,12 @@ namespace Ax.Fw.Bus
 
         private void PostMsg(BusMsgSerial _msg)
         {
-            p_lastMsg.AddOrUpdate(_msg.Data.GetType(), _msg.Data, (_, _) => _msg.Data);
+            p_lastMsg[_msg.Data.GetType()] = _msg.Data;
             p_msgFlow.OnNext(_msg);
-            p_client.Send(
-                JsonConvert.SerializeObject(_msg.Data), 
-                new Dictionary<object, object> { { "data_type", _msg.Data.GetType().ToString() }, { "guid", _msg.Id.ToString() } });
+            var data = JsonConvert.SerializeObject(_msg.Data);
+            var meta = new Dictionary<object, object> { { "data_type", _msg.Data.GetType().ToString() }, { "guid", _msg.Id.ToString() } };
+            foreach (var ipPort in p_clients)
+                p_server.Send(ipPort, data, meta);
         }
 
         /// <summary>
@@ -132,6 +152,9 @@ namespace Ax.Fw.Bus
             where TReq : IBusMsg
             where TRes : IBusMsg
         {
+            if (!p_includeClient)
+                throw new InvalidOperationException($"Client features is not enabled! See constructor parameters.");
+
             var mre = new ManualResetEvent(false);
             var guid = Guid.NewGuid();
             TRes? result = default;
@@ -162,6 +185,9 @@ namespace Ax.Fw.Bus
             where TReq : IBusMsg
             where TRes : IBusMsg
         {
+            if (!p_includeClient)
+                throw new InvalidOperationException($"Client features is not enabled! See constructor parameters.");
+
             var result = PostReqResOrDefault<TReq, TRes>(_req, _timeout);
             return result ?? throw new TimeoutException();
         }
@@ -177,6 +203,9 @@ namespace Ax.Fw.Bus
             where TReq : IBusMsg
             where TRes : IBusMsg
         {
+            if (!p_includeClient)
+                throw new InvalidOperationException($"Client features is not enabled! See constructor parameters.");
+
             return p_msgFlow
                 .Where(x => x.Data.GetType() == typeof(TReq))
                 .ObserveOn(p_scheduler)
@@ -200,6 +229,9 @@ namespace Ax.Fw.Bus
             where TReq : IBusMsg
             where TRes : IBusMsg
         {
+            if (!p_includeClient)
+                throw new InvalidOperationException($"Client features is not enabled! See constructor parameters.");
+
             return p_msgFlow
                 .Where(x => x.Data.GetType() == typeof(TReq))
                 .ObserveOn(p_scheduler)
@@ -225,6 +257,9 @@ namespace Ax.Fw.Bus
             where TReq : IBusMsg
             where TRes : IBusMsg
         {
+            if (!p_includeClient)
+                throw new InvalidOperationException($"Client features is not enabled! See constructor parameters.");
+
             p_msgFlow
                 .Where(x => x.Data.GetType() == typeof(TReq))
                 .ObserveOn(p_scheduler)
@@ -248,6 +283,9 @@ namespace Ax.Fw.Bus
             where TReq : IBusMsg
             where TRes : IBusMsg
         {
+            if (!p_includeClient)
+                throw new InvalidOperationException($"Client features is not enabled! See constructor parameters.");
+
             p_msgFlow
                 .Where(x => x.Data.GetType() == typeof(TReq))
                 .ObserveOn(p_scheduler)

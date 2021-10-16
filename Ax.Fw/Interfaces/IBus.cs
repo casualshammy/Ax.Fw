@@ -27,4 +27,7 @@ namespace Ax.Fw.Interfaces
             where TReq : IBusMsg
             where TRes : IBusMsg;
     }
+
+    public interface ITcpBus : IBus { }
+
 }
