@@ -12,7 +12,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Ax.Fw" Version="3.0.4" />
+    <PackageReference Include="Ax.Fw" Version="4.0.0" />
+    <PackageReference Include="WatsonTcp" Version="4.8.14.1" />
   </ItemGroup>
 
 </Project>
