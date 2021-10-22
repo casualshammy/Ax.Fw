@@ -74,6 +74,34 @@ namespace Ax.Fw.Tests
             }
         }
 
+        [Fact]
+        public void LongRunningMsg()
+        {
+            var sw = Stopwatch.StartNew();
+            var lifetime = new Lifetime();
+            try
+            {
+                var bus = new PBus(lifetime);
+                bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async msg =>
+                {
+                    if (msg.Code == 0)
+                        await Task.Delay(5000);
+
+                    return new SimpleMsgRes(msg.Code + 1);
+                });
+
+                var result0 = bus.PostReqResOrDefault<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(0), TimeSpan.FromSeconds(1));
+                var result1 = bus.PostReqResOrDefault<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(1), TimeSpan.FromSeconds(1));
+
+                Assert.Null(result0);
+                Assert.Equal(2, result1?.Code);
+            }
+            finally
+            {
+                lifetime.Complete();
+            }
+        }
+
         class SimpleMsgReq : IBusMsg
         {
             public SimpleMsgReq(int _code)
