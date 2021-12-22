@@ -62,7 +62,8 @@ namespace Ax.Fw.Tests
                 }));
 
                 var counter = 0;
-                Parallel.For(0, _num, _ => {
+                Parallel.For(0, _num, _ =>
+                {
                     Interlocked.Increment(ref counter);
                     var i = _;
                     var result = bus.PostReqResOrDefault<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(i), TimeSpan.FromSeconds(1));

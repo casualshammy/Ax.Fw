@@ -15,6 +15,8 @@ namespace Ax.Fw
 
         public CancellationToken Token => p_cts.Token;
 
+        public bool CancellationRequested => p_cts.Token.IsCancellationRequested;
+
         public T? DisposeOnCompleted<T>(T? _instance) where T : IDisposable
         {
             if (p_cts.Token.IsCancellationRequested)

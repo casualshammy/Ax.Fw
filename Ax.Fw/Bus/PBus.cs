@@ -17,6 +17,7 @@ namespace Ax.Fw.Bus
     public class PBus : IBus
     {
         private readonly Subject<BusMsgSerial> p_msgFlow = new();
+        private readonly ILifetime p_lifetime;
         private readonly IScheduler p_scheduler;
         private readonly ConcurrentDictionary<Type, IBusMsg> p_lastMsg = new();
 
@@ -26,6 +27,7 @@ namespace Ax.Fw.Bus
 
         public PBus(ILifetime _lifetime, IScheduler _scheduler)
         {
+            p_lifetime = _lifetime;
             p_scheduler = _scheduler;
             _lifetime.DisposeOnCompleted(p_msgFlow);
         }
@@ -44,8 +46,11 @@ namespace Ax.Fw.Bus
 
         private void PostMsg(BusMsgSerial _msg)
         {
-            p_lastMsg.AddOrUpdate(_msg.Data.GetType(), _msg.Data, (_, _) => _msg.Data);
-            p_msgFlow.OnNext(_msg);
+            if (!p_lifetime.CancellationRequested)
+            {
+                p_lastMsg.AddOrUpdate(_msg.Data.GetType(), _msg.Data, (_, _) => _msg.Data);
+                p_msgFlow.OnNext(_msg);
+            }
         }
 
         /// <summary>
