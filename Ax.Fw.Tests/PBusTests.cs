@@ -25,13 +25,13 @@ namespace Ax.Fw.Tests
             try
             {
                 var bus = new PBus(lifetime);
-                bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(msg =>
+                lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(msg =>
                 {
                     if (msg.Code == 1)
                         return new SimpleMsgRes(2);
 
                     return new SimpleMsgRes(0);
-                });
+                }));
 
                 var result = bus.PostReqResOrDefault<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(1), TimeSpan.FromSeconds(1));
                 Assert.Equal(2, result?.Code);
@@ -53,10 +53,10 @@ namespace Ax.Fw.Tests
             try
             {
                 var bus = new PBus(lifetime);
-                bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(msg =>
+                lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(msg =>
                 {
                     return new SimpleMsgRes(msg.Code + 1);
-                });
+                }));
 
                 var counter = 0;
                 Parallel.For(0, _num, _ => {
@@ -82,13 +82,13 @@ namespace Ax.Fw.Tests
             try
             {
                 var bus = new PBus(lifetime);
-                bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async msg =>
+                lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async msg =>
                 {
                     if (msg.Code == 0)
                         await Task.Delay(5000);
 
                     return new SimpleMsgRes(msg.Code + 1);
-                });
+                }));
 
                 var result0 = bus.PostReqResOrDefault<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(0), TimeSpan.FromSeconds(1));
                 var result1 = bus.PostReqResOrDefault<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(1), TimeSpan.FromSeconds(1));
