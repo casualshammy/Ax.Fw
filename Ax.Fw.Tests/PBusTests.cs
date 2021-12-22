@@ -21,6 +21,7 @@ namespace Ax.Fw.Tests
         [Fact]
         public void TestClientServer()
         {
+            p_output.WriteLine($"Starting test {nameof(TestClientServer)}...");
             var lifetime = new Lifetime();
             try
             {
@@ -39,6 +40,7 @@ namespace Ax.Fw.Tests
             finally
             {
                 lifetime.Complete();
+                p_output.WriteLine($"Test {nameof(TestClientServer)} is completed");
             }
         }
 
@@ -48,6 +50,7 @@ namespace Ax.Fw.Tests
         [InlineData(10000)]
         public void StressTest(int _num)
         {
+            p_output.WriteLine($"Starting test {nameof(StressTest)}-{_num}...");
             var sw = Stopwatch.StartNew();
             var lifetime = new Lifetime();
             try
@@ -71,12 +74,14 @@ namespace Ax.Fw.Tests
             finally
             {
                 lifetime.Complete();
+                p_output.WriteLine($"Test {nameof(StressTest)}-{_num} is completed");
             }
         }
 
         [Fact]
         public void LongRunningMsg()
         {
+            p_output.WriteLine($"Starting test {nameof(LongRunningMsg)}...");
             var sw = Stopwatch.StartNew();
             var lifetime = new Lifetime();
             try
@@ -99,6 +104,7 @@ namespace Ax.Fw.Tests
             finally
             {
                 lifetime.Complete();
+                p_output.WriteLine($"Test {nameof(LongRunningMsg)} is completed");
             }
         }
 
