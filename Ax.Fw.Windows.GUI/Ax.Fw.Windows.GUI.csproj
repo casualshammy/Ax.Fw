@@ -12,13 +12,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Ax.Fw.Windows" Version="4.0.1" />
+    <PackageReference Include="Ax.Fw.Windows" Version="4.0.2" />
     <PackageReference Include="MetroFramework-1.1" Version="1.0.2" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Controls\" />
-    <Folder Include="Forms\" />
     <Folder Include="Helpers\" />
     <Folder Include="TaskbarProgressbar\" />
   </ItemGroup>

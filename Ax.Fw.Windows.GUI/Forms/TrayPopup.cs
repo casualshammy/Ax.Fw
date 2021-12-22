@@ -208,6 +208,7 @@ namespace Ax.Fw.Windows.GUI.Forms
         {
             if (e.Button == MouseButtons.Right)
             {
+                Task.Run(() => options?.OnClose?.Invoke());
                 Close();
                 ArrangementTimer_Elapsed(null, null);
             }
@@ -215,7 +216,7 @@ namespace Ax.Fw.Windows.GUI.Forms
             {
                 if (options.OnClick != null)
                 {
-                    options.OnClick.Invoke();
+                    Task.Run(() => options.OnClick.Invoke());
                     Close();
                     ArrangementTimer_Elapsed(null, null);
                 }

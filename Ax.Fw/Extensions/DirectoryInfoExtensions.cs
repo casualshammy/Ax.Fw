@@ -138,5 +138,18 @@ namespace Ax.Fw.Extensions
             }
         }
 
+        public static bool TryDelete(this DirectoryInfo _dir, bool _recursive)
+        {
+            try
+            {
+                _dir.Delete(_recursive);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
     }
 }

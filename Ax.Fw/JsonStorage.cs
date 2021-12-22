@@ -44,7 +44,6 @@ namespace Ax.Fw
             if (!fileExist)
             {
                 T newInstance = await _defaultFactory();
-                Save(newInstance);
                 return newInstance;
             }
             else
@@ -68,7 +67,6 @@ namespace Ax.Fw
             if (!fileExist)
             {
                 T newInstance = _defaultFactory();
-                Save(newInstance);
                 return newInstance;
             }
             else

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -7,8 +8,8 @@ namespace Ax.Fw
 {
     public class MultiUserLock
     {
-        private readonly object internalLock = new object();
-        private readonly Dictionary<Guid, object> lockObjects = new Dictionary<Guid, object>();
+        private readonly object p_internalLock = new();
+        private readonly ConcurrentDictionary<Guid, object> p_lockObjects = new();
 
         /// <summary>
         /// Get lock. This instance of <see cref="MultiLock"/> will be in signaled state.
@@ -18,10 +19,10 @@ namespace Ax.Fw
         /// <returns></returns>
         public Guid GetLock()
         {
-            lock (internalLock)
+            lock (p_internalLock)
             {
                 Guid guid = Guid.NewGuid();
-                lockObjects.Add(guid, new object());
+                p_lockObjects.TryAdd(guid, new object());
                 return guid;
             }
         }
@@ -32,9 +33,9 @@ namespace Ax.Fw
         /// <param name="guid"></param>
         public void ReleaseLock(Guid guid)
         {
-            lock (internalLock)
-                if (lockObjects.ContainsKey(guid))
-                    lockObjects.Remove(guid);
+            lock (p_internalLock)
+                if (p_lockObjects.ContainsKey(guid))
+                    p_lockObjects.TryRemove(guid, out _);
                 else
                     throw new KeyNotFoundException("This GUID is not registered");
         }
@@ -43,9 +44,9 @@ namespace Ax.Fw
         {
             get
             {
-                lock (internalLock)
+                lock (p_internalLock)
                 {
-                    return lockObjects.Count > 0;
+                    return p_lockObjects.Count > 0;
                 }
             }
         }
@@ -57,7 +58,7 @@ namespace Ax.Fw
         public async Task WaitForLocksAsync(long timeoutMs = long.MaxValue)
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
-            while (lockObjects.Count > 0 && stopwatch.ElapsedMilliseconds < timeoutMs)
+            while (p_lockObjects.Count > 0 && stopwatch.ElapsedMilliseconds < timeoutMs)
                 await Task.Delay(1);
         }
 
