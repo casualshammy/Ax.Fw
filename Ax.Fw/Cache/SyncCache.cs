@@ -1,9 +1,8 @@
 ﻿#nullable enable
-using Ax.Fw.Internals;
+using Ax.Fw.Cache.Parts;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Ax.Fw.Cache
@@ -20,7 +19,6 @@ namespace Ax.Fw.Cache
         private readonly ConcurrentDictionary<TKey, SyncCacheEntry<TValue?>> p_table = new();
         private readonly SyncCacheSettings p_settings;
         private readonly object p_addRemoveLock = new();
-        private long p_sharedIndex = 0;
 
         public bool TryGet(TKey _key, out TValue? _value)
         {
@@ -37,7 +35,7 @@ namespace Ax.Fw.Cache
             return false;
         }
 
-        public async Task<TValue?> Get(TKey _key, Func<TKey, Task<TValue?>> _factory, TimeSpan _overrideTtl)
+        public async Task<TValue?> GetOrPut(TKey _key, Func<TKey, Task<TValue?>> _factory, TimeSpan _overrideTtl)
         {
             if (!TryGet(_key, out var value))
             {
@@ -49,7 +47,7 @@ namespace Ax.Fw.Cache
 
         public async Task<TValue?> Get(TKey _key, Func<TKey, Task<TValue?>> _factory)
         {
-            return await Get(_key, _factory, p_settings.TTL);
+            return await GetOrPut(_key, _factory, p_settings.TTL);
         }
 
         public void Put(TKey _key, TValue? _value, TimeSpan _overrideTtl)
@@ -58,7 +56,7 @@ namespace Ax.Fw.Cache
 
             lock (p_addRemoveLock)
             {
-                var newEntry = new SyncCacheEntry<TValue?>(now + _overrideTtl, _value, Interlocked.Increment(ref p_sharedIndex));
+                var newEntry = new SyncCacheEntry<TValue?>(now + _overrideTtl, _value);
                 p_table.AddOrUpdate(_key, newEntry, (_x, _y) => newEntry);
             }
 

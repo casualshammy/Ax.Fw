@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 
 namespace Ax.Fw
 {
@@ -11,7 +12,11 @@ namespace Ax.Fw
             Build = version.Build;
         }
 
-        public SerializableVersion(int major, int minor, int build)
+        [JsonConstructor]
+        public SerializableVersion(
+            [JsonProperty(nameof(Major))] int major,
+            [JsonProperty(nameof(Minor))] int minor,
+            [JsonProperty(nameof(Build))] int build)
         {
             Major = major;
             Minor = minor;
@@ -25,11 +30,11 @@ namespace Ax.Fw
             Build = 0;
         }
 
-        public int Major { get; set; }
+        public int Major { get; }
 
-        public int Minor { get; set; }
+        public int Minor { get; }
 
-        public int Build { get; set; }
+        public int Build { get; }
 
         public static bool operator ==(SerializableVersion a, SerializableVersion b)
         {
