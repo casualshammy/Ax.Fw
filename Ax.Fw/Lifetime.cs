@@ -11,6 +11,7 @@ namespace Ax.Fw
         private readonly ConcurrentStack<Action> p_doOnCompleted = new();
         private readonly object p_lock = new();
         private readonly CancellationTokenSource p_cts = new();
+        private bool p_disposedValue;
 
         public CancellationToken Token => p_cts.Token;
 
@@ -52,5 +53,23 @@ namespace Ax.Fw
             }
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!p_disposedValue)
+            {
+                if (disposing)
+                {
+                    Complete();
+                }
+
+                p_disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
     }
 }

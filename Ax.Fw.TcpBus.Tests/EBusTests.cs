@@ -30,15 +30,16 @@ namespace Ax.Fw.Tests
             var lifetime = new Lifetime();
             try
             {
-                var server = new TcpBusServer(lifetime, new EventLoopScheduler(), 9600, false);
-                var client0 = new TcpBusClient(lifetime, new EventLoopScheduler(), 9600);
-                var client1 = new TcpBusClient(lifetime, new EventLoopScheduler(), 9600);
+                var server = new TcpBusServer(lifetime, 9600, false);
+                var client0 = new TcpBusClient(lifetime, 9600);
+                var client1 = new TcpBusClient(lifetime, 9600);
 
-                client0
-                    .OfReqRes<SimpleMsgReq, SimpleMsgRes>(msg =>
-                    {
-                        return new SimpleMsgRes(msg.Code + 1);
-                    });
+                lifetime.DisposeOnCompleted(
+                    client0
+                        .OfReqRes<SimpleMsgReq, SimpleMsgRes>(msg =>
+                        {
+                            return new SimpleMsgRes(msg.Code + 1);
+                        }));
 
                 var counter = 0;
                 var sw = Stopwatch.StartNew();

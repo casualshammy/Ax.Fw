@@ -3,7 +3,7 @@ using System.Threading;
 
 namespace Ax.Fw.Interfaces
 {
-    public interface ILifetime
+    public interface ILifetime : IDisposable
     {
         CancellationToken Token { get; }
         bool CancellationRequested { get; }
