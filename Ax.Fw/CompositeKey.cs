@@ -37,7 +37,7 @@ namespace Ax.Fw
                 if (lastIndex == -1 || lastIndex == 0)
                     return this;
 
-                return new CompositeKey(Value[..lastIndex]);
+                return new CompositeKey(Value.Substring(0, lastIndex));
             }
         }
 
