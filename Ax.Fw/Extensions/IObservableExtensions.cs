@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using Ax.Fw.Interfaces;
 using System;
 using System.Reactive;
 using System.Reactive.Concurrency;
@@ -75,6 +76,11 @@ namespace Ax.Fw.Extensions
         public static void OnNext(this Subject<Unit> _this)
         {
             _this.OnNext(Unit.Default);
+        }
+
+        public static void Subscribe<T>(this IObservable<T> _observable, Action<T> _handler, ILifetime _lifetime)
+        {
+            _lifetime.DisposeOnCompleted(_observable.Subscribe(_handler));
         }
 
     }
