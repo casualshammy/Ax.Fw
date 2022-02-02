@@ -1,5 +1,5 @@
 ﻿#nullable enable
-using Ax.Fw.Interfaces;
+using Ax.Fw.SharedTypes.Interfaces;
 using System;
 
 namespace Ax.Fw.TcpBus.Parts

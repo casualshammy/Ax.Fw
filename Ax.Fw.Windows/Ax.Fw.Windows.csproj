@@ -2,13 +2,15 @@
 
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
-    <PackageId>Ax.Fw.Windows</PackageId>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageId>$(AssemblyName)</PackageId>
+    <PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
     <Description>A set of useful tools for Windows</Description>
-    <Version>1.0.5</Version>
+    <Version>$(VersionPrefix)</Version>
     <Authors>Axio</Authors>
-    <Company>Axio.Lab</Company>
+    <Company>$(Authors)</Company>
     <LangVersion>latest</LangVersion>
+    <Copyright>Axio</Copyright>
+    <PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

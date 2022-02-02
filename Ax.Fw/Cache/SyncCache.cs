@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using Ax.Fw.Cache.Parts;
+using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Ax.Fw.Cache
 {
-    public class SyncCache<TKey, TValue>
+    public class SyncCache<TKey, TValue> : ISyncCache<TKey, TValue>
     {
         public SyncCache(SyncCacheSettings _settings)
         {

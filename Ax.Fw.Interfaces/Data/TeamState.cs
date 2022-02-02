@@ -1,12 +1,13 @@
 ﻿#nullable enable
-namespace Ax.Fw.Workers
+
+namespace Ax.Fw.SharedTypes.Data
 {
     public class TeamState
     {
         public TeamState(
-            int _tasksRunning, 
-            int _tasksWaitingForExecution, 
-            int _tasksCompleted, 
+            int _tasksRunning,
+            int _tasksWaitingForExecution,
+            int _tasksCompleted,
             int _tasksFailed)
         {
             TasksRunning = _tasksRunning;

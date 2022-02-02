@@ -12,3 +12,5 @@ Ax.Fw.TcpBus.Tests/bin
 Ax.Fw.TcpBus.Tests/obj
 Ax.Fw.TcpBus/bin
 Ax.Fw.TcpBus/obj
+/Ax.Fw.Interfaces/obj
+/Ax.Fw.Interfaces/bin

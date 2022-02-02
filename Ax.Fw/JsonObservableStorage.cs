@@ -1,6 +1,6 @@
 ﻿#nullable enable
 using Ax.Fw.Extensions;
-using Ax.Fw.Interfaces;
+using Ax.Fw.SharedTypes.Interfaces;
 using Newtonsoft.Json;
 using System;
 using System.IO;
@@ -26,11 +26,11 @@ namespace Ax.Fw
         /// <summary>
         ///
         /// </summary>
-        /// <param name="jsonFilePath">Path to JSON file. Can't be null or empty.</param>
-        public JsonObservableStorage(ILifetime _lifetime, string jsonFilePath) : base(jsonFilePath)
+        /// <param name="_jsonFilePath">Path to JSON file. Can't be null or empty.</param>
+        public JsonObservableStorage(ILifetime _lifetime, string _jsonFilePath) : base(_jsonFilePath)
         {
-            var directory = Path.GetDirectoryName(jsonFilePath);
-            var filename = Path.GetFileName(jsonFilePath);
+            var directory = Path.GetDirectoryName(_jsonFilePath);
+            var filename = Path.GetFileName(_jsonFilePath);
 
             _lifetime.DisposeOnCompleted(p_changesFlow);
 
@@ -88,17 +88,17 @@ namespace Ax.Fw
             return JsonConvert.DeserializeObject<T>(File.ReadAllText(JsonFilePath, Encoding.UTF8)) ?? default;
         }
 
-        private void WatcherFile_Created(object sender, FileSystemEventArgs e)
+        private void WatcherFile_Created(object _sender, FileSystemEventArgs _e)
         {
             p_fileChangedFlow.OnNext();
         }
 
-        private void WatcherFile_Changed(object sender, FileSystemEventArgs e)
+        private void WatcherFile_Changed(object _sender, FileSystemEventArgs _e)
         {
             p_fileChangedFlow.OnNext();
         }
 
-        private void WatcherFile_Deleted(object sender, FileSystemEventArgs e)
+        private void WatcherFile_Deleted(object _sender, FileSystemEventArgs _e)
         {
             p_fileChangedFlow.OnNext();
         }

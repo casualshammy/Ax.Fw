@@ -1,15 +1,15 @@
 ﻿#nullable enable
-using Ax.Fw.Interfaces;
+using Ax.Fw.SharedTypes.Interfaces;
 using System;
 
 namespace Ax.Fw.Bus.Parts
 {
     internal class BusMsgSerial
     {
-        public BusMsgSerial(IBusMsg data, Guid id)
+        public BusMsgSerial(IBusMsg _data, Guid _id)
         {
-            Data = data;
-            Id = id;
+            Data = _data;
+            Id = _id;
         }
 
         public IBusMsg Data { get; }

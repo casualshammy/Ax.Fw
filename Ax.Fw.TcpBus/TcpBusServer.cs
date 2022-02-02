@@ -1,7 +1,7 @@
 ﻿#nullable enable
 using Ax.Fw.Attributes;
 using Ax.Fw.Extensions;
-using Ax.Fw.Interfaces;
+using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.TcpBus.Parts;
 using Newtonsoft.Json;
 using System;

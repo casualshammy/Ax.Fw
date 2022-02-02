@@ -1,9 +1,8 @@
 ﻿using Ax.Fw.Attributes;
 using Ax.Fw.Bus;
-using Ax.Fw.Interfaces;
+using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Diagnostics;
-using System.Reactive.Concurrency;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Ax.Fw.Rnd;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Text;
@@ -12,15 +13,16 @@ namespace Ax.Fw
 {
     public static class Utilities
     {
-        public static readonly Random Rnd = new();
+        public static Random Rnd => ThreadSafeRandomProvider.GetThreadRandom();
 
         public static string GetRandomString(int _size, bool _onlyLetters)
         {
+            var rnd = Rnd;
             var builder = new StringBuilder(_size);
             var chars = _onlyLetters ? "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" : "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
             for (int i = 0; i < _size; i++)
             {
-                var c = chars[Rnd.Next(0, chars.Length)];
+                var c = chars[rnd.Next(0, chars.Length)];
                 builder.Append(c);
             }
             return builder.ToString();
@@ -31,7 +33,7 @@ namespace Ax.Fw
             try
             {
                 using var ping = new Ping();
-                PingReply pingReply = await ping.SendPingAsync("8.8.8.8", 2000);
+                var pingReply = await ping.SendPingAsync("8.8.8.8", 2000);
                 return pingReply != null && (pingReply.Status == IPStatus.Success);
             }
             catch
@@ -43,12 +45,12 @@ namespace Ax.Fw
         public static bool FontIsInstalled(string _fontName)
         {
             using var fontsCollection = new InstalledFontCollection();
-            return fontsCollection.Families.Any(i => i.Name == _fontName);
+            return fontsCollection.Families.Any(_i => _i.Name == _fontName);
         }
 
         public static Image Base64ToImage(string _base64)
         {
-            byte[] byteBuffer = Convert.FromBase64String(_base64);
+            var byteBuffer = Convert.FromBase64String(_base64);
             using var memoryStream = new MemoryStream(byteBuffer);
             memoryStream.Position = 0;
             return Image.FromStream(memoryStream);
@@ -73,12 +75,13 @@ namespace Ax.Fw
 
         public static string SecureString(string _input)
         {
-            int[] indexesToHide = new int[_input.Length / 2];
+            var rnd = Rnd;
+            var indexesToHide = new int[_input.Length / 2];
             for (int i = 0; i < indexesToHide.Length; i++)
             {
-                var newValue = Rnd.Next(0, _input.Length);
+                var newValue = rnd.Next(0, _input.Length);
                 while (indexesToHide.Contains(newValue))
-                    newValue = Rnd.Next(0, _input.Length);
+                    newValue = rnd.Next(0, _input.Length);
                 indexesToHide[i] = newValue;
             }
             var builder = new StringBuilder(_input.Length);
@@ -91,9 +94,11 @@ namespace Ax.Fw
             return builder.ToString();
         }
 
-        public static IEnumerable<Type> GetTypesWith<TAttribute>(bool inherit) where TAttribute : Attribute
+        public static IEnumerable<Type> GetTypesWith<TAttribute>(bool _inherit) where TAttribute : Attribute
         {
-            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()).Where(x => x.IsDefined(typeof(TAttribute), inherit));
+            return AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(_x => _x.GetTypes())
+                .Where(_x => _x.IsDefined(typeof(TAttribute), _inherit));
         }
 
     }

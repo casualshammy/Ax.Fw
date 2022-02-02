@@ -1,16 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace MCDis.Design.Network.Extensions
 {
-   public class ResumingAsyncStream : Stream
+    public class ResumingAsyncStream : Stream
    {
       const int TOO_SLOW_TOLERANCE = 3;
       private readonly long p_length;

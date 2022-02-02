@@ -2,18 +2,25 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1;net472</TargetFrameworks>
-    <PackageId>Ax.Fw.TcpBus</PackageId>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageId>$(AssemblyName)</PackageId>
+    <PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
     <Description>TcpBusTcpBus - observavble bus for interprocess communications</Description>
     <Version>$(Version)</Version>
     <Authors>Axio</Authors>
-    <Company>Axio.Lab</Company>
+    <Company>$(Authors)</Company>
     <LangVersion>latest</LangVersion>
+    <Copyright>Axio</Copyright>
+    <PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Ax.Fw" Version="4.0.2" />
-    <PackageReference Include="WatsonTcp" Version="4.8.14.6" />
+    <PackageReference Include="System.Reactive" Version="5.0.0" />
+    <PackageReference Include="WatsonTcp" Version="4.8.14.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ax.Fw.Interfaces\Ax.Fw.SharedTypes.csproj" />
+    <ProjectReference Include="..\Ax.Fw\Ax.Fw.csproj" />
   </ItemGroup>
 
 </Project>

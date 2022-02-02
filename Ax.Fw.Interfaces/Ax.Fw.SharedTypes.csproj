@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+      <TargetFrameworks>netstandard21;net472</TargetFrameworks>
+      <ImplicitUsings>enable</ImplicitUsings>
+      <Nullable>enable</Nullable>
+	  <ImplicitUsings>disable</ImplicitUsings>
+	  <LangVersion>latest</LangVersion>
+	  <Authors>Axio</Authors>
+	  <Copyright>Axio</Copyright>
+	  <Description>Shared types for Ax.Fw package</Description>
+	  <PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
+	  <PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
+  </PropertyGroup>
+
+</Project>

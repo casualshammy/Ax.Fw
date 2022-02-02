@@ -2,7 +2,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Ax.Fw.Interfaces
+namespace Ax.Fw.SharedTypes.Interfaces
 {
     public interface IBus
     {

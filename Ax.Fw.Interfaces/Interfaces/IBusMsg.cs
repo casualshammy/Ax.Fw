@@ -1,7 +1,7 @@
-﻿namespace Ax.Fw.Interfaces
+﻿namespace Ax.Fw.SharedTypes.Interfaces
 {
     public interface IBusMsg
     {
-        
+
     }
 }

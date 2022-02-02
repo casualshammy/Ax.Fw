@@ -1,5 +1,5 @@
 ﻿#nullable enable
-using Ax.Fw.Interfaces;
+using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
@@ -11,7 +11,6 @@ namespace Ax.Fw
         private readonly ConcurrentStack<Action> p_doOnCompleted = new();
         private readonly object p_lock = new();
         private readonly CancellationTokenSource p_cts = new();
-        private bool p_disposedValue;
 
         public CancellationToken Token => p_cts.Token;
 
@@ -53,23 +52,12 @@ namespace Ax.Fw
             }
         }
 
-        protected virtual void Dispose(bool disposing)
+        public ILifetime GetChildLifetime()
         {
-            if (!p_disposedValue)
-            {
-                if (disposing)
-                {
-                    Complete();
-                }
-
-                p_disposedValue = true;
-            }
+            var lifetime = new Lifetime();
+            DoOnCompleted(lifetime.Complete);
+            return lifetime;
         }
 
-        public void Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
     }
 }

@@ -1,5 +1,5 @@
 ﻿#nullable enable
-using Ax.Fw.Interfaces;
+using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Reactive;
 using System.Reactive.Concurrency;

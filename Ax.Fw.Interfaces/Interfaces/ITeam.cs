@@ -1,7 +1,7 @@
-﻿using Ax.Fw.Workers;
+﻿using Ax.Fw.SharedTypes.Data;
 using System;
 
-namespace Ax.Fw.Interfaces
+namespace Ax.Fw.SharedTypes.Interfaces
 {
     public interface ITeam<TJob>
     {

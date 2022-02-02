@@ -1,5 +1,5 @@
 using Ax.Fw.Bus;
-using Ax.Fw.Interfaces;
+using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Diagnostics;
 using System.Threading;

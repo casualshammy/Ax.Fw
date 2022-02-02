@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using Ax.Fw.Extensions;
-using Ax.Fw.Interfaces;
+using Ax.Fw.SharedTypes.Data;
+using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Workers.Parts;
 using System;
 using System.Collections.Concurrent;

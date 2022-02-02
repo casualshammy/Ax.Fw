@@ -2,17 +2,18 @@
 
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
-    <PackageId>Ax.Fw.Windows.GUI</PackageId>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageId>$(AssemblyName)</PackageId>
+    <PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
     <Description>Extensions for MetroFramework project</Description>
-    <Version>1.0.0</Version>
+    <Version>$(Version)</Version>
     <Authors>Axio</Authors>
-    <Company>Axio.Lab</Company>
+    <Company>$(Authors)</Company>
     <LangVersion>latest</LangVersion>
+    <Copyright>Axio</Copyright>
+    <PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Ax.Fw.Windows" Version="4.0.2" />
     <PackageReference Include="MetroFramework-1.1" Version="1.0.2" />
   </ItemGroup>
 
@@ -20,6 +21,14 @@
     <Folder Include="Controls\" />
     <Folder Include="Helpers\" />
     <Folder Include="TaskbarProgressbar\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ax.Fw.Windows\Ax.Fw.Windows.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
   </ItemGroup>
 
 </Project>

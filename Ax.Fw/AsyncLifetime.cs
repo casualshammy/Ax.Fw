@@ -1,6 +1,6 @@
 ﻿#nullable enable
 using Ax.Fw.Extensions;
-using Ax.Fw.Interfaces;
+using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Collections.Concurrent;
 using System.Reactive;
@@ -16,7 +16,6 @@ namespace Ax.Fw
         private readonly ConcurrentStack<Func<Task>> p_doOnCompleted = new();
         private readonly CancellationTokenSource p_cts = new();
         private readonly Subject<Unit> p_flow;
-        private bool p_disposedValue;
 
         public AsyncLifetime()
         {
@@ -87,24 +86,12 @@ namespace Ax.Fw
             p_flow?.Dispose();
         }
 
-        protected virtual void Dispose(bool _disposing)
+        public IAsyncLifetime GetChildLifetime()
         {
-            if (!p_disposedValue)
-            {
-                if (_disposing)
-                {
-                    Complete();
-                }
-
-                p_disposedValue = true;
-            }
+            var lifetime = new AsyncLifetime();
+            DoOnCompleted(lifetime.Complete);
+            return lifetime;
         }
 
-        public void Dispose()
-        {
-            Dispose(_disposing: true);
-            GC.SuppressFinalize(this);
-        }
-    
     }
 }
