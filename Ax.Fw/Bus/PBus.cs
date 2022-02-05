@@ -21,7 +21,7 @@ namespace Ax.Fw.Bus
         private readonly IScheduler p_scheduler;
         private readonly ConcurrentDictionary<Type, IBusMsg> p_lastMsg = new();
 
-        public PBus(ILifetime _lifetime) : this(_lifetime, _lifetime.DisposeOnCompleted(new EventLoopScheduler()))
+        public PBus(ILifetime _lifetime) : this(_lifetime, ThreadPoolScheduler.Instance)
         {
         }
 

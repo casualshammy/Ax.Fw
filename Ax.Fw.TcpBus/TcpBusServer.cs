@@ -47,7 +47,7 @@ namespace Ax.Fw.Bus
             p_server.Start();
         }
 
-        public TcpBusServer(ILifetime _lifetime, int _port, bool _includeClient) : this(_lifetime, _lifetime.DisposeOnCompleted(new EventLoopScheduler()), _port, _includeClient)
+        public TcpBusServer(ILifetime _lifetime, int _port, bool _includeClient) : this(_lifetime, ThreadPoolScheduler.Instance, _port, _includeClient)
         { }
 
         private void ClientConnected(object sender, ConnectionEventArgs args)

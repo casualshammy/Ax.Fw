@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,7 +10,7 @@ namespace Ax.Fw.SharedTypes.Interfaces
         CancellationToken Token { get; }
         bool CancellationRequested { get; }
 
-        T DisposeOnCompleted<T>(T _instance) where T : IDisposable;
+        T? DisposeOnCompleted<T>(T? _instance) where T : IDisposable;
         void DoOnCompleted(Action _action);
         void DoOnCompleted(Func<Task> _action);
         IAsyncLifetime GetChildLifetime();

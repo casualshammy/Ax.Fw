@@ -23,10 +23,10 @@ namespace Ax.Fw.Bus
     {
         private readonly WatsonTcpClient p_client;
         private readonly Subject<BusMsgSerial> p_msgFlow = new();
-
         private readonly ConcurrentDictionary<Type, IBusMsg> p_lastMsg = new();
         private readonly IScheduler p_scheduler;
         private readonly IReadOnlyDictionary<string, Type> p_typesCache;
+        private readonly ConcurrentQueue<TcpMsg> p_delayedMsgs = new();
 
         public TcpBusClient(ILifetime _lifetime, IScheduler _scheduler, int _port)
         {
@@ -39,15 +39,47 @@ namespace Ax.Fw.Bus
             _lifetime.DisposeOnCompleted(p_msgFlow);
 
             p_client = _lifetime.DisposeOnCompleted(new WatsonTcpClient("127.0.0.1", _port));
-            p_client.Events.ServerDisconnected += ServerDisconnected;
             p_client.Events.MessageReceived += MessageReceived;
-            p_client.Connect();
+            _lifetime.DoOnCompleted(() => p_client.Events.MessageReceived -= MessageReceived);
 
-            if (!p_client.Connected)
-                throw new InvalidOperationException("Can't connect to server!");
+            Observable
+                .Interval(TimeSpan.FromSeconds(5))
+                .StartWith(0)
+                .Subscribe(_ =>
+                {
+                    if (!p_client.Connected)
+                    {
+                        try
+                        {
+                            p_client.Connect();
+                        }
+                        catch { }
+                    }
+                }, _lifetime);
+
+            Observable
+                .Interval(TimeSpan.FromSeconds(30)).ToUnit()
+                .Merge(Observable.FromEventPattern(p_client.Events, "ServerConnected").ToUnit())
+                .Subscribe(_ =>
+                {
+                    var list = new List<TcpMsg>();
+                    while (p_delayedMsgs.TryDequeue(out var tcpMsg))
+                    {
+                        try
+                        {
+                            p_client.Send(tcpMsg.JsonData, tcpMsg.Meta);
+                        }
+                        catch
+                        {
+                            list.Add(tcpMsg);
+                        }
+                    }
+                    foreach (var tcpMsg in list)
+                        p_delayedMsgs.Enqueue(tcpMsg);
+                }, _lifetime);
         }
 
-        public TcpBusClient(ILifetime _lifetime, int _port) : this(_lifetime, _lifetime.DisposeOnCompleted(new EventLoopScheduler()), _port)
+        public TcpBusClient(ILifetime _lifetime, int _port) : this(_lifetime, ThreadPoolScheduler.Instance, _port)
         { }
 
         private void MessageReceived(object sender, MessageReceivedEventArgs args)
@@ -72,11 +104,6 @@ namespace Ax.Fw.Bus
 
             p_lastMsg[type] = userData;
             p_msgFlow.OnNext(new BusMsgSerial(userData, guid));
-        }
-
-        private void ServerDisconnected(object sender, EventArgs args)
-        {
-            p_client.Connect();
         }
 
         /// <summary>
@@ -118,9 +145,17 @@ namespace Ax.Fw.Bus
         {
             p_lastMsg[_msg.Data.GetType()] = _msg.Data;
             p_msgFlow.OnNext(_msg);
-            p_client.Send(
-                JsonConvert.SerializeObject(_msg.Data), 
+            var tcpMsg = new TcpMsg(
+                JsonConvert.SerializeObject(_msg.Data),
                 new Dictionary<object, object> { { "data_type", _msg.Data.GetType().ToString() }, { "guid", _msg.Id.ToString() } });
+            try
+            {
+                p_client.Send(tcpMsg.JsonData, tcpMsg.Meta);
+            }
+            catch
+            {
+                p_delayedMsgs.Enqueue(tcpMsg);
+            }
         }
 
         /// <summary>
