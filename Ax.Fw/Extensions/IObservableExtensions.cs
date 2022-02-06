@@ -83,5 +83,15 @@ namespace Ax.Fw.Extensions
             _lifetime.DisposeOnCompleted(_observable.Subscribe(_handler));
         }
 
+        public static void Subscribe<T>(this IObservable<T> _observable, ILifetime _lifetime)
+        {
+            _lifetime.DisposeOnCompleted(_observable.Subscribe());
+        }
+
+        public static IRxProperty<T?> ToProperty<T>(this IObservable<T?> _observable, ILifetime _lifetime, T? _defaultValue = default)
+        {
+            return new RxProperty<T?>(_observable, _lifetime, _defaultValue);
+        }
+
     }
 }

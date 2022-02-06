@@ -3,6 +3,7 @@ using Ax.Fw.Attributes;
 using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.TcpBus.Parts;
+using Ax.Fw.Workers;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
@@ -26,7 +27,7 @@ namespace Ax.Fw.Bus
         private readonly ConcurrentDictionary<Type, IBusMsg> p_lastMsg = new();
         private readonly IScheduler p_scheduler;
         private readonly IReadOnlyDictionary<string, Type> p_typesCache;
-        private readonly ConcurrentQueue<TcpMsg> p_delayedMsgs = new();
+        private readonly Subject<TcpMsg> p_tcpMsgFlow = new();
 
         public TcpBusClient(ILifetime _lifetime, IScheduler _scheduler, int _port)
         {
@@ -42,55 +43,37 @@ namespace Ax.Fw.Bus
             p_client.Events.MessageReceived += MessageReceived;
             _lifetime.DoOnCompleted(() => p_client.Events.MessageReceived -= MessageReceived);
 
-            Observable
-                .Interval(TimeSpan.FromSeconds(5))
-                .StartWith(0)
-                .Subscribe(_ =>
+            Task<bool> sendTcpMsgJob(TcpMsg _msg, CancellationToken _ct)
+            {
+                try
                 {
-                    if (!p_client.Connected)
-                    {
-                        try
-                        {
-                            p_client.Connect();
-                        }
-                        catch { }
-                    }
-                }, _lifetime);
+                    return Task.FromResult(p_client.Send(_msg.JsonData, _msg.Meta));
+                }
+                catch
+                {
+                    return Task.FromResult(false);
+                }
+            }
+            Task<PenaltyInfo> sendTcpMsgJobPenalty(TcpMsg _msg, int _failCount, Exception? _ex, CancellationToken _ct)
+            {
+                return Task.FromResult(new PenaltyInfo(_failCount < 100, TimeSpan.FromMilliseconds(_failCount * 300))); // 300ms - 30 sec
+            }
 
-            Observable
-                .Interval(TimeSpan.FromSeconds(30)).ToUnit()
-                .Merge(Observable.FromEventPattern(p_client.Events, "ServerConnected").ToUnit())
-                .Subscribe(_ =>
-                {
-                    var list = new List<TcpMsg>();
-                    while (p_delayedMsgs.TryDequeue(out var tcpMsg))
-                    {
-                        try
-                        {
-                            p_client.Send(tcpMsg.JsonData, tcpMsg.Meta);
-                        }
-                        catch
-                        {
-                            list.Add(tcpMsg);
-                        }
-                    }
-                    foreach (var tcpMsg in list)
-                        p_delayedMsgs.Enqueue(tcpMsg);
-                }, _lifetime);
+            AsyncTeam.Run(p_tcpMsgFlow, sendTcpMsgJob, sendTcpMsgJobPenalty, _lifetime, 4, _scheduler);
         }
 
         public TcpBusClient(ILifetime _lifetime, int _port) : this(_lifetime, ThreadPoolScheduler.Instance, _port)
         { }
 
-        private void MessageReceived(object sender, MessageReceivedEventArgs args)
+        private void MessageReceived(object _sender, MessageReceivedEventArgs _args)
         {
-            var bytes = args.Data;
+            var bytes = _args.Data;
             if (bytes.Length == 0 ||
-                args.Metadata == null ||
-                !args.Metadata.TryGetValue("data_type", out var typeObject) ||
+                _args.Metadata == null ||
+                !_args.Metadata.TryGetValue("data_type", out var typeObject) ||
                 typeObject is not string typeString ||
                 !p_typesCache.TryGetValue(typeString, out var type) ||
-                !args.Metadata.TryGetValue("guid", out var guidObject) ||
+                !_args.Metadata.TryGetValue("guid", out var guidObject) ||
                 guidObject is not string guidString ||
                 !Guid.TryParse(guidString, out var guid))
                 return;
@@ -148,14 +131,7 @@ namespace Ax.Fw.Bus
             var tcpMsg = new TcpMsg(
                 JsonConvert.SerializeObject(_msg.Data),
                 new Dictionary<object, object> { { "data_type", _msg.Data.GetType().ToString() }, { "guid", _msg.Id.ToString() } });
-            try
-            {
-                p_client.Send(tcpMsg.JsonData, tcpMsg.Meta);
-            }
-            catch
-            {
-                p_delayedMsgs.Enqueue(tcpMsg);
-            }
+            p_tcpMsgFlow.OnNext(tcpMsg);
         }
 
         /// <summary>

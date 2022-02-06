@@ -70,7 +70,7 @@ namespace Ax.Fw.Workers
                 var workerFlow = _lifetime.DisposeOnCompleted(new Subject<Unit>());
                 p_workerFlows.Add(workerFlow);
 
-                var scheduler = _scheduler ?? _lifetime.DisposeOnCompleted(new EventLoopScheduler());
+                var scheduler = _scheduler ?? ThreadPoolScheduler.Instance;
 
                 workerFlow
                     .SelectAsync(async _ =>
@@ -99,12 +99,12 @@ namespace Ax.Fw.Workers
                         }
                         return Unit.Default;
                     }, scheduler)
-                    .Subscribe(_lifetime.Token);
+                    .Subscribe(_lifetime);
             }
             _lifetime.DoOnCompleted(() => p_workerFlows.Clear());
 
             _jobsFlow
-                .Subscribe(x => AddNewJobToQueue(x), _lifetime.Token);
+                .Subscribe(_x => AddNewJobToQueue(_x), _lifetime);
         }
 
         public IObservable<TJob> CompletedJobs => p_completedFlow;
@@ -115,7 +115,7 @@ namespace Ax.Fw.Workers
         {
             p_jobQueue.Enqueue(new JobInfo<TJob>(_job, _failedCounter));
             foreach (var flow in p_workerFlows)
-                flow.OnNext(Unit.Default);
+                flow.OnNext();
         }
 
         private async Task HandleFailedJobAsync(JobInfo<TJob> _jobInfo, Exception? _ex)
@@ -125,7 +125,7 @@ namespace Ax.Fw.Workers
             if (penalty.TryAgain && penalty.Delay != null)
                 Observable
                     .Timer(penalty.Delay.Value)
-                    .Subscribe(_ => AddNewJobToQueue(newJobInfo.Job, newJobInfo.FailedCounter), p_lifetime.Token);
+                    .Subscribe(_ => AddNewJobToQueue(newJobInfo.Job, newJobInfo.FailedCounter), p_lifetime);
         }
 
     }
