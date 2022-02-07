@@ -10,11 +10,13 @@ namespace Ax.Fw
         public RxProperty(IObservable<T?> _observable, ILifetime _lifetime, T? _defaultValue = default)
         {
             Value = _defaultValue;
+            Observable = _observable;
             _observable
                 .Subscribe(_x => Value = _x, _lifetime);
         }
 
         public T? Value { get; private set; }
+        public IObservable<T?> Observable { get; }
 
     }
 }

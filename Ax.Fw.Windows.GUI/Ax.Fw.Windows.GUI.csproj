@@ -28,6 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="System.Design" />
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
 

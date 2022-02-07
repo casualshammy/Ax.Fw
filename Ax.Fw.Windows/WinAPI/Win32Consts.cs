@@ -4,6 +4,7 @@
     {
         public const uint WM_NULL = 0x0;
         public const uint WM_QUERYENDSESSION = 0x11;
+        public const int WM_ENDSESSION = 0x16;
         public const uint WM_KEYDOWN = 0x100;
         public const uint WM_KEYUP = 0x101;
         public const uint WM_CHAR = 0x102;
