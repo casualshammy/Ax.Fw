@@ -46,7 +46,7 @@ namespace Ax.Fw.Tests
                 {
                     Interlocked.Increment(ref counter);
                     var i = _;
-                    var result = client1.PostReqResOrDefault<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(i), TimeSpan.FromSeconds(3600));
+                    var result = client1.PostReqResOrDefault<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(i), TimeSpan.FromSeconds(5));
                     Assert.Equal(i + 1, result?.Code);
                 });
                 p_output.WriteLine($"Time: {sw.ElapsedMilliseconds}ms");

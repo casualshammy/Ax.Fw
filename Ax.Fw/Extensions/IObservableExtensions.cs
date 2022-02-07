@@ -78,17 +78,17 @@ namespace Ax.Fw.Extensions
             _this.OnNext(Unit.Default);
         }
 
-        public static void Subscribe<T>(this IObservable<T> _observable, Action<T> _handler, ILifetime _lifetime)
+        public static void Subscribe<T>(this IObservable<T> _observable, Action<T> _handler, IReadOnlyLifetime _lifetime)
         {
             _lifetime.DisposeOnCompleted(_observable.Subscribe(_handler));
         }
 
-        public static void Subscribe<T>(this IObservable<T> _observable, ILifetime _lifetime)
+        public static void Subscribe<T>(this IObservable<T> _observable, IReadOnlyLifetime _lifetime)
         {
             _lifetime.DisposeOnCompleted(_observable.Subscribe());
         }
 
-        public static IRxProperty<T?> ToProperty<T>(this IObservable<T?> _observable, ILifetime _lifetime, T? _defaultValue = default)
+        public static IRxProperty<T?> ToProperty<T>(this IObservable<T?> _observable, IReadOnlyLifetime _lifetime, T? _defaultValue = default)
         {
             return new RxProperty<T?>(_observable, _lifetime, _defaultValue);
         }

@@ -7,7 +7,7 @@ namespace Ax.Fw
 {
     public class RxProperty<T> : IRxProperty<T>
     {
-        public RxProperty(IObservable<T?> _observable, ILifetime _lifetime, T? _defaultValue = default)
+        public RxProperty(IObservable<T?> _observable, IReadOnlyLifetime _lifetime, T? _defaultValue = default)
         {
             Value = _defaultValue;
             Observable = _observable;

@@ -30,7 +30,7 @@ namespace Ax.Fw.Workers
             IObservable<TJob> _jobsFlow,
             Func<TJob, CancellationToken, Task<bool>> _jobRoutine,
             Func<TJob, int, Exception?, CancellationToken, Task<PenaltyInfo>> _penaltyForFailedJobs,
-            ILifetime _lifetime,
+            IReadOnlyLifetime _lifetime,
             int _workers,
             IScheduler? _scheduler = null)
         {
@@ -44,7 +44,7 @@ namespace Ax.Fw.Workers
         private readonly List<Subject<Unit>> p_workerFlows = new();
         private readonly Func<TJob, int, Exception?, CancellationToken, Task<PenaltyInfo>> p_penaltyForFailedJobs;
         private readonly Subject<TJob> p_completedFlow;
-        private readonly ILifetime p_lifetime;
+        private readonly IReadOnlyLifetime p_lifetime;
         private volatile int p_failedJobs;
         private volatile int p_completedJobs;
         private volatile int p_runningJobs;
@@ -53,7 +53,7 @@ namespace Ax.Fw.Workers
             IObservable<TJob> _jobsFlow,
             Func<TJob, CancellationToken, Task<bool>> _jobRoutineAsync,
             Func<TJob, int, Exception?, CancellationToken, Task<PenaltyInfo>> _penaltyForFailedJobsAsync,
-            ILifetime _lifetime,
+            IReadOnlyLifetime _lifetime,
             int _workers,
             IScheduler? _scheduler = null)
         {

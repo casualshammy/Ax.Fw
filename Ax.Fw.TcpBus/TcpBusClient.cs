@@ -29,7 +29,7 @@ namespace Ax.Fw.Bus
         private readonly IReadOnlyDictionary<string, Type> p_typesCache;
         private readonly Subject<TcpMsg> p_tcpMsgFlow = new();
 
-        public TcpBusClient(ILifetime _lifetime, IScheduler _scheduler, int _port)
+        public TcpBusClient(IReadOnlyLifetime _lifetime, IScheduler _scheduler, int _port)
         {
             var typesCache = new Dictionary<string, Type>();
             foreach (var type in Utilities.GetTypesWith<TcpBusMsgAttribute>(true))
@@ -47,6 +47,9 @@ namespace Ax.Fw.Bus
             {
                 try
                 {
+                    if (!p_client.Connected)
+                        p_client.Connect();
+
                     return Task.FromResult(p_client.Send(_msg.JsonData, _msg.Meta));
                 }
                 catch
@@ -60,9 +63,20 @@ namespace Ax.Fw.Bus
             }
 
             AsyncTeam.Run(p_tcpMsgFlow, sendTcpMsgJob, sendTcpMsgJobPenalty, _lifetime, 4, _scheduler);
+
+            Observable
+                .Interval(TimeSpan.FromSeconds(5))
+                .Subscribe(_ =>
+                {
+                    if (!p_client.Connected)
+                        p_client.Connect();
+                }, _lifetime);
+
+            if (!p_client.Connected)
+                p_client.Connect();
         }
 
-        public TcpBusClient(ILifetime _lifetime, int _port) : this(_lifetime, ThreadPoolScheduler.Instance, _port)
+        public TcpBusClient(IReadOnlyLifetime _lifetime, int _port) : this(_lifetime, ThreadPoolScheduler.Instance, _port)
         { }
 
         private void MessageReceived(object _sender, MessageReceivedEventArgs _args)
