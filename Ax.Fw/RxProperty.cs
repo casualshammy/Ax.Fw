@@ -5,6 +5,10 @@ using System;
 
 namespace Ax.Fw
 {
+    /// <summary>
+    /// This class can subscribe to IObservable and store its last value
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public class RxProperty<T> : IRxProperty<T>
     {
         public RxProperty(IObservable<T?> _observable, IReadOnlyLifetime _lifetime, T? _defaultValue = default)

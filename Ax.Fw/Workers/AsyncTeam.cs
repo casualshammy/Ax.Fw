@@ -63,11 +63,11 @@ namespace Ax.Fw.Workers
             p_penaltyForFailedJobs = _penaltyForFailedJobsAsync;
             p_lifetime = _lifetime;
 
-            p_completedFlow = _lifetime.DisposeOnCompleted(new Subject<TJob>());
+            p_completedFlow = _lifetime.DisposeOnCompleted(new Subject<TJob>())!;
 
             for (int i = 0; i < _workers; i++)
             {
-                var workerFlow = _lifetime.DisposeOnCompleted(new Subject<Unit>());
+                var workerFlow = _lifetime.DisposeOnCompleted(new Subject<Unit>())!;
                 p_workerFlows.Add(workerFlow);
 
                 var scheduler = _scheduler ?? ThreadPoolScheduler.Instance;

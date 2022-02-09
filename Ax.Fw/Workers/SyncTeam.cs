@@ -28,7 +28,7 @@ namespace Ax.Fw.Workers
             IObservable<TJob> _jobsFlow,
             Func<TJob, CancellationToken, Task<bool>> _jobRoutine,
             Func<TJob, int, Exception?, CancellationToken, Task<PenaltyInfo>> _penaltyForFailedJobs,
-            ILifetime _lifetime,
+            IReadOnlyLifetime _lifetime,
             IScheduler? _scheduler = null)
         {
             return new SyncTeam<TJob>(_jobsFlow, _jobRoutine, _penaltyForFailedJobs, _lifetime, _scheduler);
@@ -41,7 +41,7 @@ namespace Ax.Fw.Workers
         private readonly Subject<Unit> p_processorStateChanged;
         private readonly Func<TJob, int, Exception?, CancellationToken, Task<PenaltyInfo>> p_penaltyForFailedJobs;
         private readonly Subject<TJob> p_completedFlow;
-        private readonly ILifetime p_lifetime;
+        private readonly IReadOnlyLifetime p_lifetime;
         private volatile int p_failedJobs;
         private volatile int p_completedJobs;
         private volatile int p_runningJobs;
@@ -50,16 +50,16 @@ namespace Ax.Fw.Workers
             IObservable<TJob> _jobsFlow,
             Func<TJob, CancellationToken, Task<bool>> _jobRoutineAsync,
             Func<TJob, int, Exception?, CancellationToken, Task<PenaltyInfo>> _penaltyForFailedJobsAsync,
-            ILifetime _lifetime,
+            IReadOnlyLifetime _lifetime,
             IScheduler? _scheduler = null)
         {
             p_penaltyForFailedJobs = _penaltyForFailedJobsAsync;
             p_lifetime = _lifetime;
 
-            p_completedFlow = _lifetime.DisposeOnCompleted(new Subject<TJob>());
+            p_completedFlow = _lifetime.DisposeOnCompleted(new Subject<TJob>())!;
 
-            var scheduler = _scheduler ?? _lifetime.DisposeOnCompleted(new EventLoopScheduler());
-            p_processorStateChanged = _lifetime.DisposeOnCompleted(new Subject<Unit>());
+            var scheduler = _scheduler ?? _lifetime.DisposeOnCompleted(new EventLoopScheduler())!;
+            p_processorStateChanged = _lifetime.DisposeOnCompleted(new Subject<Unit>())!;
             p_processorStateChanged
                 .SelectAsync(async _ =>
                 {

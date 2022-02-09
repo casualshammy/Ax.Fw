@@ -39,7 +39,7 @@ namespace Ax.Fw.Bus
             p_scheduler = _scheduler;
             _lifetime.DisposeOnCompleted(p_msgFlow);
 
-            p_client = _lifetime.DisposeOnCompleted(new WatsonTcpClient("127.0.0.1", _port));
+            p_client = _lifetime.DisposeOnCompleted(new WatsonTcpClient("127.0.0.1", _port))!;
             p_client.Events.MessageReceived += MessageReceived;
             _lifetime.DoOnCompleted(() => p_client.Events.MessageReceived -= MessageReceived);
 
@@ -229,12 +229,12 @@ namespace Ax.Fw.Bus
             where TRes : IBusMsg
         {
             return p_msgFlow
-                .Where(x => x.Data.GetType() == typeof(TReq))
+                .Where(_x => _x.Data.GetType() == typeof(TReq))
                 .ObserveOn(p_scheduler)
-                .SelectAsync(async x =>
+                .SelectAsync(async _x =>
                 {
-                    var guid = x.Id;
-                    var result = await _func((TReq)x.Data);
+                    var guid = _x!.Id;
+                    var result = await _func((TReq)_x.Data);
 
                     PostMsg(new BusMsgSerial(result, guid));
                     return Unit.Default;
@@ -277,12 +277,12 @@ namespace Ax.Fw.Bus
             where TRes : IBusMsg
         {
             p_msgFlow
-                .Where(x => x.Data.GetType() == typeof(TReq))
+                .Where(_x => _x.Data.GetType() == typeof(TReq))
                 .ObserveOn(p_scheduler)
-                .SelectAsync(async x =>
+                .SelectAsync(async _x =>
                 {
-                    var guid = x.Id;
-                    var result = await _func((TReq)x.Data);
+                    var guid = _x!.Id;
+                    var result = await _func((TReq)_x.Data);
 
                     PostMsg(new BusMsgSerial(result, guid));
                     return Unit.Default;

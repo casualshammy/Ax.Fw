@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net472</TargetFramework>
+    <TargetFrameworks>net472;net6.0-windows</TargetFrameworks>
     <PackageId>$(AssemblyName)</PackageId>
     <PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
     <Description>A set of useful tools for Windows</Description>
@@ -11,6 +11,7 @@
     <LangVersion>latest</LangVersion>
     <Copyright>Axio</Copyright>
     <PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
+	<UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -26,14 +27,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="WinAPI\Toolkit\" />
     <Folder Include="WinAPI\TCPTable\" />
     <Folder Include="WMIProcessManager\" />
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="System.Management" />
-    <Reference Include="System.Windows.Forms" />
+    <PackageReference Include="System.Management" Version="6.0.0" />
   </ItemGroup>
 
 </Project>

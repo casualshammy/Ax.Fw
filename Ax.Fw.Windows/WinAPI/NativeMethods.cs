@@ -1,5 +1,4 @@
 ﻿using Ax.Fw.Windows.WinAPI.TCPTable;
-using Ax.Fw.Windows.WinAPI.Toolkit;
 using System;
 using System.Runtime.InteropServices;
 using System.Security;
@@ -101,31 +100,31 @@ namespace Ax.Fw.Windows.WinAPI
 
         [DllImport("kernel32.dll", SetLastError = true)]
         [SuppressUnmanagedCodeSecurity]
-        public unsafe static extern bool ReadProcessMemory(SafeMemoryHandle hProcess, IntPtr lpBaseAddress, byte* lpBuffer, int dwSize, out int lpNumberOfBytesRead);
+        public unsafe static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte* lpBuffer, int dwSize, out int lpNumberOfBytesRead);
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern SafeMemoryHandle OpenProcess(ProcessAccessFlags dwDesiredAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, int dwProcessId);
+        public static extern IntPtr OpenProcess(ProcessAccessFlags dwDesiredAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, int dwProcessId);
 
         [DllImport("Kernel32.dll", EntryPoint = "RtlMoveMemory", SetLastError = false)]
         public unsafe static extern void MoveMemory(void* dest, void* src, int size);
 
         [DllImport("kernel32.dll")]
         [SuppressUnmanagedCodeSecurity]
-        public static extern bool VirtualProtectEx(SafeMemoryHandle hProcess, IntPtr lpAddress, IntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
+        public static extern bool VirtualProtectEx(IntPtr hProcess, IntPtr lpAddress, IntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         [SuppressUnmanagedCodeSecurity]
-        public static extern bool WriteProcessMemory(SafeMemoryHandle hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int nSize, out int lpNumberOfBytesWritten);
+        public static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int nSize, out int lpNumberOfBytesWritten);
 
         [DllImport("kernel32", EntryPoint = nameof(VirtualFreeEx))]
-        public static extern bool VirtualFreeEx(SafeMemoryHandle hProcess, IntPtr dwAddress, int nSize, MemoryFreeType dwFreeType);
+        public static extern bool VirtualFreeEx(IntPtr hProcess, IntPtr dwAddress, int nSize, MemoryFreeType dwFreeType);
 
         [DllImport("psapi", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool QueryWorkingSetEx(SafeMemoryHandle hProcess, [In, Out] _PSAPI_WORKING_SET_EX_INFORMATION[] pv, int cb);
+        public static extern bool QueryWorkingSetEx(IntPtr hProcess, [In, Out] _PSAPI_WORKING_SET_EX_INFORMATION[] pv, int cb);
 
         [DllImport("kernel32", EntryPoint = nameof(VirtualAllocEx))]
-        public static extern IntPtr VirtualAllocEx(SafeMemoryHandle hProcess, IntPtr dwAddress, int nSize, MemoryAllocationType dwAllocationType, MemoryProtectionType dwProtect);
+        public static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr dwAddress, int nSize, MemoryAllocationType dwAllocationType, MemoryProtectionType dwProtect);
 
         [DllImport("user32.dll")]
         public static extern ushort GetAsyncKeyState(Keys vKey);

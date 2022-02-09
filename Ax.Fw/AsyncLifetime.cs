@@ -3,6 +3,7 @@ using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -46,6 +47,9 @@ namespace Ax.Fw
 
         public bool CancellationRequested => p_cts.Token.IsCancellationRequested;
 
+#if NETSTANDARD2_1_OR_GREATER
+        [return: NotNullIfNotNull(parameterName: "_instance")]
+#endif
         public T? DisposeOnCompleted<T>(T? _instance) where T : IDisposable
         {
             if (p_cts.Token.IsCancellationRequested)

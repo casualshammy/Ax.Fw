@@ -136,9 +136,9 @@ namespace Ax.Fw.Windows.GUI.Forms
             if (options.Sound)
             {
                 if (options.Type == TrayPopupType.Error || options.Type == TrayPopupType.Warning)
-                    Utilities.PlaySystemExclamationAsync();
+                    _ = Utilities.PlaySystemExclamationAsync();
                 else
-                    Utilities.PlaySystemNotificationAsync();
+                    _ = Utilities.PlaySystemNotificationAsync();
             }
         }
 

@@ -24,7 +24,7 @@ namespace Ax.Fw.Tests
         [InlineData(10)]
         [InlineData(100)]
         [InlineData(1000)]
-        public async Task StressTestClientServer(int _num)
+        public void StressTestClientServer(int _num)
         {
             var lifetime = new Lifetime();
             try

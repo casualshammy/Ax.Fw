@@ -2,6 +2,7 @@
 using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace Ax.Fw
@@ -16,6 +17,9 @@ namespace Ax.Fw
 
         public bool CancellationRequested => p_cts.Token.IsCancellationRequested;
 
+#if NETSTANDARD2_1_OR_GREATER
+        [return: NotNullIfNotNull(parameterName: "_instance")]
+#endif
         public T? DisposeOnCompleted<T>(T? _instance) where T : IDisposable
         {
             if (p_cts.Token.IsCancellationRequested)

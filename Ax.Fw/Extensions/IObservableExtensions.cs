@@ -5,6 +5,7 @@ using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Ax.Fw.Extensions
@@ -47,6 +48,46 @@ namespace Ax.Fw.Extensions
                 .Select(_x =>
                 {
                     return Observable.FromAsync(() => _selector(_x), _scheduler);
+                })
+                .Concat();
+        }
+
+        public static IObservable<TOut?> SelectAsync<TIn, TOut>(this IObservable<TIn?> _this, Func<TIn?, CancellationToken, Task<TOut?>> _selector)
+        {
+            return _this
+                .Select(_x =>
+                {
+                    return Observable.FromAsync(_c => _selector(_x, _c));
+                })
+                .Concat();
+        }
+
+        public static IObservable<TOut?> SelectAsync<TIn, TOut>(this IObservable<TIn?> _this, Func<TIn?, CancellationToken, Task<TOut?>> _selector, IScheduler _scheduler)
+        {
+            return _this
+                .Select(_x =>
+                {
+                    return Observable.FromAsync(_c => _selector(_x, _c), _scheduler);
+                })
+                .Concat();
+        }
+
+        public static IObservable<Unit> SelectAsync<TIn>(this IObservable<TIn?> _this, Func<TIn?, CancellationToken, Task> _selector)
+        {
+            return _this
+                .Select(_x =>
+                {
+                    return Observable.FromAsync(_c => _selector(_x, _c));
+                })
+                .Concat();
+        }
+
+        public static IObservable<Unit> SelectAsync<TIn>(this IObservable<TIn?> _this, Func<TIn?, CancellationToken, Task> _selector, IScheduler _scheduler)
+        {
+            return _this
+                .Select(_x =>
+                {
+                    return Observable.FromAsync(_c => _selector(_x, _c), _scheduler);
                 })
                 .Concat();
         }
