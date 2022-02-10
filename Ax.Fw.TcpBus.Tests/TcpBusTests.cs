@@ -1,29 +1,31 @@
 ﻿using Ax.Fw.Attributes;
 using Ax.Fw.Bus;
 using Ax.Fw.SharedTypes.Interfaces;
+using Ax.Fw.TcpBus.Tests.Attributes;
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 namespace Ax.Fw.Tests
 {
-    public class EBusTests
+    public class TcpBusTests
     {
         private readonly ITestOutputHelper p_output;
 
-        public EBusTests(ITestOutputHelper output)
+        public TcpBusTests(ITestOutputHelper output)
         {
             p_output = output;
         }
 
         [Theory]
-        [InlineData(1)]
-        [InlineData(10)]
-        [InlineData(100)]
-        [InlineData(1000)]
+        [Repeat(10)]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters", Justification = "<Pending>")]
         public void StressTestClientServer(int _num)
         {
             var lifetime = new Lifetime();
@@ -33,25 +35,31 @@ namespace Ax.Fw.Tests
                 var client0 = new TcpBusClient(lifetime, 9600);
                 var client1 = new TcpBusClient(lifetime, 9600);
 
+                var sendCounter = 0;
+
                 lifetime.DisposeOnCompleted(
                     client0
-                        .OfReqRes<SimpleMsgReq, SimpleMsgRes>(msg =>
+                        .OfReqRes<SimpleMsgReq, SimpleMsgRes>(_msg =>
                         {
-                            return new SimpleMsgRes(msg.Code + 1);
+                            return new SimpleMsgRes(_msg.Code + 1);
                         }));
 
-                var counter = 0;
                 var sw = Stopwatch.StartNew();
-                Parallel.For(0, _num, _ =>
+                var bag = new ConcurrentBag<long>();
+                Parallel.For(0, 1000, _ =>
                 {
-                    Interlocked.Increment(ref counter);
+                    Interlocked.Increment(ref sendCounter);
                     var i = _;
+                    var swi = Stopwatch.StartNew();
                     var result = client1.PostReqResOrDefault<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(i), TimeSpan.FromSeconds(5));
+                    bag.Add(swi.ElapsedMilliseconds);
                     Assert.Equal(i + 1, result?.Code);
                 });
                 p_output.WriteLine($"Time: {sw.ElapsedMilliseconds}ms");
-                Assert.Equal(_num, counter);
-                //Assert.InRange(sw.ElapsedMilliseconds, 0, _num * 150);
+                p_output.WriteLine($"Max req time: {bag.Max()}ms");
+                p_output.WriteLine($"Min req time: {bag.Min()}ms");
+                p_output.WriteLine($"Avg req time: {bag.Average()}ms");
+                Assert.Equal(1000, sendCounter);
             }
             finally
             {
@@ -62,7 +70,7 @@ namespace Ax.Fw.Tests
 
     }
 
-    [TcpBusMsgAttribute]
+    [TcpBusMsg]
     class SimpleMsgReq : IBusMsg
     {
         public SimpleMsgReq(int _code)
@@ -73,7 +81,7 @@ namespace Ax.Fw.Tests
         public int Code { get; set; }
     }
 
-    [TcpBusMsgAttribute]
+    [TcpBusMsg]
     class SimpleMsgRes : IBusMsg
     {
         public SimpleMsgRes(int _code)

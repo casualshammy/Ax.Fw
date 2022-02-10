@@ -27,7 +27,7 @@ namespace Ax.Fw.Bus
         private readonly ConcurrentDictionary<Type, IBusMsg> p_lastMsg = new();
         private readonly IScheduler p_scheduler;
         private readonly IReadOnlyDictionary<string, Type> p_typesCache;
-        private readonly Subject<TcpMsg> p_tcpMsgFlow = new();
+        private readonly Subject<TcpMsg> p_failedTcpMsgFlow = new();
 
         public TcpBusClient(IReadOnlyLifetime _lifetime, IScheduler _scheduler, int _port)
         {
@@ -43,18 +43,18 @@ namespace Ax.Fw.Bus
             p_client.Events.MessageReceived += MessageReceived;
             _lifetime.DoOnCompleted(() => p_client.Events.MessageReceived -= MessageReceived);
 
-            Task<bool> sendTcpMsgJob(TcpMsg _msg, CancellationToken _ct)
+            async Task<bool> sendTcpMsgJob(TcpMsg _msg, CancellationToken _ct)
             {
                 try
                 {
                     if (!p_client.Connected)
                         p_client.Connect();
 
-                    return Task.FromResult(p_client.Send(_msg.JsonData, _msg.Meta));
+                    return await p_client.SendAsync(_msg.JsonData, _msg.Meta, _ct);
                 }
                 catch
                 {
-                    return Task.FromResult(false);
+                    return false;
                 }
             }
             Task<PenaltyInfo> sendTcpMsgJobPenalty(TcpMsg _msg, int _failCount, Exception? _ex, CancellationToken _ct)
@@ -62,7 +62,7 @@ namespace Ax.Fw.Bus
                 return Task.FromResult(new PenaltyInfo(_failCount < 100, TimeSpan.FromMilliseconds(_failCount * 300))); // 300ms - 30 sec
             }
 
-            AsyncTeam.Run(p_tcpMsgFlow, sendTcpMsgJob, sendTcpMsgJobPenalty, _lifetime, 4, _scheduler);
+            AsyncTeam.Run(p_failedTcpMsgFlow, sendTcpMsgJob, sendTcpMsgJobPenalty, _lifetime, 4, _scheduler);
 
             Observable
                 .Interval(TimeSpan.FromSeconds(5))
@@ -78,6 +78,8 @@ namespace Ax.Fw.Bus
 
         public TcpBusClient(IReadOnlyLifetime _lifetime, int _port) : this(_lifetime, ThreadPoolScheduler.Instance, _port)
         { }
+
+        public bool Connected => p_client.Connected;
 
         private void MessageReceived(object _sender, MessageReceivedEventArgs _args)
         {
@@ -145,7 +147,8 @@ namespace Ax.Fw.Bus
             var tcpMsg = new TcpMsg(
                 JsonConvert.SerializeObject(_msg.Data),
                 new Dictionary<object, object> { { "data_type", _msg.Data.GetType().ToString() }, { "guid", _msg.Id.ToString() } });
-            p_tcpMsgFlow.OnNext(tcpMsg);
+            if (!p_client.Send(tcpMsg.JsonData, tcpMsg.Meta))
+                p_failedTcpMsgFlow.OnNext(tcpMsg);
         }
 
         /// <summary>

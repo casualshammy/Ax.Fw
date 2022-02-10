@@ -15,7 +15,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.TcpBus", "Ax.Fw.TcpBu
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.TcpBus.Tests", "Ax.Fw.TcpBus.Tests\Ax.Fw.TcpBus.Tests.csproj", "{022D4531-CC1C-41DD-A41E-2D27B63BE24C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ax.Fw.SharedTypes", "Ax.Fw.Interfaces\Ax.Fw.SharedTypes.csproj", "{2B0DB987-F80F-406F-8EA9-B4FF06651D66}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.SharedTypes", "Ax.Fw.Interfaces\Ax.Fw.SharedTypes.csproj", "{2B0DB987-F80F-406F-8EA9-B4FF06651D66}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

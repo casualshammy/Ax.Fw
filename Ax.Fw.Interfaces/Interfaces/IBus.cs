@@ -28,6 +28,9 @@ namespace Ax.Fw.SharedTypes.Interfaces
             where TRes : IBusMsg;
     }
 
-    public interface ITcpBus : IBus { }
+    public interface ITcpBus : IBus
+    {
+        bool Connected { get; }
+    }
 
 }

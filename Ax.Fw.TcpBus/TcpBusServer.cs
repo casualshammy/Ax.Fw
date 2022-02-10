@@ -3,6 +3,7 @@ using Ax.Fw.Attributes;
 using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.TcpBus.Parts;
+using Ax.Fw.Workers;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
@@ -28,6 +29,7 @@ namespace Ax.Fw.Bus
         private readonly IScheduler p_scheduler;
         private readonly IReadOnlyDictionary<string, Type> p_typesCache;
         private readonly bool p_includeClient;
+        private readonly Subject<(string IpPort, byte[] Data, Dictionary<object, object> Meta)> p_failedTcpMsgFlow = new();
 
         public TcpBusServer(ILifetime _lifetime, IScheduler _scheduler, int _port, bool _includeClient)
         {
@@ -44,11 +46,32 @@ namespace Ax.Fw.Bus
             p_server.Events.ClientConnected += ClientConnected;
             p_server.Events.ClientDisconnected += ClientDisconnected;
             p_server.Events.MessageReceived += MessageReceived;
+
+            async Task<bool> sendTcpMsgJob((string IpPort, byte[] Data, Dictionary<object, object> Meta) _msg, CancellationToken _ct)
+            {
+                try
+                {
+                    return await p_server.SendAsync(_msg.IpPort, _msg.Data, _msg.Meta, token: _ct);
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+            Task<PenaltyInfo> sendTcpMsgJobPenalty((string IpPort, byte[] Data, Dictionary<object, object> Meta) _msg, int _failCount, Exception? _ex, CancellationToken _ct)
+            {
+                return Task.FromResult(new PenaltyInfo(_failCount < 100, TimeSpan.FromMilliseconds(_failCount * 300))); // 300ms - 30 sec
+            }
+
+            AsyncTeam.Run(p_failedTcpMsgFlow, sendTcpMsgJob, sendTcpMsgJobPenalty, _lifetime, 4, new EventLoopScheduler());
+
             p_server.Start();
         }
 
         public TcpBusServer(ILifetime _lifetime, int _port, bool _includeClient) : this(_lifetime, ThreadPoolScheduler.Instance, _port, _includeClient)
         { }
+
+        public bool Connected => p_server.IsListening;
 
         private void ClientConnected(object sender, ConnectionEventArgs args)
         {
@@ -60,7 +83,7 @@ namespace Ax.Fw.Bus
             p_clients = p_clients.Remove(args.IpPort);
         }
 
-        private async void MessageReceived(object sender, MessageReceivedEventArgs args)
+        private void MessageReceived(object sender, MessageReceivedEventArgs args)
         {
             if (p_includeClient)
             {
@@ -88,7 +111,8 @@ namespace Ax.Fw.Bus
 
             foreach (var ipPort in p_clients)
                 if (ipPort != args.IpPort)
-                    await p_server.SendAsync(ipPort, args.Data, args.Metadata);
+                    if (!p_server.Send(ipPort, args.Data, args.Metadata))
+                        p_failedTcpMsgFlow.OnNext((ipPort, args.Data, args.Metadata));
         }
 
 

@@ -14,3 +14,5 @@ Ax.Fw.TcpBus/bin
 Ax.Fw.TcpBus/obj
 /Ax.Fw.Interfaces/obj
 /Ax.Fw.Interfaces/bin
+/Ax.Fw.XUnit/bin
+/Ax.Fw.XUnit/obj
