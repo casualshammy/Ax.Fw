@@ -10,14 +10,15 @@ using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 using Ax.Fw.Extensions;
+using System.Linq;
 
 namespace Ax.Fw.Tests
 {
-    public class ZipFileTests
+    public class CompressTests
     {
         private readonly ITestOutputHelper p_output;
 
-        public ZipFileTests(ITestOutputHelper output)
+        public CompressTests(ITestOutputHelper output)
         {
             p_output = output;
         }
@@ -41,6 +42,59 @@ namespace Ax.Fw.Tests
                 }
 
                 await Compress.CompressDirectoryToZipFile(dir.FullName, tempFile, onProgress, lifetime.Token);
+
+                Assert.InRange(resultPercent, 99d, 101d);
+
+                resultPercent = 0d;
+                var tempDirInfo = new DirectoryInfo(tempDir);
+                if (!tempDirInfo.Exists)
+                    Directory.CreateDirectory(tempDir);
+
+                await Compress.DecompressZipFile(tempDir, tempFile, onProgress, lifetime.Token);
+
+                Assert.InRange(resultPercent, 99d, 101d);
+                Assert.Equal(tempDirInfo.CreateMd5ForFolder(), md5);
+                Assert.Equal(tempDirInfo.CalcDirectorySize(), size);
+            }
+            finally
+            {
+                lifetime.Complete();
+                try
+                {
+                    File.Delete(tempFile);
+                }
+                catch { }
+                try
+                {
+                    Directory.Delete(tempDir, true);
+                }
+                catch { }
+            }
+        }
+
+        [Fact(Timeout = 30000)]
+        public async Task BasicCompressDecompressDictionaryAsync()
+        {
+            var lifetime = new Lifetime();
+            var tempFile = Path.GetTempFileName();
+            var tempDir = Path.Combine(Path.GetTempPath(), new Random().Next().ToString());
+            try
+            {
+                var dir = new DirectoryInfo(Environment.CurrentDirectory);
+                var files = dir
+                    .GetFiles("*.*", SearchOption.AllDirectories)
+                    .ToDictionary(_x => _x, _x => _x.FullName.Substring(dir.FullName.Length).TrimStart('\\', '/')); ;
+
+                var md5 = dir.CreateMd5ForFolder();
+                var size = dir.CalcDirectorySize();
+
+                var resultPercent = 0d;
+                void onProgress(double _percentCompleted, FileInfo _fileInfo)
+                {
+                    resultPercent = _percentCompleted;
+                }
+
+                await Compress.CompressListOfFilesAsync(files, tempFile, onProgress, lifetime.Token);
 
                 Assert.InRange(resultPercent, 99d, 101d);
 
