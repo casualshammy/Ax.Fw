@@ -55,6 +55,18 @@ namespace Ax.Fw
             }
         }
 
+        public string LastPart
+        {
+            get
+            {
+                var lastIndex = Value.LastIndexOf('/');
+                if (lastIndex == -1 || lastIndex == 0)
+                    return Value.Trim('/');
+
+                return Value.Substring(lastIndex + 1);
+            }
+        }
+
         public override bool Equals(object _obj)
         {
             return _obj is CompositeKey key && Equals(key);

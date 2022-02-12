@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Ax.Fw.Extensions
 {
@@ -24,6 +26,28 @@ namespace Ax.Fw.Extensions
                 }
             }
             return sum;
+        }
+
+        public static async Task<long> CalcDirectorySizeAsync(this DirectoryInfo _directoryInfo, CancellationToken _ct)
+        {
+            return await Task.Run(async () =>
+            {
+                var sum = 0L;
+                foreach (FileSystemInfo fsInfo in _directoryInfo.GetFileSystemInfos())
+                {
+                    _ct.ThrowIfCancellationRequested();
+
+                    if (fsInfo is FileInfo fileInfo)
+                    {
+                        sum += fileInfo.Length;
+                    }
+                    else if (fsInfo is DirectoryInfo directoryInfo)
+                    {
+                        sum += await CalcDirectorySizeAsync(directoryInfo, _ct);
+                    }
+                }
+                return sum;
+            });
         }
 
         public static IEnumerable<string> FindFilesByName(this DirectoryInfo _directoryInfo, string _fileName, int _depth = int.MaxValue)

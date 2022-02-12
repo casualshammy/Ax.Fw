@@ -36,9 +36,9 @@ namespace Ax.Fw.Tests
                 var size = dir.CalcDirectorySize();
 
                 var resultPercent = 0d;
-                void onProgress(double _percentCompleted, FileInfo _fileInfo)
+                void onProgress(DeCompressProgress _progress)
                 {
-                    resultPercent = _percentCompleted;
+                    resultPercent = _progress.ProgressPercent;
                 }
 
                 await Compress.CompressDirectoryToZipFile(dir.FullName, tempFile, onProgress, lifetime.Token);
@@ -89,9 +89,9 @@ namespace Ax.Fw.Tests
                 var size = dir.CalcDirectorySize();
 
                 var resultPercent = 0d;
-                void onProgress(double _percentCompleted, FileInfo _fileInfo)
+                void onProgress(DeCompressProgress _progress)
                 {
-                    resultPercent = _percentCompleted;
+                    resultPercent = _progress.ProgressPercent;
                 }
 
                 await Compress.CompressListOfFilesAsync(files, tempFile, onProgress, lifetime.Token);
@@ -135,9 +135,9 @@ namespace Ax.Fw.Tests
                 var dir = new DirectoryInfo(Environment.CurrentDirectory);
 
                 var resultPercent = 0d;
-                void onProgress(double _percentCompleted, FileInfo _fileInfo)
+                void onProgress(DeCompressProgress _progress)
                 {
-                    resultPercent = _percentCompleted;
+                    resultPercent = _progress.ProgressPercent;
                     if (resultPercent > 30)
                         lifetime.Complete();
                 }
