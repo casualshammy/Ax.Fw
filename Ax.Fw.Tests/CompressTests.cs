@@ -161,5 +161,58 @@ namespace Ax.Fw.Tests
             }
         }
 
+        [Fact(Timeout = 30000)]
+        public async Task CompressDecompressOverwriteAsync()
+        {
+            var lifetime = new Lifetime();
+            var tempFile = Path.GetTempFileName();
+            var tempDir = Path.Combine(Path.GetTempPath(), new Random().Next().ToString());
+            try
+            {
+                var dir = new DirectoryInfo(Environment.CurrentDirectory);
+                var md5 = dir.CreateMd5ForFolder();
+                var size = dir.CalcDirectorySize();
+
+                var resultPercent = 0d;
+                void onProgress(DeCompressProgress _progress)
+                {
+                    resultPercent = _progress.ProgressPercent;
+                }
+
+                await Compress.CompressDirectoryToZipFile(dir.FullName, tempFile, onProgress, lifetime.Token);
+
+                Assert.Equal(100d, resultPercent);
+
+                resultPercent = 0d;
+                var tempDirInfo = new DirectoryInfo(tempDir);
+                if (!tempDirInfo.Exists)
+                    Directory.CreateDirectory(tempDir);
+
+                await Compress.DecompressZipFile(tempDir, tempFile, onProgress, lifetime.Token);
+
+                Assert.Equal(100d, resultPercent);
+                Assert.Equal(tempDirInfo.CreateMd5ForFolder(), md5);
+                Assert.Equal(tempDirInfo.CalcDirectorySize(), size);
+
+                await Compress.DecompressZipFile(tempDir, tempFile, onProgress, lifetime.Token);
+                Assert.Equal(tempDirInfo.CreateMd5ForFolder(), md5);
+                Assert.Equal(tempDirInfo.CalcDirectorySize(), size);
+            }
+            finally
+            {
+                lifetime.Complete();
+                try
+                {
+                    File.Delete(tempFile);
+                }
+                catch { }
+                try
+                {
+                    Directory.Delete(tempDir, true);
+                }
+                catch { }
+            }
+        }
+
     }
 }

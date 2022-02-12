@@ -1,8 +1,6 @@
 ﻿#nullable enable
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -40,7 +38,15 @@ namespace Ax.Fw.Extensions
 
         public override int Read(byte[] _buffer, int _offset, int _count)
         {
-            return ReadAsync(_buffer, _offset, _count, CancellationToken.None).Result;
+            if (p_position >= p_length)
+                return 0;
+            if (!p_underlyingStream.CanRead)
+                throw new NotSupportedException();
+
+            int bytesRead = p_underlyingStream.Read(_buffer, _offset, _count);
+            p_position += bytesRead;
+            p_progress?.Invoke(p_position / (double)p_length * 100);
+            return bytesRead;
         }
 
         public override async Task<int> ReadAsync(byte[] _buffer, int _offset, int _count, CancellationToken _token)
@@ -65,7 +71,14 @@ namespace Ax.Fw.Extensions
 
         public override void Write(byte[] _buffer, int _offset, int _count)
         {
-            WriteAsync(_buffer, _offset, _count, CancellationToken.None).Wait();
+            if (p_position >= p_length)
+                return;
+            if (!p_underlyingStream.CanWrite)
+                throw new NotSupportedException();
+
+            p_underlyingStream.Write(_buffer, _offset, _count);
+            p_position += _count;
+            p_progress?.Invoke(p_position / (double)p_length * 100);
         }
 
         public override async Task WriteAsync(byte[] _buffer, int _offset, int _count, CancellationToken _ct)
@@ -79,7 +92,6 @@ namespace Ax.Fw.Extensions
             p_position += _count;
             p_progress?.Invoke(p_position / (double)p_length * 100);
         }
-
 
     }
 }

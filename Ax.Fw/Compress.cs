@@ -119,7 +119,7 @@ namespace Ax.Fw
                             Directory.CreateDirectory(fileInfo.Directory.FullName);
 
                         using (var entryStream = entry.Open())
-                        using (var file = File.OpenWrite(fileAbsolutePath))
+                        using (var file = File.Open(fileAbsolutePath, FileMode.Create, FileAccess.Write))
                             await entryStream.CopyToAsync(file);
 
                         _progressReport?.Invoke(new DeCompressProgress(++filesProcessed / totalFiles * 100, fileInfo));
