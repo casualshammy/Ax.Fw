@@ -50,11 +50,11 @@ namespace Ax.Fw
             Action<DeCompressProgress>? _progressReport, 
             CancellationToken _ct)
         {
-            var tmpFile = new FileInfo($"{_zipPath}-{ThreadSafeRandomProvider.GetThreadRandom().Next()}.zip");
+            var tmpFile = $"{_zipPath}-{ThreadSafeRandomProvider.GetThreadRandom().Next()}.zip";
 
             try
             {
-                using (var zipToOpen = new FileStream(_zipPath, FileMode.Create))
+                using (var zipToOpen = new FileStream(tmpFile, FileMode.Create))
                 {
                     using (var archive = new ZipArchive(zipToOpen, ZipArchiveMode.Create, true, Encoding.UTF8))
                     {
@@ -78,11 +78,15 @@ namespace Ax.Fw
                         }
                     }
                 }
-                tmpFile.MoveTo(_zipPath);
+
+                if (File.Exists(_zipPath))
+                    File.Delete(_zipPath);
+
+                File.Move(tmpFile, _zipPath);
             }
             finally
             {
-                tmpFile.TryDelete();
+                new FileInfo(tmpFile).TryDelete();
             }
         }
 
