@@ -2,6 +2,8 @@
 using Ax.Fw.Workers;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading;
@@ -244,9 +246,11 @@ namespace Ax.Fw.Tests
             var lifetime = new Lifetime();
             try
             {
+                const int size = 10;
+
                 var jobs = Observable
-                    .Return(TimeSpan.FromMilliseconds(1000))
-                    .Repeat(5);
+                    .Return(Unit.Default)
+                    .Repeat(size);
 
                 var actuallyDoneWorkCount = 0;
 
@@ -256,33 +260,32 @@ namespace Ax.Fw.Tests
                     jobs,
                     async (_job, _ct) =>
                     {
-                        await Task.Delay(_job, _ct);
+                        await Task.Delay(TimeSpan.FromSeconds(1), _ct);
                         Interlocked.Increment(ref actuallyDoneWorkCount);
                         return result;
                     },
                     (_job, _fails, _ex, _ct) =>
                     {
-                        if (actuallyDoneWorkCount >= 5)
+                        if (actuallyDoneWorkCount >= size)
                             result = true;
 
-                        return Task.FromResult(new PenaltyInfo(true, TimeSpan.FromMilliseconds(1000)));
+                        return Task.FromResult(new PenaltyInfo(true, TimeSpan.FromSeconds(1)));
                     },
                     lifetime,
                     5);
 
-                var list = new List<int>();
-                team.CompletedJobs
+                var sw = Stopwatch.StartNew();
+                await team.CompletedJobs
                     .ObserveOn(lifetime.DisposeOnCompleted(new EventLoopScheduler())!)
-                    .Subscribe(x => list.Add(0), lifetime.Token);
+                    .Take(size);
 
-                await Task.Delay(TimeSpan.FromMilliseconds(1500 * 3));
+                Assert.InRange(sw.ElapsedMilliseconds, 0, 4 * 1000 + 250);
 
-                Assert.Equal(10, actuallyDoneWorkCount);
-                Assert.Equal(5, list.Count);
+                Assert.Equal(2* size, actuallyDoneWorkCount);
 
-                Assert.Equal(5, team.State.TasksFailed);
+                Assert.Equal(size, team.State.TasksFailed);
                 Assert.Equal(0, team.State.TasksRunning);
-                Assert.Equal(5, team.State.TasksCompleted);
+                Assert.Equal(size, team.State.TasksCompleted);
             }
             finally
             {
