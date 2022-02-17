@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Ax.Fw.SharedTypes.Interfaces
@@ -24,6 +25,9 @@ namespace Ax.Fw.SharedTypes.Interfaces
             where TReq : IBusMsg
             where TRes : IBusMsg;
         TRes? PostReqResOrDefault<TReq, TRes>(TReq _req, TimeSpan _timeout)
+            where TReq : IBusMsg
+            where TRes : IBusMsg;
+        Task<TRes?> PostReqResOrDefaultAsync<TReq, TRes>(TReq _req, TimeSpan _timeout, CancellationToken _ct)
             where TReq : IBusMsg
             where TRes : IBusMsg;
     }

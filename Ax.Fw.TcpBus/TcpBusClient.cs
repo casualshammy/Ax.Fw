@@ -13,6 +13,7 @@ using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Reactive.Threading.Tasks;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -179,6 +180,50 @@ namespace Ax.Fw.Bus
                 return result;
 
             return default;
+        }
+
+        public async Task<TRes?> PostReqResOrDefaultAsync<TReq, TRes>(TReq _req, TimeSpan _timeout, CancellationToken _ct)
+            where TReq : IBusMsg
+            where TRes : IBusMsg
+        {
+            var guid = Guid.NewGuid();
+            var ignoredGuid = Guid.NewGuid();
+
+            //var value = await Observable
+            //    .Merge(
+            //        p_msgFlow.Where(_x => _x.Id == guid && _x.Data.GetType() == typeof(TRes)),
+            //        Observable.Timer(_timeout).Select(_ => new BusMsgSerial(new EmptyBusMsg(), Guid.Empty)),
+            //        Observable.Timer(TimeSpan.Zero).Select(_ =>
+            //        {
+            //            PostMsg(new BusMsgSerial(_req, guid));
+            //            return new BusMsgSerial(new EmptyBusMsg(), ignoredGuid);
+            //        }))
+            //    .ObserveOn(p_scheduler)
+            //    .FirstOrDefaultAsync(_x => _x.Id != ignoredGuid);
+
+            try
+            {
+                var value = await TaskObservableExtensions.ToTask(Observable
+                    .Merge(
+                        p_msgFlow.Where(_x => _x.Id == guid && _x.Data.GetType() == typeof(TRes)),
+                        Observable.Timer(_timeout).Select(_ => new BusMsgSerial(new EmptyBusMsg(), Guid.Empty)),
+                        Observable.Timer(TimeSpan.Zero).Select(_ =>
+                        {
+                            PostMsg(new BusMsgSerial(_req, guid));
+                            return new BusMsgSerial(new EmptyBusMsg(), ignoredGuid);
+                        }))
+                    .ObserveOn(p_scheduler)
+                    .FirstOrDefaultAsync(_x => _x.Id != ignoredGuid), _ct);
+
+                if (value != default && value.Id != Guid.Empty)
+                    return (TRes)value.Data;
+
+                return default;
+            }
+            catch (TaskCanceledException)
+            {
+                throw new OperationCanceledException(_ct);
+            }
         }
 
         /// <summary>

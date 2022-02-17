@@ -2,6 +2,7 @@ using Ax.Fw.Bus;
 using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Diagnostics;
+using System.Reactive.Concurrency;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -82,7 +83,6 @@ namespace Ax.Fw.Tests
         [Fact]
         public void LongRunningMsg()
         {
-            p_output.WriteLine($"Starting test {nameof(LongRunningMsg)}...");
             var sw = Stopwatch.StartNew();
             var lifetime = new Lifetime();
             try
@@ -90,22 +90,119 @@ namespace Ax.Fw.Tests
                 var bus = new PBus(lifetime);
                 lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async msg =>
                 {
+                    p_output.WriteLine($"{sw.Elapsed} OfReqRes, Code {msg.Code}, Start");
                     if (msg.Code == 0)
                         await Task.Delay(5000);
 
+                    p_output.WriteLine($"{sw.Elapsed} OfReqRes, Code {msg.Code}, Finish");
                     return new SimpleMsgRes(msg.Code + 1);
                 }));
 
-                var result0 = bus.PostReqResOrDefault<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(0), TimeSpan.FromSeconds(1));
-                var result1 = bus.PostReqResOrDefault<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(1), TimeSpan.FromSeconds(1));
+                var result = bus.PostReqResOrDefault<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(1), TimeSpan.FromSeconds(1));
+                Assert.Equal(2, result?.Code);
 
-                Assert.Null(result0);
-                Assert.Equal(2, result1?.Code);
+                result = bus.PostReqResOrDefault<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(0), TimeSpan.FromSeconds(1));
+                Assert.Null(result);
             }
             finally
             {
                 lifetime.Complete();
-                p_output.WriteLine($"Test {nameof(LongRunningMsg)} is completed");
+            }
+        }
+
+        [Fact]
+        public async Task AsyncPostReqRes()
+        {
+            var lifetime = new Lifetime();
+            try
+            {
+                var bus = new PBus(lifetime);
+                lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async _msg =>
+                {
+                    await Task.Delay(500);
+                    if (_msg.Code == 1)
+                        return new SimpleMsgRes(2);
+
+                    return new SimpleMsgRes(0);
+                }));
+
+                var result = await bus.PostReqResOrDefaultAsync<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(1), TimeSpan.FromSeconds(1), lifetime.Token);
+                Assert.Equal(2, result?.Code);
+
+                result = await bus.PostReqResOrDefaultAsync<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(1), TimeSpan.FromMilliseconds(400), lifetime.Token);
+                Assert.Null(result);
+
+                var sw = Stopwatch.StartNew();
+                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => bus.PostReqResOrDefaultAsync<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(1), TimeSpan.FromSeconds(10), cts.Token));
+                Assert.InRange(sw.ElapsedMilliseconds, 0, 300);
+            }
+            finally
+            {
+                lifetime.Complete();
+            }
+        }
+
+        [Fact]
+        public async Task AsyncPostReqResEventLoopScheduler()
+        {
+            var lifetime = new Lifetime();
+            try
+            {
+                var bus = new PBus(lifetime, lifetime.DisposeOnCompleted(new EventLoopScheduler()));
+                lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async _msg =>
+                {
+                    await Task.Delay(500);
+                    if (_msg.Code == 1)
+                        return new SimpleMsgRes(2);
+
+                    return new SimpleMsgRes(0);
+                }));
+
+                var result = await bus.PostReqResOrDefaultAsync<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(1), TimeSpan.FromSeconds(1), lifetime.Token);
+                Assert.Equal(2, result?.Code);
+
+                result = await bus.PostReqResOrDefaultAsync<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(1), TimeSpan.FromMilliseconds(400), lifetime.Token);
+                Assert.Null(result);
+
+                var sw = Stopwatch.StartNew();
+                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => bus.PostReqResOrDefaultAsync<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(1), TimeSpan.FromSeconds(10), cts.Token));
+                Assert.InRange(sw.ElapsedMilliseconds, 0, 300);
+            }
+            finally
+            {
+                lifetime.Complete();
+            }
+        }
+
+        [Fact]
+        public async Task AsyncPostReqResLongRunningMsg()
+        {
+            var sw = Stopwatch.StartNew();
+            var lifetime = new Lifetime();
+            try
+            {
+                var bus = new PBus(lifetime);
+                lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async msg =>
+                {
+                    p_output.WriteLine($"{sw.Elapsed} OfReqRes, Code {msg.Code}, Start");
+                    if (msg.Code == 0)
+                        await Task.Delay(5000);
+
+                    p_output.WriteLine($"{sw.Elapsed} OfReqRes, Code {msg.Code}, Finish");
+                    return new SimpleMsgRes(msg.Code + 1);
+                }));
+
+                var result = await bus.PostReqResOrDefaultAsync<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(1), TimeSpan.FromSeconds(1), lifetime.Token);
+                Assert.Equal(2, result?.Code);
+
+                result = await bus.PostReqResOrDefaultAsync<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(0), TimeSpan.FromSeconds(1), lifetime.Token);
+                Assert.Null(result);
+            }
+            finally
+            {
+                lifetime.Complete();
             }
         }
 
@@ -128,6 +225,6 @@ namespace Ax.Fw.Tests
 
             public int Code { get; }
         }
-    
+
     }
 }

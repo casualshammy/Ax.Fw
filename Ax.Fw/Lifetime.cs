@@ -42,7 +42,7 @@ namespace Ax.Fw
             lock (p_lock)
             {
                 if (p_cts.Token.IsCancellationRequested)
-                    throw new InvalidOperationException($"This instance of {nameof(Lifetime)} is already completed!");
+                    return;
 
                 p_cts.Cancel();
                 while (p_doOnCompleted.TryPop(out var item))

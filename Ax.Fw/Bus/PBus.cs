@@ -1,11 +1,13 @@
 ﻿#nullable enable
 using Ax.Fw.Bus.Parts;
+using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Collections.Concurrent;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -108,11 +110,11 @@ namespace Ax.Fw.Bus
             var guid = Guid.NewGuid();
             TRes? result = default;
             using var subscription = p_msgFlow
-                .Where(x => x.Id == guid && x.Data.GetType() == typeof(TRes))
+                .Where(_x => _x.Id == guid && _x.Data.GetType() == typeof(TRes))
                 .ObserveOn(p_scheduler)
-                .Subscribe(x =>
+                .Subscribe(_x =>
                 {
-                    result = (TRes)x.Data;
+                    result = (TRes)_x.Data;
                     mre.Set();
                 });
             PostMsg(new BusMsgSerial(_req, guid));
@@ -120,6 +122,50 @@ namespace Ax.Fw.Bus
                 return result;
 
             return default;
+        }
+
+        public async Task<TRes?> PostReqResOrDefaultAsync<TReq, TRes>(TReq _req, TimeSpan _timeout, CancellationToken _ct)
+            where TReq : IBusMsg
+            where TRes : IBusMsg
+        {
+            var guid = Guid.NewGuid();
+            var ignoredGuid = Guid.NewGuid();
+
+            //var value = await Observable
+            //    .Merge(
+            //        p_msgFlow.Where(_x => _x.Id == guid && _x.Data.GetType() == typeof(TRes)),
+            //        Observable.Timer(_timeout).Select(_ => new BusMsgSerial(new EmptyBusMsg(), Guid.Empty)),
+            //        Observable.Timer(TimeSpan.Zero).Select(_ =>
+            //        {
+            //            PostMsg(new BusMsgSerial(_req, guid));
+            //            return new BusMsgSerial(new EmptyBusMsg(), ignoredGuid);
+            //        }))
+            //    .ObserveOn(p_scheduler)
+            //    .FirstOrDefaultAsync(_x => _x.Id != ignoredGuid);
+
+            try
+            {
+                var value = await TaskObservableExtensions.ToTask(Observable
+                    .Merge(
+                        p_msgFlow.Where(_x => _x.Id == guid && _x.Data.GetType() == typeof(TRes)),
+                        Observable.Timer(_timeout).Select(_ => new BusMsgSerial(new EmptyBusMsg(), Guid.Empty)),
+                        Observable.Timer(TimeSpan.Zero).Select(_ =>
+                        {
+                            PostMsg(new BusMsgSerial(_req, guid));
+                            return new BusMsgSerial(new EmptyBusMsg(), ignoredGuid);
+                        }))
+                    .ObserveOn(p_scheduler)
+                    .FirstOrDefaultAsync(_x => _x.Id != ignoredGuid), _ct);
+
+                if (value != default && value.Id != Guid.Empty)
+                    return (TRes)value.Data;
+
+                return default;
+            }
+            catch (TaskCanceledException)
+            {
+                throw new OperationCanceledException(_ct);
+            }
         }
 
         /// <summary>
@@ -134,15 +180,16 @@ namespace Ax.Fw.Bus
             where TRes : IBusMsg
         {
             return p_msgFlow
-                .Where(x => x.Data.GetType() == typeof(TReq))
-                .ObserveOn(p_scheduler)
-                .Subscribe(async x =>
+                .Where(_x => _x.Data.GetType() == typeof(TReq))
+                .SelectAsync(async _x =>
                 {
-                    var guid = x.Id;
-                    var result = await _func((TReq)x.Data);
+                    var guid = _x!.Id;
+                    var result = await _func((TReq)_x.Data);
 
                     PostMsg(new BusMsgSerial(result, guid));
-                });
+                })
+                .ObserveOn(p_scheduler)
+                .Subscribe();
         }
 
         /// <summary>
@@ -180,15 +227,16 @@ namespace Ax.Fw.Bus
             where TRes : IBusMsg
         {
             p_msgFlow
-                .Where(x => x.Data.GetType() == typeof(TReq))
-                .ObserveOn(p_scheduler)
-                .Subscribe(async x =>
+                .Where(_x => _x.Data.GetType() == typeof(TReq))
+                .SelectAsync(async _x =>
                 {
-                    var guid = x.Id;
-                    var result = await _func((TReq)x.Data);
+                    var guid = _x!.Id;
+                    var result = await _func((TReq)_x.Data);
 
                     PostMsg(new BusMsgSerial(result, guid));
-                }, _lifetime.Token);
+                })
+                .ObserveOn(p_scheduler)
+                .Subscribe(_lifetime);
         }
 
         /// <summary>
@@ -215,4 +263,7 @@ namespace Ax.Fw.Bus
         }
 
     }
+
+    public class EmptyBusMsg : IBusMsg { }
+
 }

@@ -26,7 +26,7 @@ namespace Ax.Fw
                 .SelectAsync(async _ =>
                 {
                     if (p_cts.Token.IsCancellationRequested)
-                        throw new InvalidOperationException($"This instance of {nameof(AsyncLifetime)} is already completed!");
+                        return;
 
                     p_cts.Cancel();
                     while (p_doOnCompleted.TryPop(out var item))
@@ -38,7 +38,7 @@ namespace Ax.Fw
                         catch { }
                     }
                     p_flow.OnCompleted();
-                    return Unit.Default;
+                    return;
                 })
                 .Subscribe(Token);
         }
