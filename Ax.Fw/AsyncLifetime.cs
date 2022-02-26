@@ -83,7 +83,7 @@ namespace Ax.Fw
             });
         }
 
-        public async Task Complete()
+        public async Task CompleteAsync()
         {
             p_flow.OnNext(Unit.Default);
             await p_flow.DefaultIfEmpty();
@@ -93,7 +93,7 @@ namespace Ax.Fw
         public IAsyncLifetime GetChildLifetime()
         {
             var lifetime = new AsyncLifetime();
-            DoOnCompleted(lifetime.Complete);
+            DoOnCompleted(lifetime.CompleteAsync);
             return lifetime;
         }
 

@@ -134,5 +134,18 @@ namespace Ax.Fw.Extensions
             return new RxProperty<T?>(_observable, _lifetime, _defaultValue);
         }
 
+        public static IObservable<TResult> ScanAsync<T, TResult>(this IObservable<T> _observable, TResult _seed, Func<TResult, T, Task<TResult>> _functor)
+        {
+            return _observable
+                .Scan(
+                    Task.FromResult(_seed),
+                    async (_prev, _newEntry) =>
+                    {
+                        var prevState = await _prev.ConfigureAwait(false);
+                        return await _functor(prevState, _newEntry).ConfigureAwait(false);
+                    })
+                .Concat();
+        }
+
     }
 }

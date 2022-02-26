@@ -68,5 +68,30 @@ namespace Ax.Fw.Extensions
             throw new InvalidOperationException("Element not found");
         }
 
+        public static async IAsyncEnumerable<TResult> SelectAsync<TSource, TResult>(this IEnumerable<TSource> _source, Func<TSource, Task<TResult>> _selector)
+        {
+            if (_source == null)
+                throw new ArgumentNullException(nameof(_source));
+
+            if (_selector == null)
+                throw new ArgumentNullException(nameof(_selector));
+
+            foreach (var entry in _source)
+                yield return await _selector(entry);
+        }
+
+        public static async IAsyncEnumerable<TSource> WhereAsync<TSource>(this IEnumerable<TSource> _source, Func<TSource, Task<bool>> _selector)
+        {
+            if (_source == null)
+                throw new ArgumentNullException(nameof(_source));
+
+            if (_selector == null)
+                throw new ArgumentNullException(nameof(_selector));
+
+            foreach (var entry in _source)
+                if (await _selector(entry))
+                    yield return entry;
+        }
+
     }
 }

@@ -28,7 +28,7 @@ namespace Ax.Fw.Tests
                 await Task.Delay(100);
             });
 
-            await lifetime.Complete();
+            await lifetime.CompleteAsync();
 
             Assert.Equal(2, counter);
 
