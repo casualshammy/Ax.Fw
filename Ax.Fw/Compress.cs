@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,7 +28,7 @@ namespace Ax.Fw
 
     public static class Compress
     {
-        public static async Task CompressDirectoryToZipFile(
+        public static async Task CompressDirectoryToZipFileAsync(
             string _directory, 
             string _zipPath, 
             Action<DeCompressProgress>? _progressReport, 
@@ -90,7 +91,96 @@ namespace Ax.Fw
             }
         }
 
-        public static async Task DecompressZipFile(
+        /// <summary>
+        /// Creates encrypted zip. PAY ATTENTION! This method creates custom zip archive! It can be extracted only with methods in class <see cref="Compress"/>
+        /// </summary>
+        /// <exception cref="DirectoryNotFoundException"></exception>
+        public static async Task CompressDirectoryToZipFileWithEncryptionAsync(
+            string _directory,
+            string _zipPath,
+            byte[] _password,
+            Action<DeCompressProgress>? _progressReport,
+            CancellationToken _ct)
+        {
+            var directory = new DirectoryInfo(_directory);
+            if (!directory.Exists)
+                throw new DirectoryNotFoundException();
+
+            var filesRelativePaths = directory
+                .GetFiles("*.*", SearchOption.AllDirectories)
+                .ToDictionary(_x => _x, _x => _x.FullName.Substring(directory.FullName.Length).TrimStart('\\', '/'));
+
+            await CompressListOfFilesWithEncryptionAsync(filesRelativePaths, _zipPath, _password, _progressReport, _ct);
+        }
+
+        /// <summary>
+        /// Creates encrypted zip. PAY ATTENTION! This method creates custom zip archive! It can be extracted only with methods in class <see cref="Compress"/>
+        /// </summary>
+        /// <exception cref="ArgumentException"></exception>
+        public static async Task CompressListOfFilesWithEncryptionAsync(
+            IDictionary<FileInfo, string> _realPathWithRelativePath,
+            string _zipPath,
+            byte[] _password,
+            Action<DeCompressProgress>? _progressReport,
+            CancellationToken _ct)
+        {
+            if (_password.Length == 0)
+                throw new ArgumentException($"Password can't be empty!", nameof(_password));
+
+            var tmpFile = $"{_zipPath}-{ThreadSafeRandomProvider.GetThreadRandom().Next()}.zip";
+
+            using (var rijCrypto = Aes.Create("AES"))
+            {
+                rijCrypto.KeySize = 256;
+                rijCrypto.BlockSize = 128;
+                var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
+                rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
+                rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
+                rijCrypto.Mode = CipherMode.CBC;
+
+                var encryptor = rijCrypto.CreateEncryptor();
+
+                try
+                {
+                    using (var zipToOpen = new FileStream(tmpFile, FileMode.Create))
+                    {
+                        using (var cryptoStream = new CryptoStream(zipToOpen, encryptor, CryptoStreamMode.Write))
+                        using (var archive = new ZipArchive(cryptoStream, ZipArchiveMode.Create, true, Encoding.UTF8))
+                        {
+                            var filesProcessed = 0L;
+                            var totalFiles = (double)_realPathWithRelativePath.Count;
+                            foreach (var pair in _realPathWithRelativePath)
+                            {
+                                _ct.ThrowIfCancellationRequested();
+                                var fileInfo = pair.Key;
+                                var fileRelativePath = pair.Value;
+
+                                if (!fileInfo.Exists)
+                                    continue;
+
+                                var entry = archive.CreateEntry(fileRelativePath);
+                                using (var entryStream = entry.Open())
+                                using (var file = File.OpenRead(fileInfo.FullName))
+                                    await file.CopyToAsync(entryStream);
+
+                                _progressReport?.Invoke(new DeCompressProgress(++filesProcessed / totalFiles * 100, fileInfo));
+                            }
+                        }
+                    }
+
+                    if (File.Exists(_zipPath))
+                        File.Delete(_zipPath);
+
+                    File.Move(tmpFile, _zipPath);
+                }
+                finally
+                {
+                    new FileInfo(tmpFile).TryDelete();
+                }
+            }
+        }
+
+        public static async Task DecompressZipFileAsync(
             string _outputDirectory, 
             string _zipPath, 
             Action<DeCompressProgress>? _progressReport, 
@@ -126,6 +216,66 @@ namespace Ax.Fw
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Extract encrypted zip. PAY ATTENTION! This method is incompatible with generic zip archive, it extracts only files created with methods in class <see cref="Compress"/>
+        /// </summary>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="FileNotFoundException"></exception>
+        public static async Task DecompressEncryptedZipFileAsync(
+            string _outputDirectory,
+            string _zipPath,
+            byte[] _password,
+            Action<DeCompressProgress>? _progressReport,
+            CancellationToken _ct)
+        {
+            if (_password.Length == 0)
+                throw new ArgumentException($"Password can't be empty!", nameof(_password));
+
+            if (!File.Exists(_zipPath))
+                throw new FileNotFoundException();
+
+            var directory = new DirectoryInfo(_outputDirectory);
+            if (!directory.Exists)
+                Directory.CreateDirectory(_outputDirectory);
+
+            using (var rijCrypto = Aes.Create("AES"))
+            {
+                rijCrypto.KeySize = 256;
+                rijCrypto.BlockSize = 128;
+                var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
+                rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
+                rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
+                rijCrypto.Mode = CipherMode.CBC;
+
+                var decryptor = rijCrypto.CreateDecryptor();
+
+                using (var zipToOpen = new FileStream(_zipPath, FileMode.Open))
+                {
+                    using (var cryptoStream = new CryptoStream(zipToOpen, decryptor, CryptoStreamMode.Read))
+                    using (var archive = new ZipArchive(cryptoStream, ZipArchiveMode.Read, true, Encoding.UTF8))
+                    {
+                        var filesProcessed = 0L;
+                        var totalFiles = (double)archive.Entries.Count;
+                        foreach (var entry in archive.Entries)
+                        {
+                            _ct.ThrowIfCancellationRequested();
+                            var fileAbsolutePath = Path.Combine(_outputDirectory, entry.FullName);
+                            var fileInfo = new FileInfo(fileAbsolutePath);
+
+                            if (!fileInfo.Directory.Exists)
+                                Directory.CreateDirectory(fileInfo.Directory.FullName);
+
+                            using (var entryStream = entry.Open())
+                            using (var file = File.Open(fileAbsolutePath, FileMode.Create, FileAccess.Write))
+                                await entryStream.CopyToAsync(file);
+
+                            _progressReport?.Invoke(new DeCompressProgress(++filesProcessed / totalFiles * 100, fileInfo));
+                        }
+                    }
+                }
+            } 
         }
 
         /// <summary>
