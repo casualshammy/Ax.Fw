@@ -144,8 +144,7 @@ namespace Ax.Fw
                 {
                     using (var zipToOpen = new FileStream(tmpFile, FileMode.Create))
                     {
-                        using (var cryptoStream = new CryptoStream(zipToOpen, encryptor, CryptoStreamMode.Write))
-                        using (var archive = new ZipArchive(cryptoStream, ZipArchiveMode.Create, true, Encoding.UTF8))
+                        using (var archive = new ZipArchive(zipToOpen, ZipArchiveMode.Create, true, Encoding.UTF8))
                         {
                             var filesProcessed = 0L;
                             var totalFiles = (double)_realPathWithRelativePath.Count;
@@ -160,8 +159,9 @@ namespace Ax.Fw
 
                                 var entry = archive.CreateEntry(fileRelativePath);
                                 using (var entryStream = entry.Open())
+                                using (var cryptoStream = new CryptoStream(entryStream, encryptor, CryptoStreamMode.Write))
                                 using (var file = File.OpenRead(fileInfo.FullName))
-                                    await file.CopyToAsync(entryStream);
+                                    await file.CopyToAsync(cryptoStream);
 
                                 _progressReport?.Invoke(new DeCompressProgress(++filesProcessed / totalFiles * 100, fileInfo));
                             }
@@ -253,8 +253,7 @@ namespace Ax.Fw
 
                 using (var zipToOpen = new FileStream(_zipPath, FileMode.Open))
                 {
-                    using (var cryptoStream = new CryptoStream(zipToOpen, decryptor, CryptoStreamMode.Read))
-                    using (var archive = new ZipArchive(cryptoStream, ZipArchiveMode.Read, true, Encoding.UTF8))
+                    using (var archive = new ZipArchive(zipToOpen, ZipArchiveMode.Read, true, Encoding.UTF8))
                     {
                         var filesProcessed = 0L;
                         var totalFiles = (double)archive.Entries.Count;
@@ -268,8 +267,9 @@ namespace Ax.Fw
                                 Directory.CreateDirectory(fileInfo.Directory.FullName);
 
                             using (var entryStream = entry.Open())
+                            using (var cryptoStream = new CryptoStream(entryStream, decryptor, CryptoStreamMode.Read))
                             using (var file = File.Open(fileAbsolutePath, FileMode.Create, FileAccess.Write))
-                                await entryStream.CopyToAsync(file);
+                                await cryptoStream.CopyToAsync(file);
 
                             _progressReport?.Invoke(new DeCompressProgress(++filesProcessed / totalFiles * 100, fileInfo));
                         }

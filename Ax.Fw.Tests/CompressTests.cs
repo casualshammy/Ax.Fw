@@ -293,7 +293,11 @@ namespace Ax.Fw.Tests
                 if (!tempDirInfo.Exists)
                     Directory.CreateDirectory(tempDir);
 
-                await Assert.ThrowsAsync<InvalidDataException>(async () => await Compress.DecompressZipFileAsync(tempDir, tempFile, onProgress, lifetime.Token));
+                await Compress.DecompressZipFileAsync(tempDir, tempFile, onProgress, lifetime.Token);
+
+                Assert.InRange(resultPercent, 99d, 101d);
+                Assert.NotEqual(tempDirInfo.CreateMd5ForFolder(), md5);
+                Assert.NotEqual(tempDirInfo.CalcDirectorySize(), size);
             }
             finally
             {
