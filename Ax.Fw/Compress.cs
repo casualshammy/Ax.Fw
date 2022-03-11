@@ -28,9 +28,9 @@ namespace Ax.Fw
     public static class Compress
     {
         public static async Task CompressDirectoryToZipFileAsync(
-            string _directory, 
-            string _zipPath, 
-            Action<DeCompressProgress>? _progressReport, 
+            string _directory,
+            string _zipPath,
+            Action<DeCompressProgress>? _progressReport,
             CancellationToken _ct)
         {
             var directory = new DirectoryInfo(_directory);
@@ -44,10 +44,27 @@ namespace Ax.Fw
             await CompressListOfFilesAsync(filesRelativePaths, _zipPath, _progressReport, _ct);
         }
 
+        public static async Task CompressDirectoryToZipFileAsync(
+            string _directory,
+            Stream _outputStream,
+            Action<DeCompressProgress>? _progressReport,
+            CancellationToken _ct)
+        {
+            var directory = new DirectoryInfo(_directory);
+            if (!directory.Exists)
+                throw new DirectoryNotFoundException();
+
+            var filesRelativePaths = directory
+                .GetFiles("*.*", SearchOption.AllDirectories)
+                .ToDictionary(_x => _x, _x => _x.FullName.Substring(directory.FullName.Length).TrimStart('\\', '/'));
+
+            await CompressListOfFilesAsync(filesRelativePaths, _outputStream, _progressReport, _ct);
+        }
+
         public static async Task CompressListOfFilesAsync(
-            IDictionary<FileInfo, string> _realPathWithRelativePath, 
-            string _zipPath, 
-            Action<DeCompressProgress>? _progressReport, 
+            IDictionary<FileInfo, string> _realPathWithRelativePath,
+            string _zipPath,
+            Action<DeCompressProgress>? _progressReport,
             CancellationToken _ct)
         {
             var tmpFile = $"{_zipPath}-{ThreadSafeRandomProvider.GetThreadRandom().Next()}.zip";
@@ -55,29 +72,7 @@ namespace Ax.Fw
             try
             {
                 using (var zipToOpen = new FileStream(tmpFile, FileMode.Create))
-                {
-                    using (var archive = new ZipArchive(zipToOpen, ZipArchiveMode.Create, true, Encoding.UTF8))
-                    {
-                        var filesProcessed = 0L;
-                        var totalFiles = (double)_realPathWithRelativePath.Count;
-                        foreach (var pair in _realPathWithRelativePath)
-                        {
-                            _ct.ThrowIfCancellationRequested();
-                            var fileInfo = pair.Key;
-                            var fileRelativePath = pair.Value;
-
-                            if (!fileInfo.Exists)
-                                continue;
-
-                            var entry = archive.CreateEntry(fileRelativePath);
-                            using (var entryStream = entry.Open())
-                            using (var file = File.OpenRead(fileInfo.FullName))
-                                await file.CopyToAsync(entryStream);
-
-                            _progressReport?.Invoke(new DeCompressProgress(++filesProcessed / totalFiles * 100, fileInfo));
-                        }
-                    }
-                }
+                    await CompressListOfFilesAsync(_realPathWithRelativePath, zipToOpen, _progressReport, _ct);
 
                 if (File.Exists(_zipPath))
                     File.Delete(_zipPath);
@@ -90,40 +85,82 @@ namespace Ax.Fw
             }
         }
 
+        public static async Task CompressListOfFilesAsync(
+            IDictionary<FileInfo, string> _realPathWithRelativePath,
+            Stream _outputStream,
+            Action<DeCompressProgress>? _progressReport,
+            CancellationToken _ct)
+        {
+            if (!_outputStream.CanWrite)
+                throw new ArgumentException($"'{nameof(_outputStream)}' must be writable!");
+
+            using (var archive = new ZipArchive(_outputStream, ZipArchiveMode.Create, true, Encoding.UTF8))
+            {
+                var filesProcessed = 0L;
+                var totalFiles = (double)_realPathWithRelativePath.Count;
+                foreach (var pair in _realPathWithRelativePath)
+                {
+                    _ct.ThrowIfCancellationRequested();
+                    var fileInfo = pair.Key;
+                    var fileRelativePath = pair.Value;
+
+                    if (!fileInfo.Exists)
+                        continue;
+
+                    var entry = archive.CreateEntry(fileRelativePath);
+                    using (var entryStream = entry.Open())
+                    using (var file = File.OpenRead(fileInfo.FullName))
+                        await file.CopyToAsync(entryStream);
+
+                    _progressReport?.Invoke(new DeCompressProgress(++filesProcessed / totalFiles * 100, fileInfo));
+                }
+            }
+        }
+
         public static async Task DecompressZipFileAsync(
-            string _outputDirectory, 
-            string _zipPath, 
-            Action<DeCompressProgress>? _progressReport, 
+            string _outputDirectory,
+            string _zipPath,
+            Action<DeCompressProgress>? _progressReport,
             CancellationToken _ct)
         {
             if (!File.Exists(_zipPath))
                 throw new FileNotFoundException();
 
+            using (var zipToOpen = new FileStream(_zipPath, FileMode.Open))
+                await DecompressZipFileAsync(_outputDirectory, zipToOpen, _progressReport, _ct);
+        }
+
+        public static async Task DecompressZipFileAsync(
+            string _outputDirectory,
+            Stream _inputStream,
+            Action<DeCompressProgress>? _progressReport,
+            CancellationToken _ct)
+        {
+            if (!_inputStream.CanRead)
+                throw new ArgumentException($"Can't read from stream '{nameof(_inputStream)}'!");
+
             var directory = new DirectoryInfo(_outputDirectory);
             if (!directory.Exists)
                 Directory.CreateDirectory(_outputDirectory);
 
-            using (var zipToOpen = new FileStream(_zipPath, FileMode.Open))
+            using (var archive = new ZipArchive(_inputStream, ZipArchiveMode.Read, true, Encoding.UTF8))
             {
-                using (var archive = new ZipArchive(zipToOpen, ZipArchiveMode.Read, true, Encoding.UTF8))
+                var filesProcessed = 0L;
+                var totalFiles = (double)archive.Entries.Count;
+                foreach (var entry in archive.Entries)
                 {
-                    var filesProcessed = 0L;
-                    var totalFiles = (double)archive.Entries.Count;
-                    foreach (var entry in archive.Entries)
-                    {
-                        _ct.ThrowIfCancellationRequested();
-                        var fileAbsolutePath = Path.Combine(_outputDirectory, entry.FullName);
-                        var fileInfo = new FileInfo(fileAbsolutePath);
+                    _ct.ThrowIfCancellationRequested();
+                    var fileAbsolutePath = Path.Combine(_outputDirectory, entry.FullName);
+                    var fileInfo = new FileInfo(fileAbsolutePath);
 
-                        if (!fileInfo.Directory.Exists)
-                            Directory.CreateDirectory(fileInfo.Directory.FullName);
+                    if (!fileInfo.Directory.Exists)
+                        Directory.CreateDirectory(fileInfo.Directory.FullName);
 
-                        using (var entryStream = entry.Open())
-                        using (var file = File.Open(fileAbsolutePath, FileMode.Create, FileAccess.Write))
-                            await entryStream.CopyToAsync(file);
+                    using (var entryStream = entry.Open())
+                    using (var file = File.Open(fileAbsolutePath, FileMode.Create, FileAccess.Write))
+                        await entryStream.CopyToAsync(file);
 
-                        _progressReport?.Invoke(new DeCompressProgress(++filesProcessed / totalFiles * 100, fileInfo));
-                    }
+                    _progressReport?.Invoke(new DeCompressProgress(++filesProcessed / totalFiles * 100, fileInfo));
                 }
             }
         }
