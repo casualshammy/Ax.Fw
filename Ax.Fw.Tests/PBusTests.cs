@@ -206,6 +206,29 @@ namespace Ax.Fw.Tests
             }
         }
 
+        [Fact(Timeout = 30000)]
+        public void SenderIsSyncReceiverIsAsync()
+        {
+            var lifetime = new Lifetime();
+            try
+            {
+                var bus = new PBus(lifetime);
+                lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async _msg =>
+                {
+                    var internet = await Utilities.IsInternetAvailable();
+                    return new SimpleMsgRes(_msg.Code + (internet ? 1 : 1));
+                }));
+
+                var result = bus.PostReqResOrDefault<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(0), TimeSpan.FromSeconds(10));
+                Assert.NotNull(result);
+                Assert.Equal(1, result.Code);
+            }
+            finally
+            {
+                lifetime.Complete();
+            }
+        }
+
         class SimpleMsgReq : IBusMsg
         {
             public SimpleMsgReq(int _code)

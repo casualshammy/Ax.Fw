@@ -65,17 +65,17 @@ namespace Ax.Fw.Bus
         {
             if (includeLastValue && p_lastMsg.TryGetValue(typeof(T), out var msg))
                 return p_msgFlow
+                    .ObserveOn(p_scheduler)
                     .Where(x => x.Data.GetType() == typeof(T))
                     .Select(x => x.Data)
                     .Merge(Observable.Return(msg))
-                    .Cast<T>()
-                    .ObserveOn(p_scheduler);
+                    .Cast<T>();
             else
                 return p_msgFlow
+                    .ObserveOn(p_scheduler)
                     .Where(x => x.Data.GetType() == typeof(T))
                     .Select(x => x.Data)
-                    .Cast<T>()
-                    .ObserveOn(p_scheduler);
+                    .Cast<T>();
         }
 
         /// <summary>
@@ -110,8 +110,8 @@ namespace Ax.Fw.Bus
             var guid = Guid.NewGuid();
             TRes? result = default;
             using var subscription = p_msgFlow
-                .Where(_x => _x.Id == guid && _x.Data.GetType() == typeof(TRes))
                 .ObserveOn(p_scheduler)
+                .Where(_x => _x.Id == guid && _x.Data.GetType() == typeof(TRes))
                 .Subscribe(_x =>
                 {
                     result = (TRes)_x.Data;
@@ -147,14 +147,13 @@ namespace Ax.Fw.Bus
             {
                 var value = await TaskObservableExtensions.ToTask(Observable
                     .Merge(
-                        p_msgFlow.Where(_x => _x.Id == guid && _x.Data.GetType() == typeof(TRes)),
+                        p_msgFlow.ObserveOn(p_scheduler).Where(_x => _x.Id == guid && _x.Data.GetType() == typeof(TRes)),
                         Observable.Timer(_timeout).Select(_ => new BusMsgSerial(new EmptyBusMsg(), Guid.Empty)),
                         Observable.Timer(TimeSpan.Zero).Select(_ =>
                         {
                             PostMsg(new BusMsgSerial(_req, guid));
                             return new BusMsgSerial(new EmptyBusMsg(), ignoredGuid);
                         }))
-                    .ObserveOn(p_scheduler)
                     .FirstOrDefaultAsync(_x => _x.Id != ignoredGuid), _ct);
 
                 if (value != default && value.Id != Guid.Empty)
@@ -180,6 +179,7 @@ namespace Ax.Fw.Bus
             where TRes : IBusMsg
         {
             return p_msgFlow
+                .ObserveOn(p_scheduler)
                 .Where(_x => _x.Data.GetType() == typeof(TReq))
                 .SelectAsync(async _x =>
                 {
@@ -187,8 +187,7 @@ namespace Ax.Fw.Bus
                     var result = await _func((TReq)_x.Data);
 
                     PostMsg(new BusMsgSerial(result, guid));
-                })
-                .ObserveOn(p_scheduler)
+                }, p_scheduler)
                 .Subscribe();
         }
 
@@ -204,8 +203,8 @@ namespace Ax.Fw.Bus
             where TRes : IBusMsg
         {
             return p_msgFlow
-                .Where(x => x.Data.GetType() == typeof(TReq))
                 .ObserveOn(p_scheduler)
+                .Where(x => x.Data.GetType() == typeof(TReq))
                 .Subscribe(x =>
                 {
                     var guid = x.Id;
@@ -227,6 +226,7 @@ namespace Ax.Fw.Bus
             where TRes : IBusMsg
         {
             p_msgFlow
+                .ObserveOn(p_scheduler)
                 .Where(_x => _x.Data.GetType() == typeof(TReq))
                 .SelectAsync(async _x =>
                 {
@@ -234,8 +234,7 @@ namespace Ax.Fw.Bus
                     var result = await _func((TReq)_x.Data);
 
                     PostMsg(new BusMsgSerial(result, guid));
-                })
-                .ObserveOn(p_scheduler)
+                }, p_scheduler)
                 .Subscribe(_lifetime);
         }
 
@@ -251,8 +250,8 @@ namespace Ax.Fw.Bus
             where TRes : IBusMsg
         {
             p_msgFlow
-                .Where(x => x.Data.GetType() == typeof(TReq))
                 .ObserveOn(p_scheduler)
+                .Where(x => x.Data.GetType() == typeof(TReq))
                 .Subscribe(x =>
                 {
                     var guid = x.Id;
