@@ -25,8 +25,7 @@ namespace Ax.Fw
                 rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
                 rijCrypto.Mode = CipherMode.CBC;
 
-                var encryptor = rijCrypto.CreateEncryptor();
-
+                using (var encryptor = rijCrypto.CreateEncryptor())
                 using (var cryptoStream = new CryptoStream(_outEncryptedStream, encryptor, CryptoStreamMode.Write, true))
                     await _inStream.CopyToAsync(cryptoStream, 80 * 1024, _ct);
             }
@@ -48,10 +47,9 @@ namespace Ax.Fw
                 rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
                 rijCrypto.Mode = CipherMode.CBC;
 
-                var decryptor = rijCrypto.CreateDecryptor();
-
+                using (var decryptor = rijCrypto.CreateDecryptor())
                 using (var cryptoStream = new CryptoStream(_inEncryptedStream, decryptor, CryptoStreamMode.Read, true))
-                    await cryptoStream.CopyToAsync(_outStream, 80*1024, _ct);
+                    await cryptoStream.CopyToAsync(_outStream, 80 * 1024, _ct);
             }
         }
 
