@@ -156,6 +156,9 @@ namespace Ax.Fw
                     if (!fileInfo.Directory.Exists)
                         Directory.CreateDirectory(fileInfo.Directory.FullName);
 
+                    if (Directory.Exists(fileInfo.FullName))
+                        continue;
+
                     using (var entryStream = entry.Open())
                     using (var file = File.Open(fileAbsolutePath, FileMode.Create, FileAccess.Write))
                         await entryStream.CopyToAsync(file);
