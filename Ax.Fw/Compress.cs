@@ -161,7 +161,7 @@ namespace Ax.Fw
 
                     using (var entryStream = entry.Open())
                     using (var file = File.Open(fileAbsolutePath, FileMode.Create, FileAccess.Write))
-                        await entryStream.CopyToAsync(file);
+                        await entryStream.CopyToAsync(file, 81920, _ct);
 
                     _progressReport?.Invoke(new DeCompressProgress(++filesProcessed / totalFiles * 100, fileInfo));
                 }
