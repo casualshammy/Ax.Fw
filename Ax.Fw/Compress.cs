@@ -15,14 +15,14 @@ namespace Ax.Fw
 {
     public class DeCompressProgress
     {
-        public DeCompressProgress(double _progressPercent, FileInfo _lastProcessedFile)
+        public DeCompressProgress(double _progressPercent, FileSystemInfo _lastProcessedEntry)
         {
             ProgressPercent = _progressPercent;
-            LastProcessedFile = _lastProcessedFile;
+            LastProcessedEntry = _lastProcessedEntry;
         }
 
         public double ProgressPercent { get; }
-        public FileInfo LastProcessedFile { get; }
+        public FileSystemInfo LastProcessedEntry { get; }
     }
 
     public static class Compress
@@ -145,25 +145,34 @@ namespace Ax.Fw
 
             using (var archive = new ZipArchive(_inputStream, ZipArchiveMode.Read, true, Encoding.UTF8))
             {
-                var filesProcessed = 0L;
-                var totalFiles = (double)archive.Entries.Count;
+                var processedSize = 0L;
+                var totalSize = (double)archive.Entries.Select(_x => _x.Length).Sum();
                 foreach (var entry in archive.Entries)
                 {
                     _ct.ThrowIfCancellationRequested();
-                    var fileAbsolutePath = Path.Combine(_outputDirectory, entry.FullName);
-                    var fileInfo = new FileInfo(fileAbsolutePath);
+                    var entryFullName = entry.FullName;
+                    var fileAbsolutePath = Path.Combine(_outputDirectory, entryFullName);
 
+                    if (entryFullName.EndsWith("/") || entryFullName.EndsWith("\\"))
+                    {
+                        var fileSystemInfo = new DirectoryInfo(fileAbsolutePath);
+                        if (!fileSystemInfo.Exists)
+                            Directory.CreateDirectory(fileSystemInfo.FullName);
+
+                        _progressReport?.Invoke(new DeCompressProgress(processedSize / totalSize * 100, fileSystemInfo));
+                        continue;
+                    }
+
+                    var fileInfo = new FileInfo(fileAbsolutePath);
                     if (!fileInfo.Directory.Exists)
                         Directory.CreateDirectory(fileInfo.Directory.FullName);
-
-                    if (Directory.Exists(fileInfo.FullName))
-                        continue;
 
                     using (var entryStream = entry.Open())
                     using (var file = File.Open(fileAbsolutePath, FileMode.Create, FileAccess.Write))
                         await entryStream.CopyToAsync(file, 81920, _ct);
 
-                    _progressReport?.Invoke(new DeCompressProgress(++filesProcessed / totalFiles * 100, fileInfo));
+                    processedSize += entry.Length;
+                    _progressReport?.Invoke(new DeCompressProgress(processedSize / totalSize * 100, fileInfo));
                 }
             }
         }
