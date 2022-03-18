@@ -4,6 +4,7 @@ using Ax.Fw.SharedTypes.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace Ax.Fw.ClassExport
 {
@@ -11,8 +12,12 @@ namespace Ax.Fw.ClassExport
     {
         private readonly List<object> p_instances = new();
 
-        public AutoActivator(ILifetime _lifetime, ServiceCollection _serviceCollection)
+        public AutoActivator(ILifetime _lifetime, ServiceCollection _serviceCollection, bool _forceLoadReferencedAssemblies = false)
         {
+            if (_forceLoadReferencedAssemblies)
+                foreach (var assembly in Assembly.GetExecutingAssembly().GetReferencedAssemblies())
+                    Assembly.Load(assembly);
+
             foreach (var type in Utilities.GetTypesWith<AutoActivatorExportAttribute>(true))
             {
                 var exportInfo = (AutoActivatorExportAttribute)Attribute.GetCustomAttribute(type, typeof(AutoActivatorExportAttribute));
