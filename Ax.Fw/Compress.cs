@@ -62,7 +62,7 @@ namespace Ax.Fw
         }
 
         public static async Task CompressListOfFilesAsync(
-            IDictionary<FileInfo, string> _realPathWithRelativePath,
+            IReadOnlyDictionary<FileInfo, string> _realPathWithRelativePath,
             string _zipPath,
             Action<DeCompressProgress>? _progressReport,
             CancellationToken _ct)
@@ -86,7 +86,7 @@ namespace Ax.Fw
         }
 
         public static async Task CompressListOfFilesAsync(
-            IDictionary<FileInfo, string> _realPathWithRelativePath,
+            IReadOnlyDictionary<FileInfo, string> _realPathWithRelativePath,
             Stream _outputStream,
             Action<DeCompressProgress>? _progressReport,
             CancellationToken _ct)
@@ -96,8 +96,8 @@ namespace Ax.Fw
 
             using (var archive = new ZipArchive(_outputStream, ZipArchiveMode.Create, true, Encoding.UTF8))
             {
-                var filesProcessed = 0L;
-                var totalFiles = (double)_realPathWithRelativePath.Count;
+                var filesSizeProcessed = 0L;
+                var totalFilesSize = await Task.Run(() => (double)_realPathWithRelativePath.Keys.Sum(_x => _x.Length));
                 foreach (var pair in _realPathWithRelativePath)
                 {
                     _ct.ThrowIfCancellationRequested();
@@ -112,7 +112,8 @@ namespace Ax.Fw
                     using (var file = File.OpenRead(fileInfo.FullName))
                         await file.CopyToAsync(entryStream);
 
-                    _progressReport?.Invoke(new DeCompressProgress(++filesProcessed / totalFiles * 100, fileInfo));
+                    filesSizeProcessed += fileInfo.Length;
+                    _progressReport?.Invoke(new DeCompressProgress(filesSizeProcessed / totalFilesSize * 100, fileInfo));
                 }
             }
         }

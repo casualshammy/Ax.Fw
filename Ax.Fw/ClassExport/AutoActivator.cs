@@ -15,7 +15,7 @@ namespace Ax.Fw.ClassExport
         public AutoActivator(ILifetime _lifetime, ServiceCollection _serviceCollection, bool _forceLoadReferencedAssemblies = false)
         {
             if (_forceLoadReferencedAssemblies)
-                foreach (var assembly in Assembly.GetExecutingAssembly().GetReferencedAssemblies())
+                foreach (var assembly in Assembly.GetEntryAssembly().GetReferencedAssemblies())
                     Assembly.Load(assembly);
 
             foreach (var type in Utilities.GetTypesWith<AutoActivatorExportAttribute>(true))
