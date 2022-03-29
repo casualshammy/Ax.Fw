@@ -4,7 +4,7 @@ using System;
 namespace Ax.Fw.Attributes
 {
     [AttributeUsage(AttributeTargets.Class)]
-    [Obsolete($"Please use {nameof(ImportClassAttribute)} attribute")]
+    [Obsolete("Please use 'ImportClassAttribute' attribute")]
     public class AutoActivatorExportAttribute : Attribute
     {
         public AutoActivatorExportAttribute(Type InterfaceType, bool Singletone = true, bool ActivateOnStart = false, bool DisposeRequired = false)
