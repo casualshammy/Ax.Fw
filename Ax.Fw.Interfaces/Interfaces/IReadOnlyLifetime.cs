@@ -10,6 +10,11 @@ namespace Ax.Fw.SharedTypes.Interfaces
         CancellationToken Token { get; }
         bool CancellationRequested { get; }
 
+        /// <summary>
+        /// This IObservable will produce single value (<see cref="true"/>) before completion of this instance of <see cref="IReadOnlyLifetime"/> 
+        /// </summary>
+        IObservable<bool> OnCompleteStarted { get; }
+
 #if NETSTANDARD2_1_OR_GREATER
         [return: NotNullIfNotNull(parameterName: "_instance")]
 #endif

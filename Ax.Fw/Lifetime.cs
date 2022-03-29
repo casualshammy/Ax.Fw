@@ -3,6 +3,7 @@ using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Reactive.Subjects;
 using System.Threading;
 
 namespace Ax.Fw
@@ -12,10 +13,13 @@ namespace Ax.Fw
         private readonly ConcurrentStack<Action> p_doOnCompleted = new();
         private readonly object p_lock = new();
         private readonly CancellationTokenSource p_cts = new();
+        private readonly Subject<bool> p_onCompleteStartedFlow = new();
 
         public CancellationToken Token => p_cts.Token;
 
         public bool CancellationRequested => p_cts.Token.IsCancellationRequested;
+
+        public IObservable<bool> OnCompleteStarted => p_onCompleteStartedFlow;
 
 #if NETSTANDARD2_1_OR_GREATER
         [return: NotNullIfNotNull(parameterName: "_instance")]
@@ -39,6 +43,9 @@ namespace Ax.Fw
 
         public void Complete()
         {
+            p_onCompleteStartedFlow.OnNext(true);
+            p_onCompleteStartedFlow.OnCompleted();
+
             lock (p_lock)
             {
                 if (p_cts.Token.IsCancellationRequested)

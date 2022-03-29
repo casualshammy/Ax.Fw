@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Ax.Fw.Extensions
@@ -12,12 +13,12 @@ namespace Ax.Fw.Extensions
                 _action(item);
         }
 
-        public static IEnumerable<TSource> DistinctBy<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> keySelector)
+        public static IEnumerable<TSource> DistinctBy<TSource, TKey>(this IEnumerable<TSource> _source, Func<TSource, TKey> _keySelector)
         {
             HashSet<TKey> knownKeys = new HashSet<TKey>();
-            foreach (TSource element in source)
+            foreach (TSource element in _source)
             {
-                if (knownKeys.Add(keySelector(element)))
+                if (knownKeys.Add(_keySelector(element)))
                 {
                     yield return element;
                 }
@@ -91,6 +92,19 @@ namespace Ax.Fw.Extensions
             foreach (var entry in _source)
                 if (await _selector(entry))
                     yield return entry;
+        }
+
+        public static async Task<List<TSource>> ToListAsync<TSource>(this IAsyncEnumerable<TSource> _source, CancellationToken _ct = default)
+        {
+            if (_source == null)
+                throw new ArgumentNullException(nameof(_source));
+
+            var list = new List<TSource>();
+
+            await foreach (var item in _source.WithCancellation(_ct).ConfigureAwait(false))
+                list.Add(item);
+
+            return list;
         }
 
     }

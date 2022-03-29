@@ -1,9 +1,12 @@
 ﻿#nullable enable
 using Ax.Fw.Attributes;
+using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 
 namespace Ax.Fw.ClassExport
@@ -12,11 +15,16 @@ namespace Ax.Fw.ClassExport
     {
         private readonly List<object> p_instances = new();
 
-        public AutoActivator(ILifetime _lifetime, ServiceCollection _serviceCollection, bool _forceLoadReferencedAssemblies = false)
+        public AutoActivator(ILifetime _lifetime, ServiceCollection _serviceCollection, IEnumerable<Assembly>? _loadReferencedAssembliesFrom = null)
         {
-            if (_forceLoadReferencedAssemblies)
-                foreach (var assembly in Assembly.GetEntryAssembly().GetReferencedAssemblies())
+            if (_loadReferencedAssembliesFrom != null)
+            {
+                foreach (var assembly in _loadReferencedAssembliesFrom.SelectMany(_x => _x.GetReferencedAssemblies()).DistinctBy(_x => _x.FullName))
+                {
                     Assembly.Load(assembly);
+                    Debug.WriteLine($"{nameof(AutoActivator)}: Loaded assembly: {assembly?.FullName}");
+                }
+            }
 
             foreach (var type in Utilities.GetTypesWith<AutoActivatorExportAttribute>(true))
             {
