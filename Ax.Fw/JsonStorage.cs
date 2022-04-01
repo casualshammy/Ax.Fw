@@ -48,7 +48,7 @@ namespace Ax.Fw
             }
             else
             {
-                return JsonConvert.DeserializeObject<T>(File.ReadAllText(JsonFilePath, Encoding.UTF8)) ?? throw new InvalidCastException($"Can't parse file!");
+                return JsonConvert.DeserializeObject<T>(File.ReadAllText(JsonFilePath, Encoding.UTF8)) ?? await _defaultFactory();
             }
         }
 
@@ -71,7 +71,7 @@ namespace Ax.Fw
             }
             else
             {
-                return JsonConvert.DeserializeObject<T>(File.ReadAllText(JsonFilePath, Encoding.UTF8)) ?? throw new InvalidCastException($"Can't parse file!");
+                return JsonConvert.DeserializeObject<T>(File.ReadAllText(JsonFilePath, Encoding.UTF8)) ?? _defaultFactory();
             }
         }
 
