@@ -2,6 +2,7 @@
 using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Interfaces;
 using System;
+using System.Reactive.Subjects;
 
 namespace Ax.Fw
 {
@@ -11,16 +12,24 @@ namespace Ax.Fw
     /// <typeparam name="T"></typeparam>
     public class RxProperty<T> : IRxProperty<T>
     {
+        private readonly ReplaySubject<T?> p_replaySubject;
+
         public RxProperty(IObservable<T?> _observable, IReadOnlyLifetime _lifetime, T? _defaultValue = default)
         {
+            p_replaySubject = _lifetime.DisposeOnCompleted(new ReplaySubject<T>(1))!;
+
             Value = _defaultValue;
-            Observable = _observable;
+
             _observable
-                .Subscribe(_x => Value = _x, _lifetime);
+                .Subscribe(_x =>
+                {
+                    Value = _x;
+                    p_replaySubject?.OnNext(_x);
+                }, _lifetime);
         }
 
         public T? Value { get; private set; }
-        public IObservable<T?> Observable { get; }
+        public IObservable<T?> Observable => p_replaySubject;
 
     }
 }

@@ -4,11 +4,10 @@ using Ax.Fw.SharedTypes.Interfaces;
 using Newtonsoft.Json;
 using System;
 using System.IO;
-using System.Reactive;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Text;
-using System.Threading;
 
 namespace Ax.Fw
 {
@@ -17,11 +16,7 @@ namespace Ax.Fw
     /// </summary>
     public class JsonObservableStorage<T> : JsonStorage<T>, IJsonObservableStorage<T>
     {
-        private readonly FileSystemWatcher p_watcher;
         private readonly ReplaySubject<T?> p_changesFlow = new(1);
-        private readonly Subject<Unit> p_fileChangedFlow = new();
-
-        private long p_errors = 0;
 
         /// <summary>
         ///
@@ -29,78 +24,68 @@ namespace Ax.Fw
         /// <param name="_jsonFilePath">Path to JSON file. Can't be null or empty.</param>
         public JsonObservableStorage(ILifetime _lifetime, string _jsonFilePath) : base(_jsonFilePath)
         {
-            var directory = Path.GetDirectoryName(_jsonFilePath);
-            var filename = Path.GetFileName(_jsonFilePath);
-
             _lifetime.DisposeOnCompleted(p_changesFlow);
+            var scheduler = _lifetime.DisposeOnCompleted(new EventLoopScheduler());
 
-            _lifetime.DisposeOnCompleted(p_watcher = new FileSystemWatcher(directory, filename)
-            {
-                NotifyFilter = NotifyFilters.CreationTime
-                                 | NotifyFilters.DirectoryName
-                                 | NotifyFilters.FileName
-                                 | NotifyFilters.LastWrite
-                                 | NotifyFilters.Size
-            });
-            p_watcher.IncludeSubdirectories = false;
-            p_watcher.EnableRaisingEvents = true;
-            p_watcher.Created += WatcherFile_Created;
-            p_watcher.Changed += WatcherFile_Changed;
-            p_watcher.Deleted += WatcherFile_Deleted;
-            _lifetime.DoOnCompleted(() =>
-            {
-                p_watcher.Created -= WatcherFile_Created;
-                p_watcher.Changed -= WatcherFile_Changed;
-                p_watcher.Deleted -= WatcherFile_Deleted;
-            });
-
-            p_fileChangedFlow
-                .Throttle(TimeSpan.FromSeconds(1))
-                .Subscribe(_ =>
+            Observable
+                .Interval(TimeSpan.FromSeconds(1), scheduler)
+                .StartWith(0)
+                .Scan(new FileInfoChanges(null, false), (_seed, _) =>
                 {
-                    try
-                    {
-                        if (Interlocked.Read(ref p_errors) > 10)
-                            return;
+                    var newFileInfo = new FileInfo(_jsonFilePath);
 
-                        p_changesFlow.OnNext(GetDataOrDefault());
-                        Interlocked.Exchange(ref p_errors, 0L);
-                    }
-                    catch
+                    if (_seed.FileInfo == null)
+                        return new(newFileInfo, true);
+
+                    if (_seed.FileInfo.Exists != newFileInfo.Exists)
+                        return new(newFileInfo, true);
+
+                    if (newFileInfo.Exists)
                     {
-                        Interlocked.Increment(ref p_errors);
-                        p_fileChangedFlow.OnNext();
+                        if (_seed.FileInfo.LastWriteTimeUtc != newFileInfo.LastWriteTimeUtc)
+                            return new(newFileInfo, true);
+
+                        if (_seed.FileInfo.Length != newFileInfo.Length)
+                            return new(newFileInfo, true);
                     }
-                }, _lifetime);
+
+                    return new(newFileInfo, false);
+                })
+                .Where(_x => _x.Changed)
+                .Subscribe(_ => p_changesFlow.OnNext(GetDataOrDefaultSafe()), _lifetime);
         }
 
         /// <summary>
-        /// IObservable of changes in data
+        /// IObservable of changes
         /// </summary>
         public IObservable<T?> Changes => p_changesFlow;
 
-        private T? GetDataOrDefault()
+        private T? GetDataOrDefaultSafe()
         {
-            bool fileExist = File.Exists(JsonFilePath);
-            if (!fileExist)
+            try
+            {
+                bool fileExist = File.Exists(JsonFilePath);
+                if (!fileExist)
+                    return default;
+
+                return JsonConvert.DeserializeObject<T>(File.ReadAllText(JsonFilePath, Encoding.UTF8)) ?? default;
+            }
+            catch
+            {
                 return default;
-
-            return JsonConvert.DeserializeObject<T>(File.ReadAllText(JsonFilePath, Encoding.UTF8)) ?? default;
+            }
         }
 
-        private void WatcherFile_Created(object _sender, FileSystemEventArgs _e)
+        class FileInfoChanges
         {
-            p_fileChangedFlow.OnNext();
-        }
+            public FileInfoChanges(FileInfo? _fileInfo, bool _changed)
+            {
+                FileInfo = _fileInfo;
+                Changed = _changed;
+            }
 
-        private void WatcherFile_Changed(object _sender, FileSystemEventArgs _e)
-        {
-            p_fileChangedFlow.OnNext();
-        }
-
-        private void WatcherFile_Deleted(object _sender, FileSystemEventArgs _e)
-        {
-            p_fileChangedFlow.OnNext();
+            public FileInfo? FileInfo { get; }
+            public bool Changed { get; }
         }
 
     }
