@@ -1,4 +1,5 @@
 ﻿#nullable enable
+
 using Ax.Fw.Attributes;
 using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Interfaces;
@@ -9,20 +10,20 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 
-namespace Ax.Fw.ClassExport
+namespace Ax.Fw
 {
-    public class AutoActivator
+    public class ImportClassCollector
     {
         private readonly List<object> p_instances = new();
 
-        public AutoActivator(ILifetime _lifetime, ServiceCollection _serviceCollection, IEnumerable<Assembly>? _loadReferencedAssembliesFrom = null)
+        public ImportClassCollector(ILifetime _lifetime, ServiceCollection _serviceCollection, IEnumerable<Assembly>? _loadReferencedAssembliesFrom = null)
         {
             if (_loadReferencedAssembliesFrom != null)
             {
                 foreach (var assembly in _loadReferencedAssembliesFrom.SelectMany(_x => _x.GetReferencedAssemblies()).DistinctBy(_x => _x.FullName))
                 {
                     Assembly.Load(assembly);
-                    Debug.WriteLine($"{nameof(AutoActivator)}: Loaded assembly: {assembly?.FullName}");
+                    Debug.WriteLine($"{nameof(ImportClassCollector)}: Loaded assembly: {assembly?.FullName}");
                 }
             }
 
@@ -37,7 +38,7 @@ namespace Ax.Fw.ClassExport
             foreach (var type in Utilities.GetTypesWith<ImportClassAttribute>(true))
             {
                 var exportInfo = (ImportClassAttribute)Attribute.GetCustomAttribute(type, typeof(ImportClassAttribute));
-                if (exportInfo.Singletone)
+                if (exportInfo.Singleton)
                     _serviceCollection = (ServiceCollection)_serviceCollection.AddSingleton(exportInfo.InterfaceType, type);
                 else
                     _serviceCollection = (ServiceCollection)_serviceCollection.AddTransient(exportInfo.InterfaceType, type);
@@ -57,7 +58,7 @@ namespace Ax.Fw.ClassExport
             foreach (var type in Utilities.GetTypesWith<ImportClassAttribute>(true))
             {
                 var exportInfo = (ImportClassAttribute)Attribute.GetCustomAttribute(type, typeof(ImportClassAttribute));
-                if (exportInfo.ActivateOnStart && exportInfo.Singletone)
+                if (exportInfo.ActivateOnStart && exportInfo.Singleton)
                 {
                     var instance = ServiceProvider.GetRequiredService(exportInfo.InterfaceType);
                     p_instances.Add(instance);

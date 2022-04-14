@@ -43,13 +43,13 @@ namespace Ax.Fw
 
         public void Complete()
         {
-            p_onCompleteStartedFlow.OnNext(true);
-            p_onCompleteStartedFlow.OnCompleted();
-
             lock (p_lock)
             {
                 if (p_cts.Token.IsCancellationRequested)
                     return;
+
+                p_onCompleteStartedFlow.OnNext(true);
+                p_onCompleteStartedFlow.OnCompleted();
 
                 p_cts.Cancel();
                 while (p_doOnCompleted.TryPop(out var item))
