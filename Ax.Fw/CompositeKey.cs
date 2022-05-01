@@ -14,7 +14,7 @@ namespace Ax.Fw
         public CompositeKey(
             [JsonProperty(nameof(Value))] string _value)
         {
-            if (string.IsNullOrEmpty(_value) || _value.All(x => x == '/'))
+            if (string.IsNullOrEmpty(_value) || _value.All(_x => _x == '/'))
                 throw new ArgumentOutOfRangeException(nameof(_value), $"Value of '{nameof(_value)}' must be non-empty string and can't contain only '/' characters");
 
             Value = _value.Trim('/');
@@ -44,6 +44,7 @@ namespace Ax.Fw
         /// <summary>
         /// Get new composite key: {this instance} + '/' + {provided string}
         /// </summary>
+        [JsonIgnore]
         public CompositeKey this[string _addPath]
         {
             get
@@ -55,6 +56,7 @@ namespace Ax.Fw
             }
         }
 
+        [JsonIgnore]
         public string LastPart
         {
             get

@@ -16,7 +16,7 @@ namespace Ax.Fw
 
         public RxProperty(IObservable<T?> _observable, IReadOnlyLifetime _lifetime, T? _defaultValue = default)
         {
-            p_replaySubject = _lifetime.DisposeOnCompleted(new ReplaySubject<T>(1))!;
+            p_replaySubject = _lifetime.DisposeOnCompleted(new ReplaySubject<T?>(1))!;
 
             Value = _defaultValue;
 
