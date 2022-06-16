@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using Ax.Fw.Extensions;
+using Ax.Fw.SharedTypes.Data;
 using System;
 using System.IO;
 using System.Linq;
@@ -32,14 +33,14 @@ namespace Ax.Fw.Tests
                 var size = dir.CalcDirectorySize();
 
                 var resultPercent = 0d;
-                void onProgress(DeCompressProgress _progress)
+                void onProgress(TypedProgress<FileSystemInfo> _progress)
                 {
-                    resultPercent = _progress.ProgressPercent;
+                    resultPercent = (double)_progress.Current / _progress.Total;
                 }
 
                 await Compress.CompressDirectoryToZipFileAsync(dir.FullName, tempFile, onProgress, lifetime.Token);
 
-                Assert.InRange(resultPercent, 99d, 101d);
+                Assert.InRange(resultPercent, 0.99, 1.01);
 
                 resultPercent = 0d;
                 var tempDirInfo = new DirectoryInfo(tempDir);
@@ -48,7 +49,7 @@ namespace Ax.Fw.Tests
 
                 await Compress.DecompressZipFileAsync(tempDir, tempFile, onProgress, lifetime.Token);
 
-                Assert.InRange(resultPercent, 99d, 101d);
+                Assert.InRange(resultPercent, 0.99, 1.01);
                 Assert.Equal(tempDirInfo.CreateMd5ForFolder(), md5);
                 Assert.Equal(tempDirInfo.CalcDirectorySize(), size);
             }
@@ -85,14 +86,14 @@ namespace Ax.Fw.Tests
                 var size = dir.CalcDirectorySize();
 
                 var resultPercent = 0d;
-                void onProgress(DeCompressProgress _progress)
+                void onProgress(TypedProgress<FileSystemInfo> _progress)
                 {
-                    resultPercent = _progress.ProgressPercent;
+                    resultPercent = (double)_progress.Current / _progress.Total;
                 }
 
                 await Compress.CompressListOfFilesAsync(files, tempFile, onProgress, lifetime.Token);
 
-                Assert.InRange(resultPercent, 99d, 101d);
+                Assert.InRange(resultPercent, 0.99, 1.01);
 
                 resultPercent = 0d;
                 var tempDirInfo = new DirectoryInfo(tempDir);
@@ -101,7 +102,7 @@ namespace Ax.Fw.Tests
 
                 await Compress.DecompressZipFileAsync(tempDir, tempFile, onProgress, lifetime.Token);
 
-                Assert.InRange(resultPercent, 99d, 101d);
+                Assert.InRange(resultPercent, 0.99, 1.01);
                 Assert.Equal(tempDirInfo.CreateMd5ForFolder(), md5);
                 Assert.Equal(tempDirInfo.CalcDirectorySize(), size);
             }
@@ -131,16 +132,16 @@ namespace Ax.Fw.Tests
                 var dir = new DirectoryInfo(Environment.CurrentDirectory);
 
                 var resultPercent = 0d;
-                void onProgress(DeCompressProgress _progress)
+                void onProgress(TypedProgress<FileSystemInfo> _progress)
                 {
-                    resultPercent = _progress.ProgressPercent;
-                    if (resultPercent > 30)
+                    resultPercent = (double)_progress.Current / _progress.Total;
+                    if (resultPercent > 0.30)
                         lifetime.Complete();
                 }
 
                 await Assert.ThrowsAsync<OperationCanceledException>(async () => await Compress.CompressDirectoryToZipFileAsync(dir.FullName, tempFile, onProgress, lifetime.Token));
 
-                Assert.InRange(resultPercent, 30, 50);
+                Assert.InRange(resultPercent, 0.3d, 0.5d);
             }
             finally
             {
@@ -170,14 +171,14 @@ namespace Ax.Fw.Tests
                 var size = dir.CalcDirectorySize();
 
                 var resultPercent = 0d;
-                void onProgress(DeCompressProgress _progress)
+                void onProgress(TypedProgress<FileSystemInfo> _progress)
                 {
-                    resultPercent = _progress.ProgressPercent;
+                    resultPercent = (double)_progress.Current / _progress.Total;
                 }
 
                 await Compress.CompressDirectoryToZipFileAsync(dir.FullName, tempFile, onProgress, lifetime.Token);
 
-                Assert.Equal(100d, resultPercent);
+                Assert.Equal(1d, resultPercent);
 
                 resultPercent = 0d;
                 var tempDirInfo = new DirectoryInfo(tempDir);
@@ -186,7 +187,7 @@ namespace Ax.Fw.Tests
 
                 await Compress.DecompressZipFileAsync(tempDir, tempFile, onProgress, lifetime.Token);
 
-                Assert.Equal(100d, resultPercent);
+                Assert.Equal(1d, resultPercent);
                 Assert.Equal(tempDirInfo.CreateMd5ForFolder(), md5);
                 Assert.Equal(tempDirInfo.CalcDirectorySize(), size);
 
