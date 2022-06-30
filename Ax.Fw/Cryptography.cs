@@ -1,7 +1,9 @@
-﻿using System;
+﻿using Ax.Fw.SharedTypes.Data;
+using System;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -51,6 +53,40 @@ namespace Ax.Fw
                 using (var cryptoStream = new CryptoStream(_inEncryptedStream, decryptor, CryptoStreamMode.Read, true))
                     await cryptoStream.CopyToAsync(_outStream, 80 * 1024, _ct);
             }
+        }
+
+        public static byte[] CalculateSHAHash(byte[] _data, HashComplexity _hashComplexity = HashComplexity.Bit512)
+        {
+            var hashInst = _hashComplexity switch
+            {
+                HashComplexity.Bit256 => SHA256.Create() as HashAlgorithm,
+                HashComplexity.Bit384 => SHA384.Create(),
+                HashComplexity.Bit512 => SHA512.Create(),
+                _ => throw new NotImplementedException()
+            };
+
+            using (hashInst)
+                return hashInst.ComputeHash(_data);
+        }
+
+        public static string CalculateSHAHash(string _data, HashComplexity _hashComplexity = HashComplexity.Bit512)
+        {
+            var data = Encoding.UTF8.GetBytes(_data);
+            var hash = CalculateSHAHash(data, _hashComplexity);
+            return BitConverter.ToString(hash).Replace("-", "");
+        }
+
+        public static byte[] CalculateMd5Hash(byte[] _data)
+        {
+            using (var hash = MD5.Create())
+                return hash.ComputeHash(_data);
+        }
+
+        public static string CalculateMd5Hash(string _data)
+        {
+            var data = Encoding.UTF8.GetBytes(_data);
+            var hash = CalculateMd5Hash(data);
+            return BitConverter.ToString(hash).Replace("-", "");
         }
 
     }

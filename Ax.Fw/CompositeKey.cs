@@ -69,25 +69,13 @@ namespace Ax.Fw
             }
         }
 
-        public override bool Equals(object _obj)
-        {
-            return _obj is CompositeKey key && Equals(key);
-        }
+        public override bool Equals(object _obj) => _obj is CompositeKey key && Equals(key);
 
-        public bool Equals(CompositeKey _other)
-        {
-            return string.Equals(Value, _other.Value);
-        }
+        public bool Equals(CompositeKey _other) => string.Equals(Value, _other.Value);
 
-        public override int GetHashCode()
-        {
-            return Value.GetHashCode();
-        }
+        public override int GetHashCode() => Value.GetHashCode();
 
-        public override string ToString()
-        {
-            return Value;
-        }
+        public override string ToString() => Value;
 
     }
 }

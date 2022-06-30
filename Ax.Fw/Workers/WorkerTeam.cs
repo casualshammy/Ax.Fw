@@ -5,6 +5,7 @@ using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Workers.Parts;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
@@ -14,31 +15,33 @@ using System.Threading.Tasks;
 
 namespace Ax.Fw.Workers
 {
-    public static class SyncTeam
+    public static class WorkerTeam
     {
         /// <summary>
-        /// Starts new <see cref="SyncTeam"/>. This team will do work pieces in sequential order.
+        /// Starts new <see cref="WorkerTeam"/>. This team will do work pieces in parallel order.
         /// </summary>
         /// <typeparam name="TJob">Object defining work data</typeparam>
         /// <param name="_jobsFlow"><see cref="IObservable{TJob}"/> of word data</param>
         /// <param name="_jobRoutine">Job main handler. This method will be executed with each <typeparam name="TJob">. Must return true if work is done successfully, false otherwise</param>
         /// <param name="_penaltyForFailedJobs">Work fails handler. Reports number of fails and exception, if exists. Must return <see cref="PenaltyInfo"/> that defines if job must be re-enqueued and delay before next attempt</param>
+        /// <param name="_workers">Number of simultaneous workers</param>
         /// <returns></returns>
-        public static SyncTeam<TJob> Run<TJob>(
+        public static WorkerTeam<TJob> Run<TJob>(
             IObservable<TJob> _jobsFlow,
             Func<TJob, CancellationToken, Task<bool>> _jobRoutine,
             Func<TJob, int, Exception?, CancellationToken, Task<PenaltyInfo>> _penaltyForFailedJobs,
             IReadOnlyLifetime _lifetime,
+            int _workers,
             IScheduler? _scheduler = null)
         {
-            return new SyncTeam<TJob>(_jobsFlow, _jobRoutine, _penaltyForFailedJobs, _lifetime, _scheduler);
+            return new WorkerTeam<TJob>(_jobsFlow, _jobRoutine, _penaltyForFailedJobs, _lifetime, _workers, _scheduler);
         }
     }
 
-    public class SyncTeam<TJob> : ITeam<TJob>
+    public class WorkerTeam<TJob> : ITeam<TJob>
     {
         private readonly ConcurrentQueue<JobInfo<TJob>> p_jobQueue = new();
-        private readonly Subject<Unit> p_processorStateChanged;
+        private readonly List<Subject<Unit>> p_workerFlows = new();
         private readonly Func<TJob, int, Exception?, CancellationToken, Task<PenaltyInfo>> p_penaltyForFailedJobs;
         private readonly Subject<TJob> p_completedFlow;
         private readonly IReadOnlyLifetime p_lifetime;
@@ -46,51 +49,62 @@ namespace Ax.Fw.Workers
         private volatile int p_completedJobs;
         private volatile int p_runningJobs;
 
-        internal SyncTeam(
+        internal WorkerTeam(
             IObservable<TJob> _jobsFlow,
             Func<TJob, CancellationToken, Task<bool>> _jobRoutineAsync,
             Func<TJob, int, Exception?, CancellationToken, Task<PenaltyInfo>> _penaltyForFailedJobsAsync,
             IReadOnlyLifetime _lifetime,
+            int _workers,
             IScheduler? _scheduler = null)
         {
+            if (_workers <= 0)
+                throw new ArgumentOutOfRangeException(nameof(_workers), "Number of workers must be greater than 0");
+
             p_penaltyForFailedJobs = _penaltyForFailedJobsAsync;
             p_lifetime = _lifetime;
 
             p_completedFlow = _lifetime.DisposeOnCompleted(new Subject<TJob>())!;
 
-            var scheduler = _scheduler ?? _lifetime.DisposeOnCompleted(new EventLoopScheduler())!;
-            p_processorStateChanged = _lifetime.DisposeOnCompleted(new Subject<Unit>())!;
-            p_processorStateChanged
-                .SelectAsync(async _ =>
-                {
-                    while (p_jobQueue.TryDequeue(out var jobInfo))
+            for (int i = 0; i < _workers; i++)
+            {
+                var workerFlow = _lifetime.DisposeOnCompleted(new Subject<Unit>())!;
+                p_workerFlows.Add(workerFlow);
+
+                var scheduler = _scheduler ?? ThreadPoolScheduler.Instance;
+
+                workerFlow
+                    .SelectAsync(async _ =>
                     {
-                        Interlocked.Increment(ref p_runningJobs);
-                        try
+                        while (p_jobQueue.TryDequeue(out var jobInfo))
                         {
-                            if (!await _jobRoutineAsync(jobInfo.Job, _lifetime.Token))
+                            Interlocked.Increment(ref p_runningJobs);
+                            try
                             {
-                                await HandleFailedJobAsync(jobInfo, null);
+                                if (!await _jobRoutineAsync(jobInfo.Job, _lifetime.Token))
+                                {
+                                    Interlocked.Increment(ref p_failedJobs);
+                                    await HandleFailedJobAsync(jobInfo, null);
+                                }
+                                else
+                                {
+                                    Interlocked.Increment(ref p_completedJobs);
+                                    p_completedFlow.OnNext(jobInfo.Job);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
                                 Interlocked.Increment(ref p_failedJobs);
+                                await HandleFailedJobAsync(jobInfo, ex);
                             }
-                            else
-                            {
-                                p_completedFlow.OnNext(jobInfo.Job);
-                                Interlocked.Increment(ref p_completedJobs);
-                            }
+                            Interlocked.Decrement(ref p_runningJobs);
                         }
-                        catch (Exception ex)
-                        {
-                            await HandleFailedJobAsync(jobInfo, ex);
-                        }
-                        Interlocked.Decrement(ref p_runningJobs);
-                    }
-                    return Unit.Default;
-                }, scheduler)
-                .Subscribe(_lifetime.Token);
+                    }, scheduler)
+                    .Subscribe(_lifetime);
+            }
+            _lifetime.DoOnCompleted(() => p_workerFlows.Clear());
 
             _jobsFlow
-                .Subscribe(x => AddNewJobToQueue(x), _lifetime.Token);
+                .Subscribe(_x => AddNewJobToQueue(_x), _lifetime);
         }
 
         public IObservable<TJob> CompletedJobs => p_completedFlow;
@@ -100,7 +114,8 @@ namespace Ax.Fw.Workers
         private void AddNewJobToQueue(TJob _job, int _failedCounter = 0)
         {
             p_jobQueue.Enqueue(new JobInfo<TJob>(_job, _failedCounter));
-            p_processorStateChanged.OnNext(Unit.Default);
+            foreach (var flow in p_workerFlows)
+                flow.OnNext();
         }
 
         private async Task HandleFailedJobAsync(JobInfo<TJob> _jobInfo, Exception? _ex)
@@ -110,8 +125,8 @@ namespace Ax.Fw.Workers
             if (penalty.TryAgain && penalty.Delay != null)
                 Observable
                     .Timer(penalty.Delay.Value)
-                    .Subscribe(_ => AddNewJobToQueue(newJobInfo.Job, newJobInfo.FailedCounter), p_lifetime.Token);
+                    .Subscribe(_ => AddNewJobToQueue(newJobInfo.Job, newJobInfo.FailedCounter), p_lifetime);
         }
-    }
 
+    }
 }

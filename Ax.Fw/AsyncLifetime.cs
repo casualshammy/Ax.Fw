@@ -53,12 +53,28 @@ namespace Ax.Fw
         public T? DisposeOnCompleted<T>(T? _instance) where T : IDisposable
         {
             if (p_cts.Token.IsCancellationRequested)
-                throw new InvalidOperationException($"This instance of {nameof(Lifetime)} is already completed!");
+                throw new InvalidOperationException($"This instance of {nameof(AsyncLifetime)} is already completed!");
 
             p_doOnCompleted.Push(() =>
             {
                 _instance?.Dispose();
                 return Task.CompletedTask;
+            });
+            return _instance;
+        }
+
+#if NETSTANDARD2_1_OR_GREATER
+        [return: NotNullIfNotNull(parameterName: "_instance")]
+#endif
+        public T? DisposeAsyncOnCompleted<T>(T? _instance) where T : IAsyncDisposable
+        {
+            if (p_cts.Token.IsCancellationRequested)
+                throw new InvalidOperationException($"This instance of {nameof(AsyncLifetime)} is already completed!");
+
+            p_doOnCompleted.Push(async () =>
+            {
+                if (_instance != null)
+                    await _instance.DisposeAsync().AsTask();
             });
             return _instance;
         }

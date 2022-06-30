@@ -63,7 +63,7 @@ namespace Ax.Fw.Bus
                 return Task.FromResult(new PenaltyInfo(_failCount < 100, TimeSpan.FromMilliseconds(_failCount * 300))); // 300ms - 30 sec
             }
 
-            AsyncTeam.Run(p_failedTcpMsgFlow, sendTcpMsgJob, sendTcpMsgJobPenalty, _lifetime, 4, _scheduler);
+            WorkerTeam.Run(p_failedTcpMsgFlow, sendTcpMsgJob, sendTcpMsgJobPenalty, _lifetime, 4, _scheduler);
 
             Observable
                 .Interval(TimeSpan.FromSeconds(5))

@@ -27,7 +27,9 @@ namespace Ax.Fw
                 }
             }
 
-            foreach (var type in Utilities.GetTypesWith<ImportClassAttribute>(true))
+            var types = Utilities.GetTypesWith<ImportClassAttribute>(true);
+
+            foreach (var type in types)
             {
                 var exportInfo = (ImportClassAttribute)Attribute.GetCustomAttribute(type, typeof(ImportClassAttribute));
                 if (exportInfo.Singleton)
@@ -38,7 +40,7 @@ namespace Ax.Fw
 
             ServiceProvider = _serviceCollection.BuildServiceProvider();
 
-            foreach (var type in Utilities.GetTypesWith<ImportClassAttribute>(true))
+            foreach (var type in types)
             {
                 var exportInfo = (ImportClassAttribute)Attribute.GetCustomAttribute(type, typeof(ImportClassAttribute));
                 if (exportInfo.ActivateOnStart && exportInfo.Singleton)
@@ -52,6 +54,10 @@ namespace Ax.Fw
         }
 
         public IServiceProvider ServiceProvider { get; }
+
+        public T Locate<T>() where T : notnull => ServiceProvider.GetRequiredService<T>();
+
+        public T? LocateOrNull<T>() where T : notnull => ServiceProvider.GetService<T>();
 
     }
 }

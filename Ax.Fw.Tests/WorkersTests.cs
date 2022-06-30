@@ -34,7 +34,7 @@ namespace Ax.Fw.Tests
 
                 var actuallyDoneWorkCount = 0;
 
-                var worker = SyncTeam.Run(
+                var worker = Worker.Run(
                     jobs,
                     async (_job, _ct) =>
                     {
@@ -72,7 +72,7 @@ namespace Ax.Fw.Tests
 
                 var actuallyDoneWorkCount = 0;
 
-                var worker = AsyncTeam.Run(
+                var worker = WorkerTeam.Run(
                     jobs,
                     async (_job, _ct) =>
                     {
@@ -117,7 +117,7 @@ namespace Ax.Fw.Tests
 
                 var actuallyDoneWorkCount = 0;
 
-                var worker = AsyncTeam.Run(
+                var worker = WorkerTeam.Run(
                     jobs,
                     async (_job, _ct) =>
                     {
@@ -162,7 +162,7 @@ namespace Ax.Fw.Tests
 
                 var actuallyDoneWorkCount = 0;
 
-                var team = AsyncTeam.Run(
+                var team = WorkerTeam.Run(
                     jobs,
                     async (_job, _ct) =>
                     {
@@ -207,7 +207,7 @@ namespace Ax.Fw.Tests
 
                 var actuallyDoneWorkCount = 0;
 
-                var team = AsyncTeam.Run(
+                var team = WorkerTeam.Run(
                     jobs,
                     async (_job, _ct) =>
                     {
@@ -256,7 +256,7 @@ namespace Ax.Fw.Tests
 
                 var result = false;
 
-                var team = AsyncTeam.Run(
+                var team = WorkerTeam.Run(
                     jobs,
                     async (_job, _ct) =>
                     {

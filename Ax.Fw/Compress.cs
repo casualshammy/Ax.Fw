@@ -172,20 +172,22 @@ public static class Compress
     /// </summary>
     public static async Task<byte[]> CompressToGzippedJsonAsync<T>(T _serializableObject, CancellationToken _ct)
     {
+        using var ms = new MemoryStream();
+        await CompressToGzippedJsonAsync(_serializableObject, ms, _ct);
+        return ms.ToArray();
+    }
+
+    public static async Task CompressToGzippedJsonAsync<T>(T _serializableObject, Stream _outputStream, CancellationToken _ct)
+    {
+        if (!_outputStream.CanWrite)
+            throw new ArgumentException($"Stream must be writable", nameof(_outputStream));
+
         var jsonString = JsonConvert.SerializeObject(_serializableObject);
         var rawString = Encoding.UTF8.GetBytes(jsonString);
 
         using (var sourceStream = new MemoryStream(rawString))
-        {
-            using (var targetStream = new MemoryStream())
-            {
-                using (var compression = new GZipStream(targetStream, CompressionMode.Compress, true))
-                {
-                    await sourceStream.CopyToAsync(compression, 80192, _ct);
-                }
-                return targetStream.ToArray();
-            }
-        }
+        using (var compression = new GZipStream(_outputStream, CompressionMode.Compress, true))
+            await sourceStream.CopyToAsync(compression, 80192, _ct);
     }
 
     /// <summary>

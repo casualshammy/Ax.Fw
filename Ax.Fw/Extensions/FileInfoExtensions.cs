@@ -1,20 +1,19 @@
 ﻿using System.IO;
 
-namespace Ax.Fw.Extensions
+namespace Ax.Fw.Extensions;
+
+public static class FileInfoExtensions
 {
-    public static class FileInfoExtensions
+    public static bool TryDelete(this FileInfo _fileInfo)
     {
-        public static bool TryDelete(this FileInfo _fileInfo)
+        try
         {
-            try
-            {
-                _fileInfo.Delete();
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+            _fileInfo.Delete();
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 }
