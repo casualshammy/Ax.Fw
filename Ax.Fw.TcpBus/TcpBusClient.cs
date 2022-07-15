@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using Ax.Fw.Attributes;
 using Ax.Fw.Extensions;
+using Ax.Fw.SharedTypes.Data.Workers;
 using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.TcpBus.Parts;
 using Ax.Fw.Workers;
@@ -44,26 +45,26 @@ namespace Ax.Fw.Bus
             p_client.Events.MessageReceived += MessageReceived;
             _lifetime.DoOnCompleted(() => p_client.Events.MessageReceived -= MessageReceived);
 
-            async Task<bool> sendTcpMsgJob(TcpMsg _msg, CancellationToken _ct)
+            async Task<bool> sendTcpMsgJob(JobContext<TcpMsg> _ctx)
             {
                 try
                 {
                     if (!p_client.Connected)
                         p_client.Connect();
 
-                    return await p_client.SendAsync(_msg.JsonData, _msg.Meta, _ct);
+                    return await p_client.SendAsync(_ctx.JobInfo.Job.JsonData, _ctx.JobInfo.Job.Meta, _ctx.CancellationToken);
                 }
                 catch
                 {
                     return false;
                 }
             }
-            Task<PenaltyInfo> sendTcpMsgJobPenalty(TcpMsg _msg, int _failCount, Exception? _ex, CancellationToken _ct)
+            Task<PenaltyInfo> sendTcpMsgJobPenalty(JobFailContext<TcpMsg> _ctx)
             {
-                return Task.FromResult(new PenaltyInfo(_failCount < 100, TimeSpan.FromMilliseconds(_failCount * 300))); // 300ms - 30 sec
+                return Task.FromResult(new PenaltyInfo(_ctx.FailedCounter < 100, TimeSpan.FromMilliseconds(_ctx.FailedCounter * 300))); // 300ms - 30 sec
             }
 
-            WorkerTeam.Run(p_failedTcpMsgFlow, sendTcpMsgJob, sendTcpMsgJobPenalty, _lifetime, 4, _scheduler);
+            WorkerTeam.Run(p_failedTcpMsgFlow, sendTcpMsgJob, sendTcpMsgJobPenalty, _lifetime, 4);
 
             Observable
                 .Interval(TimeSpan.FromSeconds(5))

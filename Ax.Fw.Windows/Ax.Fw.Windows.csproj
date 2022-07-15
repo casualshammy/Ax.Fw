@@ -1,38 +1,31 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>net472;net5.0-windows</TargetFrameworks>
-    <PackageId>$(AssemblyName)</PackageId>
-    <PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
-    <Description>A set of useful tools for Windows</Description>
-    <Version>$(VersionPrefix)</Version>
-    <Authors>Axio</Authors>
-    <Company>$(Authors)</Company>
-    <LangVersion>latest</LangVersion>
-    <Copyright>Axio</Copyright>
-    <PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
-	<UseWindowsForms>true</UseWindowsForms>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>net6.0-windows;net472</TargetFrameworks>
+		<PackageId>$(AssemblyName)</PackageId>
+		<PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
+		<Description>A set of useful tools for Windows</Description>
+		<Version>$(VersionPrefix)</Version>
+		<Authors>Axio</Authors>
+		<Company>$(Authors)</Company>
+		<LangVersion>latest</LangVersion>
+		<Copyright>Axio</Copyright>
+		<PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
+		<UseWindowsForms>true</UseWindowsForms>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
+	<ItemGroup>
+		<None Remove="_nuget-push.bat" />
+	</ItemGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
+	<ItemGroup>
+		<Folder Include="WinAPI\TCPTable\" />
+		<Folder Include="WMIProcessManager\" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Remove="_nuget-push.bat" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="WinAPI\TCPTable\" />
-    <Folder Include="WMIProcessManager\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="System.Management" Version="6.0.0" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="System.Management" Version="6.0.0" />
+	</ItemGroup>
 
 </Project>

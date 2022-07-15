@@ -1,14 +1,14 @@
 ﻿#nullable enable
 using System;
 
-namespace Ax.Fw.Workers
+namespace Ax.Fw.SharedTypes.Data.Workers
 {
     public class PenaltyInfo
     {
-        public PenaltyInfo(bool tryAgain, TimeSpan? delay)
+        public PenaltyInfo(bool _tryAgain, TimeSpan? _delay)
         {
-            TryAgain = tryAgain;
-            Delay = delay;
+            TryAgain = _tryAgain;
+            Delay = _delay;
         }
 
         public bool TryAgain { get; }

@@ -133,5 +133,24 @@ namespace Ax.Fw.Windows.WinAPI
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool SetForegroundWindow(IntPtr hWnd);
 
+        [DllImport("user32.dll")]
+        public static extern bool HideCaret(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool RemoveMenu(IntPtr _hMenu, uint _uPosition, uint _uFlags);
+
+        [DllImport("user32.dll")]
+        public static extern bool DrawMenuBar(IntPtr _hWnd);
+
+        [DllImport("User32", CharSet = CharSet.Unicode, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool ReleaseCapture();
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
+
+        [DllImport("user32.dll")]
+        public static extern int GetMenuItemCount(IntPtr hMenu);
+
     }
 }

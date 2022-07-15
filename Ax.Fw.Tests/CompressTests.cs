@@ -211,4 +211,24 @@ public class CompressTests
         }
     }
 
+    //[Fact(Timeout =600000)]
+    //public async Task ParallelGzipCompressAsync()
+    //{
+    //    var lifetime = new Lifetime();
+    //    var file = new FileInfo("D:\\games\\World of Warcraft\\_retail_\\Logs\\WoWCombatLog-062822_194239.txt");
+    //    var compressedFile = new FileInfo("D:\\games\\World of Warcraft\\_retail_\\Logs\\WoWCombatLog-062822_194239.txt.gzip");
+    //    compressedFile.TryDelete();
+    //    try
+    //    {
+    //        using var fileStream = File.OpenRead(file.FullName);
+    //        using var compressedFileStream = File.OpenWrite(compressedFile.FullName);
+    //        await Compress.CompressParallelGzipAsync(fileStream, compressedFileStream, 16, lifetime.Token);
+
+    //    }
+    //    finally
+    //    {
+    //        lifetime.Complete();
+    //    }
+    //}
+
 }

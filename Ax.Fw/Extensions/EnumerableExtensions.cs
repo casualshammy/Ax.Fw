@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,6 +14,7 @@ namespace Ax.Fw.Extensions
                 _action(item);
         }
 
+#if !NET6_0_OR_GREATER
         public static IEnumerable<TSource> DistinctBy<TSource, TKey>(this IEnumerable<TSource> _source, Func<TSource, TKey> _keySelector)
         {
             HashSet<TKey> knownKeys = new HashSet<TKey>();
@@ -24,6 +26,7 @@ namespace Ax.Fw.Extensions
                 }
             }
         }
+#endif
 
         public static async Task<T> FirstOrDefaultAsync<T>(this IEnumerable<T> _enumerable, Func<T, Task<bool>> _predicate)
         {
@@ -105,6 +108,21 @@ namespace Ax.Fw.Extensions
                 list.Add(item);
 
             return list;
+        }
+
+        public static T Mean<T>(this IEnumerable<T> _enumerable, Comparer<T>? _comparer = null)
+        {
+            if (_enumerable is not List<T> list)
+                list = _enumerable.ToList();
+
+            if (list.Count == 0)
+                throw new ArgumentException("Enumerable is empty!", nameof(_enumerable));
+
+            if (list.Count == 1)
+                return list[0];
+
+            list.Sort(_comparer ?? Comparer<T>.Default);
+            return list[(int)Math.Floor(list.Count / 2f)];
         }
 
     }

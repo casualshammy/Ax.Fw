@@ -2,6 +2,7 @@
 using Ax.Fw.Bus;
 using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.TcpBus.Tests.Attributes;
+using Ax.Fw.Extensions;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -59,6 +60,7 @@ namespace Ax.Fw.Tests
                 p_output.WriteLine($"Max req time: {bag.Max()}ms");
                 p_output.WriteLine($"Min req time: {bag.Min()}ms");
                 p_output.WriteLine($"Avg req time: {bag.Average()}ms");
+                p_output.WriteLine($"Mean req time: {bag.Mean()}ms");
                 Assert.Equal(1000, sendCounter);
             }
             finally

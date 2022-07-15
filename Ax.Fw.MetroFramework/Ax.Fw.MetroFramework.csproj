@@ -1,0 +1,76 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net6.0-windows</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<UseWindowsForms>true</UseWindowsForms>
+		<LangVersion>latest</LangVersion>
+		<Authors>Axio</Authors>
+		<Copyright>Axio</Copyright>
+		<Description>Metro-style controls (Windows.Forms)</Description>
+		<PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
+		<PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Ax.Fw.Windows\Ax.Fw.Windows.csproj" />
+		<ProjectReference Include="..\Ax.Fw\Ax.Fw.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Update="Controls\FormButton.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Update="Controls\HorizontalLine.cs">
+			<SubType>UserControl</SubType>
+		</Compile>
+		<Compile Update="Controls\MetroButton.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Update="Controls\MetroCheckBox.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Update="Controls\MetroColorTile.cs">
+			<SubType>UserControl</SubType>
+		</Compile>
+		<Compile Update="Controls\MetroComboBox.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Update="Controls\MetroLabel.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Update="Controls\MetroLink.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Update="Controls\MetroProgressBar.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Update="Controls\MetroProgressSpinner.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Update="Controls\MetroTextBox.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Update="Controls\MetroToolTip.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Update="Controls\VerticalLine.cs">
+			<SubType>UserControl</SubType>
+		</Compile>
+		<Compile Update="Forms\BorderlessForm.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Update="Forms\InputBox.cs" />
+		<Compile Update="Forms\WaitingOverlay.cs">
+			<SubType>Form</SubType>
+		</Compile>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Folder Include="Forms\Parts\" />
+	</ItemGroup>
+
+
+
+</Project>

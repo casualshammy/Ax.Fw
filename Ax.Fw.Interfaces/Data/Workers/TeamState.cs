@@ -1,6 +1,6 @@
 ﻿#nullable enable
 
-namespace Ax.Fw.SharedTypes.Data
+namespace Ax.Fw.SharedTypes.Data.Workers
 {
     public class TeamState
     {

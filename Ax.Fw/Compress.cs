@@ -2,12 +2,17 @@
 using Ax.Fw.Extensions;
 using Ax.Fw.Rnd;
 using Ax.Fw.SharedTypes.Data;
+using Ax.Fw.SharedTypes.Data.Workers;
+using Ax.Fw.Workers;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -167,6 +172,101 @@ public static class Compress
         }
     }
 
+    private static async Task CompressParallelGzipAsync(
+        Stream _inputStream,
+        Stream _outputStream,
+        int _threads,
+        CancellationToken _ct)
+    {
+        if (!_outputStream.CanSeek)
+            throw new ArgumentException($"'{nameof(_outputStream)}' must be seekable!");
+        if (!_outputStream.CanWrite)
+            throw new ArgumentException($"'{nameof(_outputStream)}' must be writable!");
+
+        var lifetime = new Lifetime();
+        var chunkSize = 1024 * 1024;
+        if (_inputStream.Length <= chunkSize)
+        {
+            using (var compressStream = new GZipStream(_outputStream, CompressionMode.Compress, true))
+                await _inputStream.CopyToAsync(compressStream, 80 * 1024, _ct);
+
+            return;
+        }
+
+        var headerSize = "AXGZIP".Length + sizeof(long) + sizeof(long); // mark + number of files + offset of footer 
+
+        var offsetDictionary = new ConcurrentDictionary<long, string>();
+        var workFlow = lifetime.DisposeOnCompleted(new Subject<byte[]>());
+        var resultDictionary = new ConcurrentDictionary<long, byte[]>();
+        var resultCursor = 0;
+        var resultOffset = 0;
+        var chunksCount = (int)Math.Ceiling(_inputStream.Length / (float)chunkSize);
+
+        var team = WorkerTeam.Run(
+            workFlow,
+            async _ctx =>
+            {
+                return await CompressGzipBlock(_ctx.JobInfo.Job);
+            },
+            _failCtx =>
+            {
+                if (_failCtx.FailedCounter < 3)
+                    return Task.FromResult(new PenaltyInfo(true, TimeSpan.FromMilliseconds(100)));
+                else
+                {
+                    lifetime.Complete();
+                    return Task.FromResult(new PenaltyInfo(false, null));
+                }
+            }, lifetime, _threads);
+
+        team.CompletedJobs
+            .Subscribe(_x =>
+            {
+                if (_x.Result == null || _x.Result.Length == 0)
+                    throw new InvalidOperationException($"Can't compress a chunk of data!");
+
+                if (_x.JobIndex == resultCursor)
+                {
+                    _outputStream.Seek(resultOffset, SeekOrigin.Begin);
+                    _outputStream.Write(_x.Result, 0, _x.Result.Length);
+                    resultCursor++;
+                    resultOffset += _x.Result.Length;
+                }
+                else
+                {
+                    resultDictionary.TryAdd(_x.JobIndex, _x.Result);
+                }
+
+                while (resultDictionary.TryGetValue(resultCursor, out var savedChunk))
+                {
+                    _outputStream.Seek(resultOffset, SeekOrigin.Begin);
+                    _outputStream.Write(savedChunk, 0, savedChunk.Length);
+                    resultCursor++;
+                    resultOffset += savedChunk.Length;
+                }
+
+                if (resultCursor == chunksCount)
+                {
+                    workFlow.OnCompleted();
+                }
+            }, lifetime);
+
+        while (!_ct.IsCancellationRequested)
+        {
+            var buffer = new byte[chunkSize];
+            var bytesRead = await _inputStream.ReadAsync(buffer, 0, buffer.Length);
+            if (bytesRead == 0)
+                break;
+
+            if (bytesRead == buffer.Length)
+                workFlow.OnNext(buffer);
+            else
+                workFlow.OnNext(buffer.Take(bytesRead).ToArray());
+        }
+
+        await workFlow.LastOrDefaultAsync();
+    }
+
     /// <summary>
     /// Serialize to JSON and then gzip to byte array
     /// </summary>
@@ -229,6 +329,17 @@ public static class Compress
 
         var jsonString = Encoding.UTF8.GetString(rawString);
         return JsonConvert.DeserializeObject<T>(jsonString);
+    }
+
+    private static async Task<byte[]> CompressGzipBlock(byte[] _data)
+    {
+        using (var output = new MemoryStream())
+        {
+            using (var compressStream = new GZipStream(output, CompressionMode.Compress))
+                await compressStream.WriteAsync(_data, 0, _data.Length);
+
+            return output.ToArray();
+        }
     }
 
 }

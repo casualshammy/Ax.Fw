@@ -1,11 +1,15 @@
-﻿using Ax.Fw.SharedTypes.Data;
+﻿using Ax.Fw.SharedTypes.Data.Workers;
 using System;
+using System.Threading.Tasks;
 
 namespace Ax.Fw.SharedTypes.Interfaces
 {
-    public interface ITeam<TJob>
+    public interface ITeam<TJob, TJobResult>
     {
-        IObservable<TJob> CompletedJobs { get; }
+        IObservable<JobResultCtx<TJobResult?>> CompletedJobs { get; }
         TeamState State { get; }
+
+        Task<TJobResult?> DoWork(TJob _job);
+        void PostWork(TJob _job);
     }
 }

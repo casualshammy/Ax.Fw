@@ -1,6 +1,9 @@
 ﻿#nullable enable
+using Ax.Fw.SharedTypes.Data.Workers;
+using Ax.Fw.Tests.Tools;
 using Ax.Fw.Workers;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reactive;
@@ -34,16 +37,17 @@ namespace Ax.Fw.Tests
 
                 var actuallyDoneWorkCount = 0;
 
-                var worker = Worker.Run(
+                var worker = WorkerTeam.Run(
                     jobs,
-                    async (_job, _ct) =>
+                    async _ctx =>
                     {
-                        await Task.Delay(_job, _ct);
+                        await Task.Delay(_ctx.JobInfo.Job, _ctx.CancellationToken);
                         Interlocked.Increment(ref actuallyDoneWorkCount);
                         return true;
                     },
-                    (_job, _fails, _ex, _ct) => Task.FromResult(new PenaltyInfo(true, TimeSpan.FromSeconds(1))),
-                    lifetime);
+                    _ctx => Task.FromResult(new PenaltyInfo(true, TimeSpan.FromSeconds(1))),
+                    lifetime,
+                    1);
 
                 var list = new List<int>();
                 worker.CompletedJobs
@@ -74,13 +78,14 @@ namespace Ax.Fw.Tests
 
                 var worker = WorkerTeam.Run(
                     jobs,
-                    async (_job, _ct) =>
+                    async _ctx =>
                     {
-                        await Task.Delay(_job, _ct);
+                        await Task.Delay(_ctx.JobInfo.Job, _ctx.CancellationToken);
                         Interlocked.Increment(ref actuallyDoneWorkCount);
+                        p_output.WriteLine($"Work done on worker #{_ctx.WorkerIndex}");
                         return true;
                     },
-                    (_job, _fails, _ex, _ct) => Task.FromResult(new PenaltyInfo(true, TimeSpan.FromSeconds(1))),
+                    _ctx => Task.FromResult(new PenaltyInfo(true, TimeSpan.FromSeconds(1))),
                     lifetime,
                     5);
 
@@ -119,13 +124,13 @@ namespace Ax.Fw.Tests
 
                 var worker = WorkerTeam.Run(
                     jobs,
-                    async (_job, _ct) =>
+                    async _ctx =>
                     {
-                        await Task.Delay(_job, _ct);
+                        await Task.Delay(_ctx.JobInfo.Job, _ctx.CancellationToken);
                         Interlocked.Increment(ref actuallyDoneWorkCount);
                         return true;
                     },
-                    (_job, _fails, _ex, _ct) => Task.FromResult(new PenaltyInfo(true, TimeSpan.FromSeconds(1))),
+                    _ctx => Task.FromResult(new PenaltyInfo(true, TimeSpan.FromSeconds(1))),
                     lifetime,
                     4);
 
@@ -164,13 +169,13 @@ namespace Ax.Fw.Tests
 
                 var team = WorkerTeam.Run(
                     jobs,
-                    async (_job, _ct) =>
+                    async _ctx =>
                     {
-                        await Task.Delay(_job, _ct);
+                        await Task.Delay(_ctx.JobInfo.Job, _ctx.CancellationToken);
                         Interlocked.Increment(ref actuallyDoneWorkCount);
                         return false;
                     },
-                    (_job, _fails, _ex, _ct) => Task.FromResult(new PenaltyInfo(true, TimeSpan.FromSeconds(1))),
+                    _ctx => Task.FromResult(new PenaltyInfo(true, TimeSpan.FromSeconds(1))),
                     lifetime,
                     5);
 
@@ -209,13 +214,13 @@ namespace Ax.Fw.Tests
 
                 var team = WorkerTeam.Run(
                     jobs,
-                    async (_job, _ct) =>
+                    async _ctx =>
                     {
-                        await Task.Delay(_job, _ct);
+                        await Task.Delay(_ctx.JobInfo.Job, _ctx.CancellationToken);
                         Interlocked.Increment(ref actuallyDoneWorkCount);
                         return false;
                     },
-                    (_job, _fails, _ex, _ct) => Task.FromResult(new PenaltyInfo(false, null)),
+                    _ctx => Task.FromResult(new PenaltyInfo(false, null)),
                     lifetime,
                     5);
 
@@ -258,13 +263,13 @@ namespace Ax.Fw.Tests
 
                 var team = WorkerTeam.Run(
                     jobs,
-                    async (_job, _ct) =>
+                    async _ctx =>
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(1), _ct);
+                        await Task.Delay(TimeSpan.FromSeconds(1), _ctx.CancellationToken);
                         Interlocked.Increment(ref actuallyDoneWorkCount);
                         return result;
                     },
-                    (_job, _fails, _ex, _ct) =>
+                    _ctx =>
                     {
                         if (actuallyDoneWorkCount >= size)
                             result = true;
@@ -291,6 +296,79 @@ namespace Ax.Fw.Tests
             {
                 if (!lifetime.Token.IsCancellationRequested)
                     lifetime.Complete();
+            }
+        }
+
+        [Fact(Timeout = 1000)]
+        public async Task WorkerIndexCheckAsync()
+        {
+            var lifetime = new Lifetime();
+            try
+            {
+                const int worksCount = 8;
+                const int workerCount = worksCount / 2;
+
+                var workerIndexBag = new ConcurrentBag<int>();
+
+                var jobs = Observable
+                    .Return(Unit.Default)
+                    .Repeat(worksCount);
+
+                var team = WorkerTeam.Run(
+                    jobs,
+                    async _ctx =>
+                    {
+                        await Task.Delay(TimeSpan.FromMilliseconds(250), _ctx.CancellationToken);
+                        workerIndexBag.Add(_ctx.WorkerIndex);
+                        return true;
+                    },
+                    _ctx => Task.FromResult(new PenaltyInfo(false, null)),
+                    lifetime,
+                    workerCount);
+
+                await Task.Delay(TimeSpan.FromMilliseconds(750), lifetime.Token);
+
+                Assert.Equal(worksCount, workerIndexBag.Count);
+                for (int i = 0; i < workerCount; i++)
+                    Assert.Contains(i, workerIndexBag);
+            }
+            finally
+            {
+                lifetime.Complete();
+            }
+        }
+
+        [Theory(Timeout = 10000)]
+        [Repeat(5)]
+        public async Task ShutdownTest(int _)
+        {
+            var lifetime = new Lifetime();
+            try
+            {
+                var jobs = Observable
+                    .Return(Unit.Default)
+                    .Repeat(10000);
+
+                var team = WorkerTeam.Run(
+                    jobs,
+                    async _ctx =>
+                    {
+                        await Task.Delay(100);
+                        return true;
+                    },
+                    _ctx => Task.FromResult(new PenaltyInfo(false, null)),
+                    lifetime,
+                    5);
+
+                await Task.Delay(TimeSpan.FromMilliseconds(500));
+                Assert.False(lifetime.CancellationRequested);
+                lifetime.Complete();
+                Assert.True(lifetime.CancellationRequested);
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await team.DoWork(Unit.Default));
+            }
+            finally
+            {
+                lifetime.Complete();
             }
         }
 

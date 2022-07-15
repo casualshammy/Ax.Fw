@@ -7,8 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw", "Ax.Fw\Ax.Fw.csproj
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.Windows", "Ax.Fw.Windows\Ax.Fw.Windows.csproj", "{F6FEE0E5-9C58-4519-8AEE-A33325546EAD}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.Windows.GUI", "Ax.Fw.Windows.GUI\Ax.Fw.Windows.GUI.csproj", "{41DB4A09-A472-4544-8AB7-0975FD78A0DC}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.Tests", "Ax.Fw.Tests\Ax.Fw.Tests.csproj", "{5ED8B326-DC10-4C03-A083-52622CD2020E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.TcpBus", "Ax.Fw.TcpBus\Ax.Fw.TcpBus.csproj", "{68B657DF-BFF3-4E5F-A501-C4C605A75F38}"
@@ -21,6 +19,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.MetroFramework", "Ax.Fw.MetroFramework\Ax.Fw.MetroFramework.csproj", "{1C137AB9-E926-422F-8C04-4D6095041AD9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,10 +36,6 @@ Global
 		{F6FEE0E5-9C58-4519-8AEE-A33325546EAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F6FEE0E5-9C58-4519-8AEE-A33325546EAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F6FEE0E5-9C58-4519-8AEE-A33325546EAD}.Release|Any CPU.Build.0 = Release|Any CPU
-		{41DB4A09-A472-4544-8AB7-0975FD78A0DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{41DB4A09-A472-4544-8AB7-0975FD78A0DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{41DB4A09-A472-4544-8AB7-0975FD78A0DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{41DB4A09-A472-4544-8AB7-0975FD78A0DC}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5ED8B326-DC10-4C03-A083-52622CD2020E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5ED8B326-DC10-4C03-A083-52622CD2020E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5ED8B326-DC10-4C03-A083-52622CD2020E}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -56,6 +52,10 @@ Global
 		{2B0DB987-F80F-406F-8EA9-B4FF06651D66}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2B0DB987-F80F-406F-8EA9-B4FF06651D66}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2B0DB987-F80F-406F-8EA9-B4FF06651D66}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C137AB9-E926-422F-8C04-4D6095041AD9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C137AB9-E926-422F-8C04-4D6095041AD9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C137AB9-E926-422F-8C04-4D6095041AD9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C137AB9-E926-422F-8C04-4D6095041AD9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
