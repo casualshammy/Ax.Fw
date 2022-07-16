@@ -9,7 +9,7 @@ public class VerticalLine : UserControl
     public VerticalLine()
     {
         StyleManager.Current.ColorsChanged
-            .Subscribe(_ => Invalidate(), p_lifetime);
+            .Subscribe(_ => BeginInvoke(() => Invalidate()), p_lifetime);
 
         AutoScaleDimensions = new SizeF(6f, 13f);
         AutoScaleMode = AutoScaleMode.Font;

@@ -1,5 +1,7 @@
-﻿using Ax.Fw.MetroFramework.Data;
+﻿using Ax.Fw.Extensions;
+using Ax.Fw.MetroFramework.Data;
 using Ax.Fw.MetroFramework.Designers;
+using Ax.Fw.SharedTypes.Interfaces;
 using System.ComponentModel;
 
 namespace Ax.Fw.MetroFramework.Controls;
@@ -9,6 +11,7 @@ namespace Ax.Fw.MetroFramework.Controls;
 public class MetroProgressBar : ProgressBar
 {
     private readonly System.Windows.Forms.Timer p_marqueeTimer = new();
+    private readonly Lifetime p_lifetime = new();
     private MetroProgressBarSize p_metroLabelSize = MetroProgressBarSize.Medium;
     private MetroProgressBarWeight p_metroLabelWeight;
     private ContentAlignment p_textAlign = ContentAlignment.MiddleRight;
@@ -24,6 +27,8 @@ public class MetroProgressBar : ProgressBar
         p_marqueeTimer.Stop();
         p_marqueeTimer.Interval = 10;
         p_marqueeTimer.Tick += marqueeTimer_Tick;
+        StyleManager.Current.ColorsChanged
+            .Subscribe(_ => BeginInvoke(() => Invalidate()), p_lifetime);
     }
 
     [Category("Metro Appearance")]
@@ -123,8 +128,8 @@ public class MetroProgressBar : ProgressBar
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
-        Color color = Enabled ? StyleManager.Current.PrimaryColor : StyleManager.Current.GetDisabledColor(StyleManager.Current.PrimaryColor);
-        e.Graphics.Clear(color);
+        Color foreColor = Enabled ? StyleManager.Current.PrimaryColor : StyleManager.Current.GetDisabledColor(StyleManager.Current.PrimaryColor);
+        e.Graphics.Clear(StyleManager.Current.BackColor);
         if (p_progressBarStyle == ProgressBarStyle.Continuous)
         {
             if (!DesignMode)
@@ -174,26 +179,32 @@ public class MetroProgressBar : ProgressBar
         }
     }
 
-    private void DrawProgressContinuous(Graphics graphics)
+    protected override void Dispose(bool disposing)
     {
-        using (var brush = new SolidBrush(StyleManager.Current.PrimaryColor))
-            graphics.FillRectangle(brush, 0, 0, (int)ProgressBarWidth, ClientRectangle.Height);
+        base.Dispose(disposing);
+        p_lifetime?.Complete();
     }
 
-    private void DrawProgressMarquee(Graphics graphics)
+    private void DrawProgressContinuous(Graphics _graphics)
     {
         using (var brush = new SolidBrush(StyleManager.Current.PrimaryColor))
-            graphics.FillRectangle(brush, p_marqueeX, 0, ProgressBarMarqueeWidth, ClientRectangle.Height);
+            _graphics.FillRectangle(brush, 0, 0, (int)ProgressBarWidth, ClientRectangle.Height);
     }
 
-    private void DrawProgressText(Graphics graphics)
+    private void DrawProgressMarquee(Graphics _graphics)
+    {
+        using (var brush = new SolidBrush(StyleManager.Current.PrimaryColor))
+            _graphics.FillRectangle(brush, p_marqueeX, 0, ProgressBarMarqueeWidth, ClientRectangle.Height);
+    }
+
+    private void DrawProgressText(Graphics _graphics)
     {
         if (!HideProgressText)
         {
             Color transparent = Color.Transparent;
             TextRenderer.DrawText(
                 foreColor: Enabled ? StyleManager.Current.PrimaryColor : StyleManager.Current.GetDisabledColor(StyleManager.Current.PrimaryColor),
-                dc: graphics,
+                dc: _graphics,
                 text: ProgressPercentText,
                 font: StyleManager.Current.GetProgressBarFont(p_metroLabelSize, p_metroLabelWeight),
                 bounds: ClientRectangle,
@@ -202,17 +213,17 @@ public class MetroProgressBar : ProgressBar
         }
     }
 
-    public override Size GetPreferredSize(Size proposedSize)
+    public override Size GetPreferredSize(Size _proposedSize)
     {
-        base.GetPreferredSize(proposedSize);
+        base.GetPreferredSize(_proposedSize);
         using (Graphics dc = CreateGraphics())
         {
-            proposedSize = new Size(int.MaxValue, int.MaxValue);
+            _proposedSize = new Size(int.MaxValue, int.MaxValue);
             return TextRenderer.MeasureText(
                 dc,
                 ProgressPercentText,
                 StyleManager.Current.GetProgressBarFont(p_metroLabelSize, p_metroLabelWeight),
-                proposedSize,
+                _proposedSize,
                 StyleManager.Current.GetTextFormatFlags(TextAlign));
         }
     }
@@ -238,7 +249,7 @@ public class MetroProgressBar : ProgressBar
         }
     }
 
-    private void marqueeTimer_Tick(object? sender, EventArgs e)
+    private void marqueeTimer_Tick(object? _sender, EventArgs _e)
     {
         p_marqueeX++;
         if (p_marqueeX > ClientRectangle.Width)

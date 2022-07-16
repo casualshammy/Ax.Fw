@@ -1,20 +1,14 @@
-﻿using Ax.Fw.MetroFramework;
+﻿using Ax.Fw.Extensions;
 using Ax.Fw.MetroFramework.Data;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace Ax.Fw.MetroFramework.Controls;
 
 [ToolboxBitmap(typeof(CheckBox))]
 public class MetroCheckBox : CheckBox
 {
+    private readonly Lifetime p_lifetime = new();
+
     private MetroLinkSize metroLinkSize;
 
     private MetroLinkWeight metroLinkWeight = MetroLinkWeight.Regular;
@@ -28,6 +22,8 @@ public class MetroCheckBox : CheckBox
     public MetroCheckBox()
     {
         SetStyle(ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, value: true);
+        StyleManager.Current.ColorsChanged
+            .Subscribe(_ => BeginInvoke(() => Invalidate()), p_lifetime);
     }
 
     [Category("Metro Appearance")]
@@ -212,4 +208,11 @@ public class MetroCheckBox : CheckBox
             return result;
         }
     }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        p_lifetime?.Complete();
+    }
+
 }

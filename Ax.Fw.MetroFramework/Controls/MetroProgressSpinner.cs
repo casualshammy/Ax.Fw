@@ -22,7 +22,7 @@ public class MetroProgressSpinner : Control
     public MetroProgressSpinner()
     {
         StyleManager.Current.ColorsChanged
-            .Subscribe(_ => Invalidate(), p_lifetime);
+            .Subscribe(_ => BeginInvoke(() => Invalidate()), p_lifetime);
 
         p_timer.Interval = 20;
         p_timer.Tick += Timer_Tick;

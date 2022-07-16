@@ -23,7 +23,7 @@ public class MetroComboBox : ComboBox
         base.DrawMode = DrawMode.OwnerDrawFixed;
         base.DropDownStyle = ComboBoxStyle.DropDownList;
         StyleManager.Current.ColorsChanged
-            .Subscribe(_ => Invalidate(), p_lifetime);
+            .Subscribe(_ => BeginInvoke(() => Invalidate()), p_lifetime);
     }
 
     [Browsable(false)]

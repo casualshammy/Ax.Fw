@@ -56,32 +56,6 @@ public class MetroToolTip : ToolTip
     }
 
     [Browsable(false)]
-    public new Color BackColor
-    {
-        get
-        {
-            return base.BackColor;
-        }
-        set
-        {
-            base.BackColor = value;
-        }
-    }
-
-    [Browsable(false)]
-    public new Color ForeColor
-    {
-        get
-        {
-            return base.ForeColor;
-        }
-        set
-        {
-            base.ForeColor = value;
-        }
-    }
-
-    [Browsable(false)]
     public new string ToolTipTitle
     {
         get

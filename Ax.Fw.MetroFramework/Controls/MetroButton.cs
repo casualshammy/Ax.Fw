@@ -20,7 +20,7 @@ public class MetroButton : Button
     {
         SetStyle(ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, value: true);
         StyleManager.Current.ColorsChanged
-            .Subscribe(_ => Invalidate(), p_lifetime);
+            .Subscribe(_ => BeginInvoke(() => Invalidate()), p_lifetime);
     }
 
     public bool Highlight

@@ -26,7 +26,7 @@ public class BorderlessForm : Form
         StartPosition = FormStartPosition.CenterScreen;
 
         StyleManager.Current.ColorsChanged
-            .Subscribe(_ => Invalidate(true), p_lifetime);
+            .Subscribe(_ => PostInvoke(() => Invalidate(true)), p_lifetime);
     }
 
     [Category("Metro Appearance")]
