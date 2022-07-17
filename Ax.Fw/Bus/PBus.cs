@@ -1,6 +1,6 @@
 ﻿#nullable enable
-using Ax.Fw.Bus.Parts;
 using Ax.Fw.Extensions;
+using Ax.Fw.SharedTypes.Data.Bus;
 using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Collections.Concurrent;

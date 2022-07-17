@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using Ax.Fw.SharedTypes.Data.Bus;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,6 +36,9 @@ namespace Ax.Fw.SharedTypes.Interfaces
     public interface ITcpBus : IBus
     {
         bool Connected { get; }
+
+        IObservable<BusMsgSerial> OfTypeRaw<T>(bool includeLastValue = false) where T : IBusMsg;
+        void PostMsg(BusMsgSerial _msg);
     }
 
 }

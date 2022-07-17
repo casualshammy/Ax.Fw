@@ -1,9 +1,9 @@
 ﻿#nullable enable
 using Ax.Fw.Attributes;
 using Ax.Fw.Extensions;
+using Ax.Fw.SharedTypes.Data.Bus;
 using Ax.Fw.SharedTypes.Data.Workers;
 using Ax.Fw.SharedTypes.Interfaces;
-using Ax.Fw.TcpBus.Parts;
 using Ax.Fw.Workers;
 using Newtonsoft.Json;
 using System;
@@ -27,7 +27,7 @@ namespace Ax.Fw.Bus
         private readonly WatsonTcpServer p_server;
         private ImmutableHashSet<string> p_clients = ImmutableHashSet<string>.Empty;
         private readonly Subject<BusMsgSerial> p_msgFlow = new();
-        private readonly ConcurrentDictionary<Type, IBusMsg> p_lastMsg = new();
+        private readonly ConcurrentDictionary<Type, BusMsgSerial> p_lastMsg = new();
         private readonly IScheduler p_scheduler;
         private readonly IReadOnlyDictionary<string, Type> p_typesCache;
         private readonly bool p_includeClient;
@@ -107,8 +107,9 @@ namespace Ax.Fw.Bus
                 if (JsonConvert.DeserializeObject(json, type) is not IBusMsg userData)
                     return;
 
-                p_lastMsg[type] = userData;
-                p_msgFlow.OnNext(new BusMsgSerial(userData, guid));
+                var msgSerial = new BusMsgSerial(userData, guid);
+                p_lastMsg[type] = msgSerial;
+                p_msgFlow.OnNext(msgSerial);
             }
 
             foreach (var ipPort in p_clients)
@@ -133,7 +134,7 @@ namespace Ax.Fw.Bus
                 return p_msgFlow
                     .Where(x => x.Data.GetType() == typeof(T))
                     .Select(x => x.Data)
-                    .Merge(Observable.Return(msg))
+                    .Merge(Observable.Return(msg.Data))
                     .Cast<T>()
                     .ObserveOn(p_scheduler);
             else
@@ -141,6 +142,25 @@ namespace Ax.Fw.Bus
                     .Where(x => x.Data.GetType() == typeof(T))
                     .Select(x => x.Data)
                     .Cast<T>()
+                    .ObserveOn(p_scheduler);
+        }
+
+        /// <summary>
+        /// Get Observable of messages by type
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="includeLastValue"></param>
+        /// <returns></returns>
+        public IObservable<BusMsgSerial> OfTypeRaw<T>(bool includeLastValue = false) where T : IBusMsg
+        {
+            if (includeLastValue && p_lastMsg.TryGetValue(typeof(T), out var msg))
+                return p_msgFlow
+                    .Where(x => x.Data.GetType() == typeof(T))
+                    .Merge(Observable.Return(msg))
+                    .ObserveOn(p_scheduler);
+            else
+                return p_msgFlow
+                    .Where(x => x.Data.GetType() == typeof(T))
                     .ObserveOn(p_scheduler);
         }
 
@@ -159,9 +179,9 @@ namespace Ax.Fw.Bus
             PostMsg(new BusMsgSerial(_data, Guid.NewGuid()));
         }
 
-        private void PostMsg(BusMsgSerial _msg)
+        public void PostMsg(BusMsgSerial _msg)
         {
-            p_lastMsg[_msg.Data.GetType()] = _msg.Data;
+            p_lastMsg[_msg.Data.GetType()] = _msg;
             p_msgFlow.OnNext(_msg);
             var data = JsonConvert.SerializeObject(_msg.Data);
             var meta = new Dictionary<object, object> { { "data_type", _msg.Data.GetType().ToString() }, { "guid", _msg.Id.ToString() } };
