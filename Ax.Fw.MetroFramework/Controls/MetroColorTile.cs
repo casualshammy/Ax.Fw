@@ -9,7 +9,14 @@ public class MetroColorTile : UserControl
     public MetroColorTile()
     {
         StyleManager.Current.ColorsChanged
-            .Subscribe(_ => BeginInvoke(() => Invalidate()), p_lifetime);
+            .Subscribe(_ =>
+            {
+                try
+                {
+                    BeginInvoke(() => Invalidate(true));
+                }
+                catch { }
+            }, p_lifetime);
     }
 
     protected override void OnPaint(PaintEventArgs _e)

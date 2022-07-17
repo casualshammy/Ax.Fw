@@ -15,7 +15,14 @@ internal class FormButton : Button
         SetStyle(ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, value: true);
 
         StyleManager.Current.ColorsChanged
-            .Subscribe(_ => BeginInvoke(() => RecalculateColors()), p_lifetime);
+            .Subscribe(_ =>
+            {
+                try
+                {
+                    BeginInvoke(() => Invalidate(true));
+                }
+                catch { }
+            }, p_lifetime);
     }
 
     protected override void OnPaint(PaintEventArgs _e)

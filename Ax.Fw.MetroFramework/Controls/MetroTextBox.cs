@@ -31,7 +31,14 @@ namespace Ax.Fw.MetroFramework.Controls
             AddEventHandler();
 
             StyleManager.Current.ColorsChanged
-                .Subscribe(_ => BeginInvoke(() => Invalidate(true)), p_lifetime);
+                .Subscribe(_ =>
+                {
+                    try
+                    {
+                        BeginInvoke(() => Invalidate(true));
+                    }
+                    catch { }
+                }, p_lifetime);
         }
 
         [Category("Metro Appearance")]

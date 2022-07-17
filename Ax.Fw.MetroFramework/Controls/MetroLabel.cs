@@ -34,7 +34,14 @@ namespace Ax.Fw.MetroFramework.Controls
             };
             Controls.Add(p_baseTextBox);
             StyleManager.Current.ColorsChanged
-                .Subscribe(_ => BeginInvoke(() => Invalidate()), p_lifetime);
+                .Subscribe(_ =>
+                {
+                    try
+                    {
+                        BeginInvoke(() => Invalidate(true));
+                    }
+                    catch { }
+                }, p_lifetime);
         }
 
         [Category("Metro Appearance")]

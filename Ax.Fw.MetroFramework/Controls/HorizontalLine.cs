@@ -9,7 +9,14 @@ public class HorizontalLine : UserControl
     public HorizontalLine()
     {
         StyleManager.Current.ColorsChanged
-            .Subscribe(_ => BeginInvoke(() => Invalidate()), p_lifetime);
+            .Subscribe(_ =>
+            {
+                try
+                {
+                    BeginInvoke(() => Invalidate(true));
+                }
+                catch { }
+            }, p_lifetime);
 
         AutoScaleDimensions = new SizeF(6f, 13f);
         AutoScaleMode = AutoScaleMode.Font;

@@ -28,7 +28,14 @@ public class MetroProgressBar : ProgressBar
         p_marqueeTimer.Interval = 10;
         p_marqueeTimer.Tick += marqueeTimer_Tick;
         StyleManager.Current.ColorsChanged
-            .Subscribe(_ => BeginInvoke(() => Invalidate()), p_lifetime);
+            .Subscribe(_ =>
+            {
+                try
+                {
+                    BeginInvoke(() => Invalidate(true));
+                }
+                catch { }
+            }, p_lifetime);
     }
 
     [Category("Metro Appearance")]
