@@ -46,7 +46,7 @@ public class PipeBusTests
 
             var sw = Stopwatch.StartNew();
             var bag = new ConcurrentBag<long>();
-            Parallel.For(0, 1000, _ =>
+            for (int _ = 0; _ < 1000; _++)
             {
                 Interlocked.Increment(ref sendCounter);
                 var i = _;
@@ -57,7 +57,7 @@ public class PipeBusTests
 
                 bag.Add(swi.ElapsedMilliseconds);
                 Assert.Equal(i + 1, result?.Code);
-            });
+            }
             p_output.WriteLine($"Time: {sw.ElapsedMilliseconds}ms");
             p_output.WriteLine($"Max req time: {bag.Max()}ms");
             p_output.WriteLine($"Min req time: {bag.Min()}ms");
