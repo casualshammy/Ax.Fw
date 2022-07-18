@@ -4,7 +4,7 @@
     <TargetFrameworks>netstandard2.1;net6.0;net472</TargetFrameworks>
     <PackageId>$(AssemblyName)</PackageId>
     <PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
-    <Description>TcpBusTcpBus - Observable message broker for interprocess/remote communications</Description>
+    <Description>TcpBus - Observable message broker for interprocess/remote communications</Description>
     <Version>$(Version)</Version>
     <Authors>Axio</Authors>
     <Company>$(Authors)</Company>
