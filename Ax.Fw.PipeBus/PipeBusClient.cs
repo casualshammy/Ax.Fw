@@ -80,7 +80,7 @@ public class PipeBusClient : IPipeBus
             .Subscribe(lifetime);
     }
 
-    public static async Task<PipeBusClient> Run(IAsyncLifetime _lifetime, IScheduler _scheduler, string _pipeName)
+    public static async Task<PipeBusClient> RunAsync(IAsyncLifetime _lifetime, IScheduler _scheduler, string _pipeName)
     {
         var client = _lifetime.DisposeAsyncOnCompleted(new PipeClient<PipeMsg>(_pipeName));
         var pipeBusClient = new PipeBusClient(client, _lifetime, _scheduler);
@@ -90,6 +90,19 @@ public class PipeBusClient : IPipeBus
         }
         catch { }
         
+        return pipeBusClient;
+    }
+
+    public static PipeBusClient Run(IAsyncLifetime _lifetime, IScheduler _scheduler, string _pipeName)
+    {
+        var client = _lifetime.DisposeAsyncOnCompleted(new PipeClient<PipeMsg>(_pipeName));
+        var pipeBusClient = new PipeBusClient(client, _lifetime, _scheduler);
+        try
+        {
+            client.ConnectAsync(_lifetime.Token).Wait();
+        }
+        catch { }
+
         return pipeBusClient;
     }
 

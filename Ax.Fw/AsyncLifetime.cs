@@ -17,9 +17,11 @@ namespace Ax.Fw
         private readonly ConcurrentStack<Func<Task>> p_doOnCompleted = new();
         private readonly CancellationTokenSource p_cts = new();
         private readonly Subject<Unit> p_flow;
+        private readonly ManualResetEvent p_done;
 
         public AsyncLifetime()
         {
+            p_done = new ManualResetEvent(false);
             p_flow = new Subject<Unit>();
             p_flow
                 .Take(1)
@@ -38,6 +40,7 @@ namespace Ax.Fw
                         catch { }
                     }
                     p_flow.OnCompleted();
+                    p_done.Set();
                     return;
                 })
                 .Subscribe(Token);
@@ -101,8 +104,21 @@ namespace Ax.Fw
 
         public async Task CompleteAsync()
         {
-            p_flow.OnNext(Unit.Default);
+            if (p_cts.Token.IsCancellationRequested)
+                return;
+
+            p_flow.OnNext();
             await p_flow.DefaultIfEmpty();
+            p_flow?.Dispose();
+        }
+
+        public void Complete()
+        {
+            if (p_cts.Token.IsCancellationRequested)
+                return;
+
+            p_flow.OnNext();
+            p_done.WaitOne();
             p_flow?.Dispose();
         }
 

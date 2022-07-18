@@ -34,6 +34,48 @@ namespace Ax.Fw.Tests
 
         }
 
+        [Fact(Timeout = 30000)]
+        public void SyncCompleteTest()
+        {
+            var lifetime = new AsyncLifetime();
+
+            var counter = 0;
+            lifetime.DoOnCompleted(() => Interlocked.Increment(ref counter));
+            lifetime.DoOnCompleted(async () =>
+            {
+                Interlocked.Increment(ref counter);
+                await Task.Delay(500);
+            });
+
+            lifetime.Complete();
+
+            Assert.Equal(2, counter);
+
+        }
+
+        [Fact(Timeout = 30000)]
+        public void MultipleCompleteTest()
+        {
+            var lifetime = new AsyncLifetime();
+
+            var counter = 0;
+            lifetime.DoOnCompleted(() => Interlocked.Increment(ref counter));
+            lifetime.DoOnCompleted(async () =>
+            {
+                Interlocked.Increment(ref counter);
+                await Task.Delay(500);
+            });
+
+            lifetime.Complete();
+            lifetime.Complete();
+
+            Assert.Equal(2, counter);
+
+            Thread.Sleep(500);
+            lifetime.Complete();
+            lifetime.Complete();
+        }
+
 
     }
 }

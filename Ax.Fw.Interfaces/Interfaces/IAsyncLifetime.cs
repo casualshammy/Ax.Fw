@@ -5,6 +5,7 @@ namespace Ax.Fw.SharedTypes.Interfaces
 {
     public interface IAsyncLifetime : IAsyncReadOnlyLifetime
     {
+        void Complete();
         Task CompleteAsync();
     }
 

@@ -76,11 +76,19 @@ public class PipeBusServer : IPipeBus
         WorkerTeam.Run(p_failedTcpMsgFlow, sendTcpMsgJob, sendTcpMsgJobPenalty, lifetime, 4);
     }
 
-    public static async Task<PipeBusServer> Run(IAsyncLifetime _lifetime, IScheduler _scheduler, string _pipeName, bool _includeClient)
+    public static async Task<PipeBusServer> RunAsync(IAsyncLifetime _lifetime, IScheduler _scheduler, string _pipeName, bool _includeClient)
     {
         var server = _lifetime.DisposeAsyncOnCompleted(new PipeServer<PipeMsg>(_pipeName));
         var pipeBusServer = new PipeBusServer(server, _lifetime, _scheduler, _includeClient);
         await server.StartAsync(_lifetime.Token);
+        return pipeBusServer;
+    }
+
+    public static PipeBusServer Run(IAsyncLifetime _lifetime, IScheduler _scheduler, string _pipeName, bool _includeClient)
+    {
+        var server = _lifetime.DisposeAsyncOnCompleted(new PipeServer<PipeMsg>(_pipeName));
+        var pipeBusServer = new PipeBusServer(server, _lifetime, _scheduler, _includeClient);
+        server.StartAsync(_lifetime.Token).Wait();
         return pipeBusServer;
     }
 

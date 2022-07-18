@@ -21,7 +21,7 @@ namespace Ax.Fw
 
         public IObservable<bool> OnCompleteStarted => p_onCompleteStartedFlow;
 
-#if NETSTANDARD2_1_OR_GREATER
+#if NETSTANDARD2_1_OR_GREATER || NET6_0_OR_GREATER
         [return: NotNullIfNotNull(parameterName: "_instance")]
 #endif
         public T? DisposeOnCompleted<T>(T? _instance) where T : IDisposable
