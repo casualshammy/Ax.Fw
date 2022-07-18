@@ -1,5 +1,4 @@
 ﻿#nullable enable
-using Ax;
 using Ax.Fw.Bus;
 using Ax.Fw.Extensions;
 using Ax.Fw.PipeBus.Data;
@@ -11,19 +10,13 @@ using Ax.Fw.Workers;
 using H.Pipes;
 using H.Pipes.Args;
 using Newtonsoft.Json;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Ax.Fw.PipeBus;
 
@@ -40,6 +33,7 @@ public class PipeBusServer : IPipeBus
 
     internal PipeBusServer(PipeServer<PipeMsg> _server, IAsyncLifetime _lifetime, IScheduler _scheduler, bool _includeClient)
     {
+        PipeName = _server.PipeName;
         var typesCache = new Dictionary<string, Type>();
         foreach (var type in Utilities.GetTypesWith<PipeBusMsgAttribute>(true))
             typesCache.Add(type.ToString(), type);
@@ -88,11 +82,28 @@ public class PipeBusServer : IPipeBus
     {
         var server = _lifetime.DisposeAsyncOnCompleted(new PipeServer<PipeMsg>(_pipeName));
         var pipeBusServer = new PipeBusServer(server, _lifetime, _scheduler, _includeClient);
-        server.StartAsync(_lifetime.Token).Wait();
+
+        var mre = new ManualResetEvent(false);
+        Observable
+            .Return(Unit.Default)
+            .ObserveOn(ThreadPoolScheduler.Instance)
+            .SelectAsync(async (_, _ct) =>
+            {
+                await server.StartAsync(_ct);
+                mre.Set();
+            })
+            .Subscribe(_lifetime.Token);
+
+        if (!mre.WaitOne(TimeSpan.FromSeconds(5)))
+        {
+            server.DisposeAsync();
+            throw new InvalidOperationException($"Can't start server!");
+        }
         return pipeBusServer;
     }
 
     public bool Connected => p_server.IsStarted;
+    public string PipeName { get; }
 
     private void ClientConnected(object? sender, ConnectionEventArgs<PipeMsg> args)
     {

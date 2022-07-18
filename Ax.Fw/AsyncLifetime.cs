@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Reactive;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
@@ -25,6 +26,7 @@ namespace Ax.Fw
             p_flow = new Subject<Unit>();
             p_flow
                 .Take(1)
+                .ObserveOn(ThreadPoolScheduler.Instance)
                 .SelectAsync(async _ =>
                 {
                     if (p_cts.Token.IsCancellationRequested)
@@ -42,7 +44,7 @@ namespace Ax.Fw
                     p_flow.OnCompleted();
                     p_done.Set();
                     return;
-                })
+                }, ThreadPoolScheduler.Instance)
                 .Subscribe(Token);
         }
 
