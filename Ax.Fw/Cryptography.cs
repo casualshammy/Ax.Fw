@@ -69,6 +69,19 @@ namespace Ax.Fw
                 return hashInst.ComputeHash(_data);
         }
 
+        public static byte[] CalculateSHAHash(Stream _stream, HashComplexity _hashComplexity = HashComplexity.Bit512)
+        {
+            var hashInst = _hashComplexity switch
+            {
+                HashComplexity.Bit256 => SHA256.Create() as HashAlgorithm,
+                HashComplexity.Bit384 => SHA384.Create(),
+                HashComplexity.Bit512 => SHA512.Create(),
+                _ => throw new NotImplementedException()
+            };
+
+            return hashInst.ComputeHash(_stream);
+        }
+
         public static string CalculateSHAHash(string _data, HashComplexity _hashComplexity = HashComplexity.Bit512)
         {
             var data = Encoding.UTF8.GetBytes(_data);
