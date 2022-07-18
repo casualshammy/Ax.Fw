@@ -33,6 +33,31 @@ namespace Ax.Fw.SharedTypes.Interfaces
             where TRes : IBusMsg;
     }
 
+    public interface IPipeBus
+    {
+        bool Connected { get; }
+
+        IDisposable OfReqRes<TReq, TRes>(Func<TReq, TRes> _func)
+            where TReq : IBusMsg
+            where TRes : IBusMsg;
+        IDisposable OfReqRes<TReq, TRes>(Func<TReq, Task<TRes>> _func)
+            where TReq : IBusMsg
+            where TRes : IBusMsg;
+        void OfReqRes<TReq, TRes>(Func<TReq, TRes> _func, ILifetime _lifetime)
+            where TReq : IBusMsg
+            where TRes : IBusMsg;
+        void OfReqRes<TReq, TRes>(Func<TReq, Task<TRes>> _func, ILifetime _lifetime)
+            where TReq : IBusMsg
+            where TRes : IBusMsg;
+        IObservable<T> OfType<T>(bool includeLastValue = false) where T : IBusMsg;
+        IObservable<BusMsgSerial> OfTypeRaw<T>(bool includeLastValue = false) where T : IBusMsg;
+        Task PostMsg(IBusMsg _data);
+        Task PostMsg(BusMsgSerial _msg);
+        Task<TRes?> PostReqResOrDefaultAsync<TReq, TRes>(TReq _req, TimeSpan _timeout, CancellationToken _ct)
+            where TReq : IBusMsg
+            where TRes : IBusMsg;
+    }
+
     public interface ITcpBus : IBus
     {
         bool Connected { get; }
@@ -40,5 +65,6 @@ namespace Ax.Fw.SharedTypes.Interfaces
         IObservable<BusMsgSerial> OfTypeRaw<T>(bool includeLastValue = false) where T : IBusMsg;
         void PostMsg(BusMsgSerial _msg);
     }
+
 
 }
