@@ -62,9 +62,6 @@
 			<SubType>Form</SubType>
 		</Compile>
 		<Compile Update="Forms\InputBox.cs" />
-		<Compile Update="Forms\WaitingOverlay.cs">
-			<SubType>Form</SubType>
-		</Compile>
 	</ItemGroup>
 
 	<ItemGroup>

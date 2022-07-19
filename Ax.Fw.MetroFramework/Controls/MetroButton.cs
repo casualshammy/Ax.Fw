@@ -57,7 +57,7 @@ public class MetroButton : Button
 
         if (!p_isHovered && !p_isPressed && Enabled)
         {
-            using (var pen = new Pen(StyleManager.Current.PrimaryColor, 3f))
+            using (var pen = new Pen(StyleManager.Current.PrimaryColor, 2f))
             {
                 var rect = new Rectangle(1, 1, Width - 2, Height - 2);
                 _e.Graphics.DrawRectangle(pen, rect);

@@ -122,7 +122,7 @@ public static class IObservableExtensions
             .Select(_ => Unit.Default);
     }
 
-    public static void OnNext(this Subject<Unit> _this)
+    public static void OnNext(this ISubject<Unit> _this)
     {
         _this.OnNext(Unit.Default);
     }
@@ -154,5 +154,8 @@ public static class IObservableExtensions
                 })
             .Concat();
     }
+
+    public static IObservable<T> ObserveOnThreadPool<T>(this IObservable<T> _this)
+        => _this.ObserveOn(ThreadPoolScheduler.Instance);
 
 }

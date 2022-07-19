@@ -8,7 +8,6 @@ internal class FormButton : Button
     private readonly ILifetime p_lifetime = new Lifetime();
     private bool p_isHovered;
     private bool p_isPressed;
-    private Color p_hoveredColor;
 
     public FormButton()
     {
@@ -31,11 +30,12 @@ internal class FormButton : Button
         var foreColor = StyleManager.Current.PrimaryColor;
         if (p_isHovered && !p_isPressed && Enabled)
         {
-            backColor = p_hoveredColor;
+            backColor = StyleManager.Current.PrimaryColor;
+            foreColor = StyleManager.Current.BackColor;
         }
         else if (p_isHovered && p_isPressed && Enabled)
         {
-            backColor = StyleManager.Current.PrimaryColor;
+            backColor = StyleManager.Current.GetHoverColor(StyleManager.Current.PrimaryColor, 2f);
             foreColor = StyleManager.Current.BackColor;
         }
 
@@ -87,7 +87,5 @@ internal class FormButton : Button
         base.Dispose(_disposing);
         p_lifetime.Complete();
     }
-
-    private void RecalculateColors() => p_hoveredColor = StyleManager.Current.GetHoverColor(StyleManager.Current.BackColor, 1f);
 
 }

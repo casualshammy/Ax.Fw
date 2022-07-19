@@ -21,12 +21,12 @@ public partial class InputBox : BorderlessForm
     /// <para></para>
     /// Returns <b>null</b> if user has clicked "Cancel", empty string if user has just clicked "OK", user-provided string otherwise
     /// </summary>
-    /// <param name="prompt">Prompt text</param>
+    /// <param name="_prompt">Prompt text</param>
     /// <param name="metroColorStyle">MetroColorStyle of inputbox</param>
     /// <returns></returns>
-    public static string? Input(string prompt)
+    public static string? Input(string _prompt)
     {
-        InputBox bform = new InputBox() { metroLabel1 = { Text = prompt }, temp = null };
+        var bform = new InputBox() { metroLabel1 = { Text = _prompt }, temp = null };
         bform.ShowDialog();
         return bform.temp;
     }

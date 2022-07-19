@@ -18,5 +18,10 @@ namespace Ax.Fw.MetroFramework.Sandbox
                 }));
         }
 
+        private void buttonInputBox_Click(object sender, EventArgs e)
+        {
+            var inputBox = InputBox.Input("Input something!");
+            MessageBox.Show($"'{inputBox}'");
+        }
     }
 }
