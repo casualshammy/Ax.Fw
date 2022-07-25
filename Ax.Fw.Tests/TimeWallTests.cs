@@ -17,8 +17,8 @@ public class TimeWallTests
         p_output = output;
     }
 
-    [Fact(Timeout = 1000)]
-    public async Task SimplePoolTestAsync()
+    [Fact(Timeout = 5000)]
+    public async Task SimpleTestAsync()
     {
         var timeWall = new TimeWall(10, TimeSpan.FromSeconds(0.25));
         for (int i = 0; i < 10; i++)
