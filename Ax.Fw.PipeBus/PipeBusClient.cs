@@ -2,14 +2,12 @@
 using Ax.Fw.Bus;
 using Ax.Fw.Extensions;
 using Ax.Fw.PipeBus.Data;
-using Ax.Fw.SharedTypes.Attributes;
 using Ax.Fw.SharedTypes.Data.Bus;
 using Ax.Fw.SharedTypes.Data.Workers;
 using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Workers;
 using H.Pipes;
 using H.Pipes.Args;
-using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Reactive;
 using System.Reactive.Concurrency;
@@ -28,10 +26,10 @@ public class PipeBusClient : IPipeBus
     private readonly IReadOnlyDictionary<string, Type> p_typesCache;
     private readonly Subject<PipeMsg> p_failedTcpMsgFlow = new();
 
-    internal PipeBusClient(PipeClient<PipeMsg> _client, IAsyncLifetime _lifetime, IScheduler _scheduler)
+    internal PipeBusClient(PipeClient<PipeMsg> _client, ILifetime _lifetime, IScheduler _scheduler)
     {
         var typesCache = new Dictionary<string, Type>();
-        foreach (var type in Utilities.GetTypesWith<PipeBusMsgAttribute>(true))
+        foreach (var type in Utilities.GetTypesOf<IBusMsg>())
             typesCache.Add(type.ToString(), type);
         p_typesCache = typesCache;
 
@@ -80,7 +78,7 @@ public class PipeBusClient : IPipeBus
             .Subscribe(lifetime);
     }
 
-    public static async Task<PipeBusClient> RunAsync(IAsyncLifetime _lifetime, IScheduler _scheduler, string _pipeName)
+    public static async Task<PipeBusClient> RunAsync(ILifetime _lifetime, IScheduler _scheduler, string _pipeName)
     {
         var client = _lifetime.DisposeAsyncOnCompleted(new PipeClient<PipeMsg>(_pipeName));
         var pipeBusClient = new PipeBusClient(client, _lifetime, _scheduler);
@@ -93,7 +91,7 @@ public class PipeBusClient : IPipeBus
         return pipeBusClient;
     }
 
-    public static PipeBusClient Run(IAsyncLifetime _lifetime, IScheduler _scheduler, string _pipeName)
+    public static PipeBusClient Run(ILifetime _lifetime, IScheduler _scheduler, string _pipeName)
     {
         var client = _lifetime.DisposeAsyncOnCompleted(new PipeClient<PipeMsg>(_pipeName));
         var pipeBusClient = new PipeBusClient(client, _lifetime, _scheduler);
@@ -117,14 +115,11 @@ public class PipeBusClient : IPipeBus
         if (pipeMsg?.Type == null || !p_typesCache.TryGetValue(pipeMsg.Type, out var type))
             return;
 
-        var json = pipeMsg.JsonData;
-        if (json == null)
+        var data = pipeMsg.Data;
+        if (data == null)
             return;
 
-        if (JsonConvert.DeserializeObject(json, type) is not IBusMsg userData)
-            return;
-
-        var msgSerial = new BusMsgSerial(userData, pipeMsg.Guid);
+        var msgSerial = new BusMsgSerial(data, pipeMsg.Guid);
         p_lastMsg[type] = msgSerial;
         p_msgFlow.OnNext(msgSerial);
     }
@@ -187,11 +182,10 @@ public class PipeBusClient : IPipeBus
     {
         p_lastMsg[_msg.Data.GetType()] = _msg;
         p_msgFlow.OnNext(_msg);
-        var jsonData = JsonConvert.SerializeObject(_msg.Data);
         var pipeMsg = new PipeMsg(
             _msg.Id,
             _msg.Data.GetType().ToString(),
-            jsonData);
+            _msg.Data);
         try
         {
             await p_client.WriteAsync(pipeMsg);

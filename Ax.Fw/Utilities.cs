@@ -101,5 +101,13 @@ namespace Ax.Fw
                 .Where(_x => _x.IsDefined(typeof(TAttribute), _inherit));
         }
 
+        public static IEnumerable<Type> GetTypesOf<T>()
+        {
+            return AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(_x => _x.GetTypes())
+                .Where(_x => typeof(T).IsAssignableFrom(_x));
+        }
+
+
     }
 }

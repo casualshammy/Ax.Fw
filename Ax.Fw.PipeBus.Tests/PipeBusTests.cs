@@ -1,6 +1,5 @@
 ﻿using Ax.Fw.Extensions;
 using Ax.Fw.PipeBus.Tests.Attributes;
-using Ax.Fw.SharedTypes.Attributes;
 using Ax.Fw.SharedTypes.Interfaces;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -25,7 +24,7 @@ public class PipeBusTests
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters", Justification = "<Pending>")]
     public async Task StressTestClientServer(int _num)
     {
-        var lifetime = new AsyncLifetime();
+        var lifetime = new Lifetime();
         const string pipeName = "g4c264h3c4fhf";
         try
         {
@@ -77,7 +76,7 @@ public class PipeBusTests
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "xUnit1026:Theory methods should use all of their parameters", Justification = "<Pending>")]
     public async Task StressTestClientServerRunAsync(int _num)
     {
-        var lifetime = new AsyncLifetime();
+        var lifetime = new Lifetime();
         const string pipeName = "g4c264h3c4fhf";
         try
         {
@@ -127,7 +126,7 @@ public class PipeBusTests
     [Fact(Timeout = 5000)]
     public async Task ServerAsClientTest()
     {
-        var asyncLifetime = new AsyncLifetime();
+        var asyncLifetime = new Lifetime();
         var lifetime = new Lifetime();
         asyncLifetime.DoOnCompleted(lifetime.Complete);
         const string pipeName = "g4c264h3c4fhf";
@@ -154,7 +153,7 @@ public class PipeBusTests
 
 }
 
-[PipeBusMsg]
+[Serializable]
 class SimpleMsgReq : IBusMsg
 {
     public SimpleMsgReq(int _code)
@@ -165,7 +164,7 @@ class SimpleMsgReq : IBusMsg
     public int Code { get; set; }
 }
 
-[PipeBusMsg]
+[Serializable]
 class SimpleMsgRes : IBusMsg
 {
     public SimpleMsgRes(int _code)
