@@ -8,6 +8,7 @@ using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Workers;
 using H.Pipes;
 using H.Pipes.Args;
+using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Reactive;
 using System.Reactive.Concurrency;
@@ -115,11 +116,14 @@ public class PipeBusClient : IPipeBus
         if (pipeMsg?.Type == null || !p_typesCache.TryGetValue(pipeMsg.Type, out var type))
             return;
 
-        var data = pipeMsg.Data;
-        if (data == null)
+        var json = pipeMsg.JsonData;
+        if (json == null)
             return;
 
-        var msgSerial = new BusMsgSerial(data, pipeMsg.Guid);
+        if (JsonConvert.DeserializeObject(json, type) is not IBusMsg userData)
+            return;
+
+        var msgSerial = new BusMsgSerial(userData, pipeMsg.Guid);
         p_lastMsg[type] = msgSerial;
         p_msgFlow.OnNext(msgSerial);
     }
@@ -182,10 +186,11 @@ public class PipeBusClient : IPipeBus
     {
         p_lastMsg[_msg.Data.GetType()] = _msg;
         p_msgFlow.OnNext(_msg);
+        var jsonData = JsonConvert.SerializeObject(_msg.Data);
         var pipeMsg = new PipeMsg(
             _msg.Id,
             _msg.Data.GetType().ToString(),
-            _msg.Data);
+            jsonData);
         try
         {
             await p_client.WriteAsync(pipeMsg);

@@ -1,6 +1,8 @@
 ﻿using Ax.Fw.Rnd;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Drawing;
 using System.Drawing.Text;
 using System.IO;
@@ -13,6 +15,8 @@ namespace Ax.Fw
 {
     public static class Utilities
     {
+        private static ImmutableDictionary<int, Image> p_imagesFromBase64 = ImmutableDictionary<int, Image>.Empty;
+
         public static Random Rnd => ThreadSafeRandomProvider.GetThreadRandom();
 
         public static string GetRandomString(int _size, bool _onlyLetters)
@@ -106,6 +110,20 @@ namespace Ax.Fw
             return AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(_x => _x.GetTypes())
                 .Where(_x => typeof(T).IsAssignableFrom(_x));
+        }
+
+        public static Image GetImageFromBase64(string _base64)
+        {
+            var hash = _base64.GetHashCode();
+            if (p_imagesFromBase64.TryGetValue(hash, out var image) && image != null)
+                return image;
+
+            using (var ms = new MemoryStream(Convert.FromBase64String(_base64)))
+            {
+                image = Image.FromStream(ms);
+                p_imagesFromBase64 = p_imagesFromBase64.SetItem(hash, image);
+                return image;
+            }
         }
 
 

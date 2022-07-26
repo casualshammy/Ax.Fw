@@ -1,22 +1,20 @@
-﻿using Ax.Fw.SharedTypes.Interfaces;
-
-namespace Ax.Fw.PipeBus.Data;
+﻿namespace Ax.Fw.PipeBus.Data;
 
 [Serializable]
 internal class PipeMsg
 {
     public PipeMsg() { }
 
-    public PipeMsg(Guid _guid, string? _type, IBusMsg? _jsonData)
+    public PipeMsg(Guid _guid, string? _type, string? _jsonData)
     {
         Guid = _guid;
         Type = _type;
-        Data = _jsonData;
+        JsonData = _jsonData;
     }
 
     public Guid Guid { get; init; }
     public string? Type { get; init; }
-    public IBusMsg? Data { get; init; }
+    public string? JsonData { get; init; }
 
     public override int GetHashCode() => HashCode.Combine(Guid, Type);
 

@@ -153,7 +153,6 @@ public class PipeBusTests
 
 }
 
-[Serializable]
 class SimpleMsgReq : IBusMsg
 {
     public SimpleMsgReq(int _code)
@@ -164,7 +163,6 @@ class SimpleMsgReq : IBusMsg
     public int Code { get; set; }
 }
 
-[Serializable]
 class SimpleMsgRes : IBusMsg
 {
     public SimpleMsgRes(int _code)
