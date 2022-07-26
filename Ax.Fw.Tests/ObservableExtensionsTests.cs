@@ -18,7 +18,7 @@ namespace Ax.Fw.Tests
             p_output = _output;
         }
 
-        [Fact(Timeout = 2000)]
+        [Fact(Timeout = 3000)]
         public async Task ScanAsyncTest()
         {
             var result = await Observable
