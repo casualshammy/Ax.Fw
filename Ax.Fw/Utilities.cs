@@ -8,6 +8,7 @@ using System.Drawing.Text;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Reactive.Disposables;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -15,7 +16,8 @@ namespace Ax.Fw
 {
     public static class Utilities
     {
-        private static ImmutableDictionary<int, Image> p_imagesFromBase64 = ImmutableDictionary<int, Image>.Empty;
+        private static ImmutableDictionary<int, (Image Image, IDisposable DisposeFunc)> p_imagesFromBase64 =
+            ImmutableDictionary<int, (Image Image, IDisposable DisposeFunc)>.Empty;
 
         public static Random Rnd => ThreadSafeRandomProvider.GetThreadRandom();
 
@@ -112,18 +114,41 @@ namespace Ax.Fw
                 .Where(_x => typeof(T).IsAssignableFrom(_x));
         }
 
-        public static Image GetImageFromBase64(string _base64)
+        /// <summary>
+        /// Creates <see cref="Image"/> from base64-encoded string
+        /// PAY ATTENTION: do not dispose <see cref="Image"/> directly. Use the return value of this method instead
+        /// </summary>
+        /// <param name="_base64"></param>
+        /// <returns><see cref="IDisposable"/> object that should be disposed when you don't need generated <see cref="Image"/> more</returns>
+        public static IDisposable GetImageFromBase64(string _base64, out Image _image)
         {
             var hash = _base64.GetHashCode();
-            if (p_imagesFromBase64.TryGetValue(hash, out var image) && image != null)
-                return image;
-
-            using (var ms = new MemoryStream(Convert.FromBase64String(_base64)))
+            if (p_imagesFromBase64.TryGetValue(hash, out var tuple) && tuple.Image != null && tuple.DisposeFunc != null)
             {
-                image = Image.FromStream(ms);
-                p_imagesFromBase64 = p_imagesFromBase64.SetItem(hash, image);
-                return image;
+                _image = tuple.Image;
+                return tuple.DisposeFunc;
             }
+
+            var ms = new MemoryStream(Convert.FromBase64String(_base64));
+            var image = Image.FromStream(ms);
+            var disposable = Disposable.Create(() =>
+            {
+                try
+                {
+                    image?.Dispose();
+                }
+                catch { }
+                try
+                {
+                    ms?.Dispose();
+                }
+                catch { }
+            });
+
+            p_imagesFromBase64 = p_imagesFromBase64.SetItem(hash, (image, disposable));
+
+            _image = image;
+            return disposable;
         }
 
 
