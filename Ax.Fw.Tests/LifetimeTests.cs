@@ -120,7 +120,7 @@ namespace Ax.Fw.Tests
             Thread.Sleep(250);
             Assert.Equal(1, counter);
 
-            Thread.Sleep(500);
+            Thread.Sleep(750);
             Assert.Equal(2, counter);
 
             Parallel.For(0, 100, _ => lifetime.CompleteAsync());
