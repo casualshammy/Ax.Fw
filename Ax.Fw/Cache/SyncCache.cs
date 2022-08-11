@@ -46,6 +46,16 @@ namespace Ax.Fw.Cache
             return value;
         }
 
+        public TValue? GetOrPut(TKey _key, Func<TKey, TValue?> _factory, TimeSpan _overrideTtl)
+        {
+            if (!TryGet(_key, out var value))
+            {
+                value = _factory(_key);
+                Put(_key, value, _overrideTtl);
+            }
+            return value;
+        }
+
         public async Task<TValue?> Get(TKey _key, Func<TKey, Task<TValue?>> _factory)
         {
             return await GetOrPut(_key, _factory, p_settings.TTL);

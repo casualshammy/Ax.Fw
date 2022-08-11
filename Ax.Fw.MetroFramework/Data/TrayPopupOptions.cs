@@ -1,23 +1,21 @@
-﻿namespace Ax.Fw.MetroFramework.Data;
+﻿#nullable enable
+namespace Ax.Fw.MetroFramework.Data;
 
 public class TrayPopupOptions
 {
-    public TrayPopupOptions(string _title, string _message, Image? _image, Action? _onClick, Action? _onClose, TrayPopupType _type, bool _sound)
+    public TrayPopupOptions(string? _title, string? _message, TrayPopupType _type)
     {
         Title = _title;
         Message = _message;
-        Image = _image;
-        OnClick = _onClick;
-        OnClose = _onClose;
         Type = _type;
-        Sound = _sound;
     }
 
-    public string Title { get; private set; }
-    public string Message { get; private set; }
-    public Image? Image { get; private set; }
-    public Action? OnClick { get; private set; }
-    public Action? OnClose { get; private set; }
-    public TrayPopupType Type { get; private set; }
-    public bool Sound { get; private set; }
+    public string? Title { get; }
+    public string? Message { get; }
+    public Image? Image { get; init; }
+    public Action? OnClick { get; init; }
+    public Action? OnClose { get; init; }
+    public TrayPopupType Type { get; }
+    public bool Sound { get; init; }
+
 }

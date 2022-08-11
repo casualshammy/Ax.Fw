@@ -13,7 +13,6 @@ public partial class TrayPopup : BorderlessForm
     private DateTimeOffset p_loadTime;
     private const float p_fadeOutStep = 1f / 5000f * 33.3f;
     private readonly TrayPopupOptions p_options;
-    private volatile int p_closed = 0;
 
     static TrayPopup()
     {
@@ -28,8 +27,7 @@ public partial class TrayPopup : BorderlessForm
         p_options = _options;
         Title = _options.Title ?? "";
         Message = _options.Message ?? "";
-        Icon = _options.Image;
-
+        
         if (_options.Image == null)
         {
             if (_options.Type == TrayPopupType.Error)
@@ -38,6 +36,10 @@ public partial class TrayPopup : BorderlessForm
                 Icon = Resources.DialogWarning.Value;
             else
                 Icon = Resources.DialogInfo.Value;
+        }
+        else
+        {
+            Icon = _options.Image;
         }
 
         p_fadeTimer = new System.Timers.Timer(33.3); // 30fps
@@ -139,12 +141,13 @@ public partial class TrayPopup : BorderlessForm
     private static void ArrangementTimer_Elapsed()
     {
         var appBarData = GetAppBarData();
-        var popups = FindForms<TrayPopup>()
+        var popups = Windows.Utilities.FindForms<TrayPopup>()
             .Where(_x => !_x.IsClosed)
             .ToList();
-        popups.Sort((first, second) =>
+
+        popups.Sort((_first, _second) =>
         {
-            return appBarData.uEdge == ABE.Top ? first.DesktopLocation.Y.CompareTo(second.DesktopLocation.Y) : -first.DesktopLocation.Y.CompareTo(second.DesktopLocation.Y);
+            return appBarData.uEdge == ABE.Top ? _first.DesktopLocation.Y.CompareTo(_second.DesktopLocation.Y) : -_first.DesktopLocation.Y.CompareTo(_second.DesktopLocation.Y);
         });
         if (appBarData.uEdge == ABE.Top)
         {
@@ -203,33 +206,37 @@ public partial class TrayPopup : BorderlessForm
         IsClosed = true;
     }
 
-    private string WordWrap(string text)
+    private string WordWrap(string _text)
     {
-        using (Font font = StyleManager.Current.GetLabelFont(metroLabel2.FontSize, metroLabel2.FontWeight))
+        using (var font = StyleManager.Current.GetLabelFont(metroLabel2.FontSize, metroLabel2.FontWeight))
         {
-            var words = text.Split(new[] { " ", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
-            var result = new StringBuilder("");
+            var words = new Queue<string>(_text.Split(new[] { " " }, StringSplitOptions.RemoveEmptyEntries));
+            var result = string.Empty;
+            var currentLine = string.Empty;
             var sizeOfSpace = TextRenderer.MeasureText(" ", font).Width;
-            while (words.Any())
+            while (words.TryDequeue(out var word))
             {
-                result.Append(" " + words.First());
-                var sizePixels = sizeOfSpace + TextRenderer.MeasureText(words.First(), font).Width;
-                words.RemoveAt(0);
-                while (words.Any() && sizePixels + sizeOfSpace + TextRenderer.MeasureText(words.First(), font).Width <= 300 * 1.4) // 300 - max length of <metroLabel2>, plus fix
+                var currentLineNewSize = TextRenderer.MeasureText(currentLine + sizeOfSpace + word, font).Width;
+                if (currentLineNewSize > metroLabel2.MaximumSize.Width)
                 {
-                    result.Append(" " + words.First());
-                    sizePixels += sizeOfSpace + TextRenderer.MeasureText(words.First(), font).Width;
-                    words.RemoveAt(0);
+                    currentLine = word;
+                    result += $"{Environment.NewLine}{currentLine}";
+                    continue;
                 }
-                result.Append("\r\n");
-            }
-            return result.ToString().TrimEnd('\n').TrimEnd('\r');
-        }
-    }
 
-    private static IEnumerable<T> FindForms<T>() where T : Form
-    {
-        return Application.OpenForms.OfType<T>();
+                if (currentLine == "")
+                {
+                    currentLine += $"{word}";
+                    result += $"{word}";
+                }
+                else
+                {
+                    currentLine += $" {word}";
+                    result += $" {word}";
+                }
+            }
+            return result.TrimEnd('\n').TrimEnd('\r');
+        }
     }
 
     private static APPBARDATA GetAppBarData()
@@ -242,9 +249,8 @@ public partial class TrayPopup : BorderlessForm
         };
         var result = NativeMethods.SHAppBarMessage((uint)APPBARMESSAGE.GetTaskbarPos, ref data);
         if (result == IntPtr.Zero)
-        {
             throw new InvalidOperationException();
-        }
+
         return data;
     }
 

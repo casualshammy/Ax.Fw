@@ -50,10 +50,7 @@ public class BorderlessForm : Form
     }
 
     // todo
-    public void PostInvoke(Action _action)
-    {
-        BeginInvoke(new MethodInvoker(_action.Invoke));
-    }
+    public void PostInvoke(Action _action) => BeginInvoke(new MethodInvoker(_action.Invoke));
 
     // todo
     public IntPtr SafeHandle

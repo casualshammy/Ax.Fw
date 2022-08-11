@@ -27,5 +27,5 @@ public interface IReadOnlyLifetime
     T? DisposeOnCompleted<T>(T? _instance) where T : IDisposable;
     void DoOnCompleted(Action _action);
     void DoOnCompleted(Func<Task> _action);
-    ILifetime GetChildLifetime();
+    ILifetime? GetChildLifetime();
 }

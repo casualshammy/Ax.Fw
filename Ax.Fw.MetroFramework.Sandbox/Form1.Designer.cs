@@ -30,6 +30,7 @@
         {
             this.metroProgressBar1 = new Ax.Fw.MetroFramework.Controls.MetroProgressBar();
             this.buttonInputBox = new Ax.Fw.MetroFramework.Controls.MetroButton();
+            this.metroButton1 = new Ax.Fw.MetroFramework.Controls.MetroButton();
             this.SuspendLayout();
             // 
             // metroProgressBar1
@@ -54,11 +55,22 @@
             this.buttonInputBox.Text = "Input Box";
             this.buttonInputBox.Click += new System.EventHandler(this.buttonInputBox_Click);
             // 
+            // metroButton1
+            // 
+            this.metroButton1.Highlight = false;
+            this.metroButton1.Location = new System.Drawing.Point(23, 249);
+            this.metroButton1.Name = "metroButton1";
+            this.metroButton1.Size = new System.Drawing.Size(101, 30);
+            this.metroButton1.TabIndex = 2;
+            this.metroButton1.Text = "Tray Popup";
+            this.metroButton1.Click += new System.EventHandler(this.metroButton1_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.metroButton1);
             this.Controls.Add(this.buttonInputBox);
             this.Controls.Add(this.metroProgressBar1);
             this.Location = new System.Drawing.Point(0, 0);
@@ -72,5 +84,6 @@
 
         private Controls.MetroProgressBar metroProgressBar1;
         private Controls.MetroButton buttonInputBox;
+        private Controls.MetroButton metroButton1;
     }
 }

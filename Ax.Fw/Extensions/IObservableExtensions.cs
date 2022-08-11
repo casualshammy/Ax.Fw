@@ -3,6 +3,7 @@ using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Reactive;
 using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
@@ -155,7 +156,7 @@ public static class IObservableExtensions
             .Concat();
     }
 
-    public static IObservable<T> ObserveOnThreadPool<T>(this IObservable<T> _this)
-        => _this.ObserveOn(ThreadPoolScheduler.Instance);
+    public static IObservable<T> ObserveOnThreadPool<T>(this IObservable<T> _observable)
+        => _observable.ObserveOn(ThreadPoolScheduler.Instance);
 
 }

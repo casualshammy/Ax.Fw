@@ -10,6 +10,7 @@ namespace Ax.Fw.SharedTypes.Interfaces
 
         Task<TValue?> Get(TKey _key, Func<TKey, Task<TValue?>> _factory);
         Task<TValue?> GetOrPut(TKey _key, Func<TKey, Task<TValue?>> _factory, TimeSpan _overrideTtl);
+        TValue? GetOrPut(TKey _key, Func<TKey, TValue?> _factory, TimeSpan _overrideTtl);
         void Put(TKey _key, TValue? _value);
         void Put(TKey _key, TValue? _value, TimeSpan _overrideTtl);
         bool TryGet(TKey _key, out TValue? _value);

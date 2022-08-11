@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -123,6 +124,13 @@ namespace Ax.Fw.Extensions
 
             list.Sort(_comparer ?? Comparer<T>.Default);
             return list[(int)Math.Floor(list.Count / 2f)];
+        }
+
+        public static IEnumerable<T> WhereNotNull<T>(this IEnumerable<T?> _enumerable)
+        {
+            return _enumerable
+                .Where(_x => _x != null)
+                .Select(_x => _x!);
         }
 
     }

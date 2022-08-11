@@ -126,8 +126,11 @@ public class Lifetime : ILifetime
         p_flow?.Dispose();
     }
 
-    public ILifetime GetChildLifetime()
+    public ILifetime? GetChildLifetime()
     {
+        if (p_cts.Token.IsCancellationRequested)
+            return null;
+
         var lifetime = new Lifetime();
         DoOnCompleted(lifetime.CompleteAsync);
         return lifetime;

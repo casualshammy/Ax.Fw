@@ -53,8 +53,8 @@ namespace Ax.Fw.Tests
                 list.Add(new TestClass(rnd.Next(), rnd.Next().ToString()));
 
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var compressedList = list.ToGzippedJson();
-            var decompressedList = await compressedList.FromGzippedJsonAsync<List<TestClass>>(cts.Token);
+            var compressedList = await Compress.CompressToGzippedJsonAsync(list, cts.Token);
+            var decompressedList = await Compress.DecompressGzippedJsonAsync<List<TestClass>>(compressedList, cts.Token);
 
             Assert.NotNull(decompressedList);
 

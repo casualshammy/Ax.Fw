@@ -1,3 +1,4 @@
+using Ax.Fw.MetroFramework.Data;
 using Ax.Fw.MetroFramework.Forms;
 using System.Reactive.Linq;
 
@@ -22,6 +23,16 @@ namespace Ax.Fw.MetroFramework.Sandbox
         {
             var inputBox = InputBox.Input("Input something!");
             MessageBox.Show($"'{inputBox}'");
+        }
+
+        private void metroButton1_Click(object sender, EventArgs e)
+        {
+            var settings = new TrayPopupOptions(
+                "Test Title",
+                $"This is your personal, private workspace to play around in. Only you can see the collections and APIs you create here - unless you share them with your team.{Environment.NewLine}Add a brief summary{Environment.NewLine}about this workspace",
+                TrayPopupType.Warning);
+
+            new TrayPopup(settings).Show();
         }
     }
 }

@@ -42,7 +42,7 @@ namespace Ax.Fw.Workers
             }, _penaltyForFailedJobs, _lifetime, _workers);
         }
 
-        // <summary>
+        /// <summary>
         /// Starts new <see cref="WorkerTeam"/>. This team will do work in parallel order.
         /// </summary>
         /// <typeparam name="TJob">Object defining work data</typeparam>
@@ -132,6 +132,12 @@ namespace Ax.Fw.Workers
 
         public TeamState State => new(p_runningJobs, p_jobQueue.Count, p_completedJobs, p_failedJobs);
 
+        /// <summary>
+        /// Do work and return result
+        /// </summary>
+        /// <param name="_job"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException">Throws if this instance of <see cref="WorkerTeam"/> is already completed</exception>
         public async Task<TJobResult?> DoWork(TJob _job)
         {
             if (!p_lifetime.CancellationRequested)
