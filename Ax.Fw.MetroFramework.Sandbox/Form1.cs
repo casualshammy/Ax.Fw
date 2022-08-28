@@ -17,6 +17,8 @@ namespace Ax.Fw.MetroFramework.Sandbox
                     metroProgressBar1.Maximum = 100;
                     metroProgressBar1.Value = (metroProgressBar1.Value + 1) % 100;
                 }));
+
+            StyleManager.Current.SetColors(Color.Black, Color.DarkViolet, Color.White);
         }
 
         private void buttonInputBox_Click(object sender, EventArgs e)
