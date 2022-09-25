@@ -1,9 +1,9 @@
-﻿#nullable enable
-using Ax.Fw.SharedTypes.Interfaces;
+﻿using Ax.Fw.SharedTypes.Interfaces;
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Reactive;
 using System.Reactive.Concurrency;
-using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
@@ -13,7 +13,7 @@ namespace Ax.Fw.Extensions;
 
 public static class IObservableExtensions
 {
-    public static IObservable<TOut?> SelectAsync<TIn, TOut>(this IObservable<TIn?> _this, Func<TIn?, Task<TOut?>> _selector)
+    public static IObservable<TOut> SelectAsync<TIn, TOut>(this IObservable<TIn> _this, Func<TIn, Task<TOut>> _selector)
     {
         return _this
             .Select(_x =>
@@ -23,7 +23,7 @@ public static class IObservableExtensions
             .Concat();
     }
 
-    public static IObservable<Unit> SelectAsync<TIn>(this IObservable<TIn?> _this, Func<TIn?, Task> _selector)
+    public static IObservable<Unit> SelectAsync<TIn>(this IObservable<TIn> _this, Func<TIn, Task> _selector)
     {
         return _this
             .Select(_x =>
@@ -33,7 +33,7 @@ public static class IObservableExtensions
             .Concat();
     }
 
-    public static IObservable<TOut?> SelectAsync<TIn, TOut>(this IObservable<TIn?> _this, Func<TIn?, Task<TOut?>> _selector, IScheduler _scheduler)
+    public static IObservable<TOut> SelectAsync<TIn, TOut>(this IObservable<TIn> _this, Func<TIn, Task<TOut>> _selector, IScheduler _scheduler)
     {
         return _this
             .Select(_x =>
@@ -43,7 +43,7 @@ public static class IObservableExtensions
             .Concat();
     }
 
-    public static IObservable<Unit> SelectAsync<TIn>(this IObservable<TIn?> _this, Func<TIn?, Task> _selector, IScheduler _scheduler)
+    public static IObservable<Unit> SelectAsync<TIn>(this IObservable<TIn> _this, Func<TIn, Task> _selector, IScheduler _scheduler)
     {
         return _this
             .Select(_x =>
@@ -53,7 +53,7 @@ public static class IObservableExtensions
             .Concat();
     }
 
-    public static IObservable<TOut?> SelectAsync<TIn, TOut>(this IObservable<TIn?> _this, Func<TIn?, CancellationToken, Task<TOut?>> _selector)
+    public static IObservable<TOut> SelectAsync<TIn, TOut>(this IObservable<TIn> _this, Func<TIn, CancellationToken, Task<TOut>> _selector)
     {
         return _this
             .Select(_x =>
@@ -63,7 +63,7 @@ public static class IObservableExtensions
             .Concat();
     }
 
-    public static IObservable<TOut?> SelectAsync<TIn, TOut>(this IObservable<TIn?> _this, Func<TIn?, CancellationToken, Task<TOut?>> _selector, IScheduler _scheduler)
+    public static IObservable<TOut> SelectAsync<TIn, TOut>(this IObservable<TIn> _this, Func<TIn, CancellationToken, Task<TOut>> _selector, IScheduler _scheduler)
     {
         return _this
             .Select(_x =>
@@ -158,5 +158,20 @@ public static class IObservableExtensions
 
     public static IObservable<T> ObserveOnThreadPool<T>(this IObservable<T> _observable)
         => _observable.ObserveOn(ThreadPoolScheduler.Instance);
+
+    public static IObservable<ImmutableHashSet<T>> DistinctUntilHashSetChanged<T>(this IObservable<ImmutableHashSet<T>> _observable) 
+        => _observable.DistinctUntilChanged(ImmutableHashSetComparer<T>.Default);
+
+    static class ImmutableHashSetComparer<T>
+    {
+        private class Comparer : IEqualityComparer<ImmutableHashSet<T>>
+        {
+            public bool Equals(ImmutableHashSet<T> _a, ImmutableHashSet<T> _b) => _a.SetEquals(_b);
+            public int GetHashCode(ImmutableHashSet<T> _obj) => _obj.GetHashCode();
+        }
+
+        public static IEqualityComparer<ImmutableHashSet<T>> Default { get; } = new Comparer();
+
+    }
 
 }
