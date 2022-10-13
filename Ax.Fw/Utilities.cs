@@ -1,6 +1,5 @@
 ﻿using Ax.Fw.Rnd;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Drawing;
@@ -100,11 +99,17 @@ namespace Ax.Fw
             return builder.ToString();
         }
 
-        public static IEnumerable<Type> GetTypesWith<TAttribute>(bool _inherit) where TAttribute : Attribute
+        public static IEnumerable<Type> GetTypesWithAttr<T>(bool _inherit) where T : Attribute
         {
             return AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(_x => _x.GetTypes())
-                .Where(_x => _x.IsDefined(typeof(TAttribute), _inherit));
+                .Where(_x => _x.IsDefined(typeof(T), _inherit));
+        }
+
+        public static T? GetAttribute<T>(Type _type) where T : Attribute
+        {
+            var attr = Attribute.GetCustomAttribute(_type, typeof(T)) as T;
+            return attr;
         }
 
         public static IEnumerable<Type> GetTypesOf<T>()

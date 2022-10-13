@@ -12,7 +12,7 @@ using System.Reflection;
 
 namespace Ax.Fw;
 
-public class ImportClassAggregator
+public class ImportClassAggregator : IImportClassAggregator
 {
     private readonly List<object> p_instances = new();
 
@@ -27,7 +27,7 @@ public class ImportClassAggregator
             }
         }
 
-        var types = Utilities.GetTypesWith<ImportClassAttribute>(true);
+        var types = Utilities.GetTypesWithAttr<ImportClassAttribute>(true);
 
         foreach (var type in types)
         {

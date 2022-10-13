@@ -36,7 +36,7 @@ namespace Ax.Fw.Bus
         public TcpBusServer(ILifetime _lifetime, IScheduler _scheduler, int _port, bool _includeClient)
         {
             var typesCache = new Dictionary<string, Type>();
-            foreach (var type in Utilities.GetTypesWith<TcpBusMsgAttribute>(true))
+            foreach (var type in Utilities.GetTypesWithAttr<TcpBusMsgAttribute>(true))
                 typesCache.Add(type.ToString(), type);
             p_typesCache = typesCache;
 
