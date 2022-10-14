@@ -1,6 +1,4 @@
-﻿#nullable enable
-
-using Ax.Fw.Attributes;
+﻿using Ax.Fw.Attributes;
 using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Interfaces;
 using Microsoft.Extensions.DependencyInjection;

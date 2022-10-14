@@ -1,9 +1,9 @@
-﻿#nullable enable
-using System;
+﻿using System;
 
 namespace Ax.Fw.Attributes
 {
     [AttributeUsage(AttributeTargets.Class)]
+    [Obsolete($"Please use {nameof(ExportClassAttribute)}")]
     public class ImportClassAttribute : Attribute
     {
         public ImportClassAttribute(Type InterfaceType, bool Singleton = false, bool ActivateOnStart = false, bool DisposeRequired = false)
