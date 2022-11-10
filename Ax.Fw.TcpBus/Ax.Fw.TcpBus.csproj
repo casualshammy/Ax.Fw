@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.1;net6.0;net472</TargetFrameworks>
+    <TargetFrameworks>netstandard2.1;net6.0</TargetFrameworks>
     <PackageId>$(AssemblyName)</PackageId>
     <PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
     <Description>TcpBus - Observable message broker for interprocess/remote communications</Description>
