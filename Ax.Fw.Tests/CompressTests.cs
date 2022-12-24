@@ -2,9 +2,11 @@
 using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Data;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
@@ -13,6 +15,8 @@ namespace Ax.Fw.Tests;
 
 public class CompressTests
 {
+    record Sample(int Number, string Message);
+
     private readonly ITestOutputHelper p_output;
 
     public CompressTests(ITestOutputHelper output)
@@ -208,6 +212,28 @@ public class CompressTests
                 Directory.Delete(tempDir, true);
             }
             catch { }
+        }
+    }
+
+    [Fact]
+    public async Task GzipTest()
+    {
+        const int length = 100;
+        var rnd = new Random();
+        var list = new List<Sample>();
+        for (int i = 0; i < length; i++)
+            list.Add(new Sample(rnd.Next(), rnd.Next().ToString()));
+
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var compressedList = await Compress.CompressToGzippedJsonAsync(list, cts.Token);
+        var decompressedList = await Compress.DecompressGzippedJsonAsync<List<Sample>>(compressedList, cts.Token);
+
+        Assert.NotNull(decompressedList);
+
+        for (int i = 0; i < length; i++)
+        {
+            Assert.NotEqual(0, list[i].GetHashCode());
+            Assert.Equal(list[i].GetHashCode(), decompressedList![i].GetHashCode());
         }
     }
 

@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 using System.Reactive.Concurrency;
+using Ax.Fw.TcpBus;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 namespace Ax.Fw.Tests

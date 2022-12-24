@@ -10,7 +10,7 @@ namespace Ax.Fw.Bus;
 
 internal class TcpMessage
 {
-    private byte[]? p_serializedJson;
+    private volatile byte[]? p_serializedJson;
 
     [JsonConstructor]
     public TcpMessage(
@@ -37,7 +37,7 @@ internal class TcpMessage
         if (_password == null)
             return (p_serializedJson = jsonBytes);
 
-        var encryptedBytes = await Cryptography.EncryptAes(jsonBytes, _password, _ct);
+        var encryptedBytes = await Cryptography.EncryptAes(jsonBytes, _password, true, _ct);
         return (p_serializedJson = encryptedBytes);
     }
 

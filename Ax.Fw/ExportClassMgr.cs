@@ -33,32 +33,12 @@ public class ExportClassMgr : IExportClassMgr
             foreach (var pair in _singletoneInstances)
                 p_container.Configure(_x => _x.ExportFuncWithContext((_scope, _, _) => pair.Value(_scope)).As(pair.Key).Lifestyle.Singleton());
 
-        var importTypes = Utilities.GetTypesWithAttr<ImportClassAttribute>(true);
-        foreach (var type in importTypes)
-        {
-            var exportInfo = (ImportClassAttribute)Attribute.GetCustomAttribute(type, typeof(ImportClassAttribute));
-            if (exportInfo.Singleton)
-                p_container.Configure(_x => _x.Export(type).As(exportInfo.InterfaceType).Lifestyle.Singleton());
-            else
-                p_container.Configure(_x => _x.Export(type).As(exportInfo.InterfaceType));
-        }
-
-        foreach (var type in importTypes)
-        {
-            var exportInfo = (ImportClassAttribute)Attribute.GetCustomAttribute(type, typeof(ImportClassAttribute));
-            if (exportInfo.ActivateOnStart && exportInfo.Singleton)
-            {
-                var instance = p_container.Locate(exportInfo.InterfaceType);
-                p_instances.Add(instance);
-                if (exportInfo.DisposeRequired)
-                    _lifetime.DisposeOnCompleted(instance as IDisposable);
-            }
-        }
-
         var exportTypes = Utilities.GetTypesWithAttr<ExportClassAttribute>(true);
         foreach (var type in exportTypes)
         {
-            var exportInfo = (ExportClassAttribute)Attribute.GetCustomAttribute(type, typeof(ExportClassAttribute));
+            if (Attribute.GetCustomAttribute(type, typeof(ExportClassAttribute)) is not ExportClassAttribute exportInfo)
+                continue;
+
             if (exportInfo.Singleton)
                 p_container.Configure(_x => _x.Export(type).As(exportInfo.InterfaceType).Lifestyle.Singleton());
             else
@@ -67,7 +47,9 @@ public class ExportClassMgr : IExportClassMgr
 
         foreach (var type in exportTypes)
         {
-            var exportInfo = (ExportClassAttribute)Attribute.GetCustomAttribute(type, typeof(ExportClassAttribute));
+            if (Attribute.GetCustomAttribute(type, typeof(ExportClassAttribute)) is not ExportClassAttribute exportInfo)
+                continue;
+
             if (exportInfo.ActivateOnStart && exportInfo.Singleton)
             {
                 var instance = p_container.Locate(exportInfo.InterfaceType);

@@ -1,5 +1,7 @@
 ﻿#nullable enable
+using Ax;
 using Ax.Fw.Attributes;
+using Ax.Fw.Bus;
 using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Data.Bus;
 using Ax.Fw.SharedTypes.Data.Workers;
@@ -13,6 +15,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
@@ -21,7 +24,59 @@ using System.Threading;
 using System.Threading.Tasks;
 using WatsonTcp;
 
-namespace Ax.Fw.Bus;
+namespace Ax.Fw.TcpBus;
+
+public static class TcpBusClientFactory
+{
+    public static IDisposable Create(
+        int _port,
+        out TcpBusClient _serverInstance)
+    {
+        var lifetime = new Lifetime();
+
+        _serverInstance = new TcpBusClient(lifetime, _port);
+
+        return Disposable.Create(lifetime.Complete);
+    }
+
+    public static IDisposable Create(
+        int _port,
+        string _host,
+        out TcpBusClient _serverInstance)
+    {
+        var lifetime = new Lifetime();
+
+        _serverInstance = new TcpBusClient(lifetime, _port, _host);
+
+        return Disposable.Create(lifetime.Complete);
+    }
+
+    public static IDisposable Create(
+        int _port,
+        IScheduler _scheduler,
+        out TcpBusClient _serverInstance)
+    {
+        var lifetime = new Lifetime();
+
+        _serverInstance = new TcpBusClient(lifetime, _scheduler, _port);
+
+        return Disposable.Create(lifetime.Complete);
+    }
+
+    public static IDisposable Create(
+        int _port,
+        string _host,
+        IScheduler _scheduler,
+        out TcpBusClient _serverInstance)
+    {
+        var lifetime = new Lifetime();
+
+        _serverInstance = new TcpBusClient(lifetime, _scheduler, _port, _host);
+
+        return Disposable.Create(lifetime.Complete);
+    }
+
+}
 
 public class TcpBusClient : ITcpBusClient
 {
@@ -33,6 +88,7 @@ public class TcpBusClient : ITcpBusClient
     private readonly byte[]? p_password;
     private readonly IReadOnlyDictionary<string, Type> p_typesCache;
     private readonly Subject<TcpMessage> p_failedTcpMsgFlow = new();
+    private readonly Subject<byte[]> p_incomingMsgFlow = new();
 
     public TcpBusClient(IReadOnlyLifetime _lifetime, IScheduler _scheduler, int _port, string _host = "127.0.0.1", string? _password = null)
     {
@@ -44,10 +100,11 @@ public class TcpBusClient : ITcpBusClient
         p_scheduler = _scheduler;
         p_password = _password != null ? Encoding.UTF8.GetBytes(_password) : null;
         _lifetime.DisposeOnCompleted(p_msgFlow);
+        _lifetime.DisposeOnCompleted(p_incomingMsgFlow);
 
         p_client = _lifetime.DisposeOnCompleted(new WatsonTcpClient(_host, _port))!;
-        p_client.Events.MessageReceived += MessageReceived;
-        _lifetime.DoOnCompleted(() => p_client.Events.MessageReceived -= MessageReceived);
+        p_client.Events.MessageReceived += MessageReceivedRaw;
+        _lifetime.DoOnCompleted(() => p_client.Events.MessageReceived -= MessageReceivedRaw);
 
         async Task<bool> sendTcpMsgJob(JobContext<TcpMessage> _ctx)
         {
@@ -71,12 +128,21 @@ public class TcpBusClient : ITcpBusClient
 
         WorkerTeam.Run(p_failedTcpMsgFlow, sendTcpMsgJob, sendTcpMsgJobPenalty, _lifetime, 4);
 
+        p_incomingMsgFlow
+            .ObserveOn(p_scheduler)
+            .SelectAsync(MessageReceived!, p_scheduler)
+            .Subscribe(_lifetime);
+
         Observable
             .Interval(TimeSpan.FromSeconds(5))
             .Subscribe(_ =>
             {
-                if (!p_client.Connected)
-                    p_client.Connect();
+                try
+                {
+                    if (!p_client.Connected)
+                        p_client.Connect();
+                }
+                catch {}
             }, _lifetime);
 
         if (!p_client.Connected)
@@ -88,13 +154,15 @@ public class TcpBusClient : ITcpBusClient
 
     public bool Connected => p_client.Connected;
 
-    private async void MessageReceived(object _sender, MessageReceivedEventArgs _args)
+    private void MessageReceivedRaw(object? _sender, MessageReceivedEventArgs _args) => p_incomingMsgFlow.OnNext(_args.Data);
+
+    private async Task MessageReceived(byte[] _msgData, CancellationToken _ct)
     {
         byte[]? bytes;
         if (p_password != null)
-            bytes = await Cryptography.DecryptAes(_args.Data, p_password, p_lifetime.Token);
+            bytes = await Cryptography.DecryptAes(_msgData, p_password, true, _ct);
         else
-            bytes = _args.Data;
+            bytes = _msgData;
 
         try
         {
@@ -199,7 +267,7 @@ public class TcpBusClient : ITcpBusClient
 
         try
         {
-            var value = await TaskObservableExtensions.ToTask(Observable
+            var value = await Observable
                 .Merge(
                     p_msgFlow.Where(_x => _x.Id == guid && _x.Data.GetType() == typeof(TRes)),
                     Observable.Timer(_timeout).Select(_ => new BusMsgSerial(new EmptyBusMsg(), Guid.Empty)),
@@ -209,7 +277,7 @@ public class TcpBusClient : ITcpBusClient
                         return new BusMsgSerial(new EmptyBusMsg(), ignoredGuid);
                     }))
                 .ObserveOn(p_scheduler)
-                .FirstOrDefaultAsync(_x => _x.Id != ignoredGuid), _ct);
+                .FirstOrDefaultAsync(_x => _x.Id != ignoredGuid).ToTask(_ct);
 
             if (value != default && value.Id != Guid.Empty)
                 return (TRes)value.Data;

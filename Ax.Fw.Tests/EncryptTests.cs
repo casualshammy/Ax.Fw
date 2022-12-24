@@ -18,8 +18,10 @@ namespace Ax.Fw.Tests
             p_output = output;
         }
 
-        [Fact(Timeout = 30000)]
-        public async Task EncryptDecryptAsync()
+        [Theory(Timeout = 30000)]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task EncryptDecryptStreamAsync(bool _useFastHashing)
         {
             var lifetime = new Lifetime();
             try
@@ -32,7 +34,7 @@ namespace Ax.Fw.Tests
                 using (var rawMs = new MemoryStream(data))
                 using (var encryptedMs = new MemoryStream())
                 {
-                    await Cryptography.EncryptAes(rawMs, encryptedMs, password, lifetime.Token);
+                    await Cryptography.EncryptAes(rawMs, encryptedMs, password, _useFastHashing, lifetime.Token);
 
                     encryptedMs.Position = 0;
                     var encryptedData = encryptedMs.ToArray();
@@ -42,7 +44,7 @@ namespace Ax.Fw.Tests
 
                     using (var decryptedMs = new MemoryStream())
                     {
-                        await Cryptography.DecryptAes(encryptedMs, decryptedMs, password, lifetime.Token);
+                        await Cryptography.DecryptAes(encryptedMs, decryptedMs, password, _useFastHashing, lifetime.Token);
                         var decryptedData = decryptedMs.ToArray();
 
                         Assert.NotEmpty(decryptedData);
@@ -56,8 +58,39 @@ namespace Ax.Fw.Tests
             }
         }
 
-        [Fact(Timeout = 30000)]
-        public async Task IncorrectPasswordAsync()
+        [Theory(Timeout = 30000)]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task EncryptDecryptArrayAsync(bool _useFastHashing)
+        {
+            var lifetime = new Lifetime();
+            try
+            {
+                var data = new byte[10 * 1024];
+                ThreadSafeRandomProvider.GetThreadRandom().NextBytes(data);
+
+                var password = Encoding.UTF8.GetBytes("123asd456qwe789zxc");
+
+                var encryptedBytes = await Cryptography.EncryptAes(data, password, _useFastHashing, lifetime.Token);
+
+                Assert.NotEmpty(encryptedBytes);
+                Assert.NotEqual(data, encryptedBytes);
+
+                var decryptedBytes = await Cryptography.DecryptAes(encryptedBytes, password, _useFastHashing, lifetime.Token);
+
+                Assert.NotEmpty(decryptedBytes);
+                Assert.Equal(data, decryptedBytes);
+            }
+            finally
+            {
+                lifetime.Complete();
+            }
+        }
+
+        [Theory(Timeout = 30000)]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task IncorrectPasswordAsync(bool _useFastHashing)
         {
             var lifetime = new Lifetime();
             try
@@ -70,7 +103,7 @@ namespace Ax.Fw.Tests
                 using (var rawMs = new MemoryStream(data))
                 using (var encryptedMs = new MemoryStream())
                 {
-                    await Cryptography.EncryptAes(rawMs, encryptedMs, password, lifetime.Token);
+                    await Cryptography.EncryptAes(rawMs, encryptedMs, password, _useFastHashing, lifetime.Token);
 
                     encryptedMs.Position = 0;
                     var encryptedData = encryptedMs.ToArray();
@@ -79,12 +112,12 @@ namespace Ax.Fw.Tests
                     Assert.NotEqual(data, encryptedData);
 
                     using (var decryptedMs = new MemoryStream())
-                        await Assert.ThrowsAsync<CryptographicException>(async () => await Cryptography.DecryptAes(encryptedMs, decryptedMs, password.Take(password.Length - 1).ToArray(), lifetime.Token));
+                        await Assert.ThrowsAsync<CryptographicException>(async () => await Cryptography.DecryptAes(encryptedMs, decryptedMs, password.Take(password.Length - 1).ToArray(), _useFastHashing, lifetime.Token));
 
                     password[^1] = 255;
                     using (var decryptedMs = new MemoryStream())
                     {
-                        await Cryptography.DecryptAes(encryptedMs, decryptedMs, password, lifetime.Token);
+                        await Cryptography.DecryptAes(encryptedMs, decryptedMs, password, _useFastHashing, lifetime.Token);
 
                         var decryptedData = decryptedMs.ToArray();
                         Assert.NotEqual(data, decryptedData);

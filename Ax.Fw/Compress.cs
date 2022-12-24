@@ -186,12 +186,20 @@ public static class Compress
         if (!_outputStream.CanWrite)
             throw new ArgumentException($"Stream must be writable", nameof(_outputStream));
 
-        var jsonString = JsonConvert.SerializeObject(_serializableObject);
-        var rawString = Encoding.UTF8.GetBytes(jsonString);
+        using (var sourceStream = new MemoryStream())
+        {
+            using (var sw = new StreamWriter(sourceStream, Encoding.UTF8, 80192, true))
+            using (var jsonWriter = new JsonTextWriter(sw))
+            {
+                var serializer = new JsonSerializer();
+                serializer.Serialize(jsonWriter, _serializableObject);
+            }
 
-        using (var sourceStream = new MemoryStream(rawString))
-        using (var compression = new GZipStream(_outputStream, CompressionMode.Compress, true))
-            await sourceStream.CopyToAsync(compression, 80192, _ct);
+            sourceStream.Position = 0;
+
+            using (var compression = new GZipStream(_outputStream, CompressionMode.Compress, true))
+                await sourceStream.CopyToAsync(compression, 80192, _ct);
+        }
     }
 
     /// <summary>
@@ -199,21 +207,9 @@ public static class Compress
     /// </summary>
     public static async Task<T?> DecompressGzippedJsonAsync<T>(byte[] _compressedBytes, CancellationToken _ct)
     {
-        byte[]? rawString = null;
-        using (var sourceStream = new MemoryStream(_compressedBytes))
-        {
-            using (var targetStream = new MemoryStream(_compressedBytes.Length))
-            {
-                using (var decompression = new GZipStream(sourceStream, CompressionMode.Decompress, true))
-                {
-                    await decompression.CopyToAsync(targetStream, 80192, _ct);
-                }
-                rawString = targetStream.ToArray();
-            }
-        }
-
-        var jsonString = Encoding.UTF8.GetString(rawString);
-        return JsonConvert.DeserializeObject<T>(jsonString);
+        using var ms = new MemoryStream(_compressedBytes);
+        var result = await DecompressGzippedJsonAsync<T>(ms, _ct);
+        return result;
     }
 
     /// <summary>
@@ -221,18 +217,22 @@ public static class Compress
     /// </summary>
     public static async Task<T?> DecompressGzippedJsonAsync<T>(Stream _compressedStream, CancellationToken _ct)
     {
-        byte[]? rawString = null;
+        T? result;
         using (var targetStream = new MemoryStream())
         {
             using (var decompression = new GZipStream(_compressedStream, CompressionMode.Decompress, true))
-            {
                 await decompression.CopyToAsync(targetStream, 80192, _ct);
-            }
-            rawString = targetStream.ToArray();
-        }
 
-        var jsonString = Encoding.UTF8.GetString(rawString);
-        return JsonConvert.DeserializeObject<T>(jsonString);
+            targetStream.Position = 0;
+
+            using (var reader = new StreamReader(targetStream, Encoding.UTF8, false, 80192, true))
+            using (var jsonReader = new JsonTextReader(reader))
+            {
+                var serializer = new JsonSerializer();
+                result = serializer.Deserialize<T>(jsonReader);
+            }
+        }
+        return result;
     }
 
 }

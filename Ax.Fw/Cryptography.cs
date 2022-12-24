@@ -11,7 +11,7 @@ namespace Ax.Fw;
 
 public static class Cryptography
 {
-    public static async Task EncryptAes(Stream _inStream, Stream _outEncryptedStream, byte[] _password, CancellationToken _ct)
+    public static async Task EncryptAes(Stream _inStream, Stream _outEncryptedStream, byte[] _password, bool _useFastHashing = false, CancellationToken _ct = default)
     {
         if (!_outEncryptedStream.CanWrite)
             throw new NotSupportedException($"Can't write to '{nameof(_outEncryptedStream)}'!");
@@ -22,9 +22,21 @@ public static class Cryptography
         {
             rijCrypto.KeySize = 256;
             rijCrypto.BlockSize = 128;
-            using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
-            rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
-            rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
+
+            if (_useFastHashing)
+            {
+                using var hash = SHA512.Create();
+                var key = hash.ComputeHash(_password);
+                rijCrypto.Key = key.Take(rijCrypto.KeySize / 8).ToArray();
+                rijCrypto.IV = key.Reverse().Take(rijCrypto.BlockSize / 8).ToArray();
+            }
+            else
+            {
+                using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
+                rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
+                rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
+            }
+
             rijCrypto.Mode = CipherMode.CBC;
 
             using (var encryptor = rijCrypto.CreateEncryptor())
@@ -33,15 +45,27 @@ public static class Cryptography
         }
     }
 
-    public static async Task<byte[]> EncryptAes(byte[] _data, byte[] _password, CancellationToken _ct)
+    public static async Task<byte[]> EncryptAes(byte[] _data, byte[] _password, bool _useFastHashing = false, CancellationToken _ct = default)
     {
         using (var rijCrypto = Aes.Create("AES"))
         {
             rijCrypto.KeySize = 256;
             rijCrypto.BlockSize = 128;
-            using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
-            rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
-            rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
+
+            if (_useFastHashing)
+            {
+                using var hash = SHA512.Create();
+                var key = hash.ComputeHash(_password);
+                rijCrypto.Key = key.Take(rijCrypto.KeySize / 8).ToArray();
+                rijCrypto.IV = key.Reverse().Take(rijCrypto.BlockSize / 8).ToArray();
+            }
+            else
+            {
+                using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
+                rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
+                rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
+            }
+
             rijCrypto.Mode = CipherMode.CBC;
 
             using (var encryptedStream = new MemoryStream())
@@ -56,7 +80,7 @@ public static class Cryptography
         }
     }
 
-    public static async Task DecryptAes(Stream _inEncryptedStream, Stream _outStream, byte[] _password, CancellationToken _ct)
+    public static async Task DecryptAes(Stream _inEncryptedStream, Stream _outStream, byte[] _password, bool _useFastHashing = false, CancellationToken _ct = default)
     {
         if (!_outStream.CanWrite)
             throw new NotSupportedException($"Can't write to '{nameof(_outStream)}'!");
@@ -67,9 +91,21 @@ public static class Cryptography
         {
             rijCrypto.KeySize = 256;
             rijCrypto.BlockSize = 128;
-            using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
-            rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
-            rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
+
+            if (_useFastHashing)
+            {
+                using var hash = SHA512.Create();
+                var key = hash.ComputeHash(_password);
+                rijCrypto.Key = key.Take(rijCrypto.KeySize / 8).ToArray();
+                rijCrypto.IV = key.Reverse().Take(rijCrypto.BlockSize / 8).ToArray();
+            }
+            else
+            {
+                using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
+                rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
+                rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
+            }
+
             rijCrypto.Mode = CipherMode.CBC;
 
             using (var decryptor = rijCrypto.CreateDecryptor())
@@ -78,15 +114,27 @@ public static class Cryptography
         }
     }
 
-    public static async Task<byte[]> DecryptAes(byte[] _encryptedData, byte[] _password, CancellationToken _ct)
+    public static async Task<byte[]> DecryptAes(byte[] _encryptedData, byte[] _password, bool _useFastHashing = false, CancellationToken _ct = default)
     {
         using (var rijCrypto = Aes.Create("AES"))
         {
             rijCrypto.KeySize = 256;
             rijCrypto.BlockSize = 128;
-            using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
-            rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
-            rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
+
+            if (_useFastHashing)
+            {
+                using var hash = SHA512.Create();
+                var key = hash.ComputeHash(_password);
+                rijCrypto.Key = key.Take(rijCrypto.KeySize / 8).ToArray();
+                rijCrypto.IV = key.Reverse().Take(rijCrypto.BlockSize / 8).ToArray();
+            }
+            else
+            {
+                using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
+                rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
+                rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
+            }
+
             rijCrypto.Mode = CipherMode.CBC;
 
             using (var decryptedStream = new MemoryStream())

@@ -24,9 +24,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.MetroFramework", "Ax.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.MetroFramework.Sandbox", "Ax.Fw.MetroFramework.Sandbox\Ax.Fw.MetroFramework.Sandbox.csproj", "{CA260428-3614-4A06-8065-9B7108A0D4F1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ax.Fw.PipeBus", "Ax.Fw.PipeBus\Ax.Fw.PipeBus.csproj", "{1BA12C44-BE7A-47C3-9C0E-123C7364B341}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.PipeBus", "Ax.Fw.PipeBus\Ax.Fw.PipeBus.csproj", "{1BA12C44-BE7A-47C3-9C0E-123C7364B341}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ax.Fw.PipeBus.Tests", "Ax.Fw.PipeBus.Tests\Ax.Fw.PipeBus.Tests.csproj", "{384245E6-4E40-429D-96AE-BD516A5B5078}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.PipeBus.Tests", "Ax.Fw.PipeBus.Tests\Ax.Fw.PipeBus.Tests.csproj", "{384245E6-4E40-429D-96AE-BD516A5B5078}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.Storage", "Ax.Fw.Storage\Ax.Fw.Storage.csproj", "{6FA286ED-8322-469A-A1E6-2527CE26016D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ax.Fw.Storage.Tests", "Ax.Fw.Storage.Tests\Ax.Fw.Storage.Tests.csproj", "{F87BAB8C-9CE4-45E2-9140-DB951DF69EE0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -74,6 +78,14 @@ Global
 		{384245E6-4E40-429D-96AE-BD516A5B5078}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{384245E6-4E40-429D-96AE-BD516A5B5078}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{384245E6-4E40-429D-96AE-BD516A5B5078}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6FA286ED-8322-469A-A1E6-2527CE26016D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6FA286ED-8322-469A-A1E6-2527CE26016D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6FA286ED-8322-469A-A1E6-2527CE26016D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6FA286ED-8322-469A-A1E6-2527CE26016D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F87BAB8C-9CE4-45E2-9140-DB951DF69EE0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F87BAB8C-9CE4-45E2-9140-DB951DF69EE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F87BAB8C-9CE4-45E2-9140-DB951DF69EE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F87BAB8C-9CE4-45E2-9140-DB951DF69EE0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
