@@ -5,6 +5,8 @@ using Ax.Fw.Storage.Interfaces;
 using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
 using System.Data.SQLite;
+using System.Globalization;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -13,69 +15,151 @@ namespace Ax.Fw.Storage;
 
 public class SqliteDocumentStorage : IDocumentStorage
 {
-    private const string TABLE_DOCUMENT_META = "document_meta";
-    private const string TABLE_DOCUMENT_DATA = "document_data";
-
     private readonly SQLiteConnection p_connection;
     private readonly ConcurrentDictionary<Type, string> p_tableNamesPerType = new();
+    private readonly HashSet<string> p_existingTables = new();
+    private long p_documentsCounter = 0;
 
     public SqliteDocumentStorage(string _dbFilePath, IReadOnlyLifetime _lifetime)
     {
         p_connection = _lifetime.DisposeOnCompleted(GetConnection(_dbFilePath, _lifetime));
-        Migrate();
+        p_documentsCounter = GetLatestDocumentId(p_connection);
     }
 
-    public async Task<DocumentInfo> CreateDocumentAsync(string _docType, string? _namespace, CancellationToken _ct)
+    public async Task<DocumentEntry> WriteDocumentAsync(string _namespace, string _key, JToken _data, CancellationToken _ct)
     {
+        var normalizedTableName = GetNormalizedTableName(_namespace);
         var now = DateTimeOffset.UtcNow;
-        var ns = _namespace ?? "default";
+
+        using var inject = InjectTableCreation(normalizedTableName,
+            $"INSERT OR REPLACE INTO [{normalizedTableName}] (doc_id, key, last_modified, created, version, data) " +
+            $"VALUES (@doc_id, @key, @last_modified, @created, @version, @data) " +
+            $"ON CONFLICT (key) " +
+            $"DO UPDATE SET " +
+            $"  last_modified=@last_modified, " +
+            $"  version=version+1, " +
+            $"  data=@data " +
+            $"RETURNING doc_id, version, created; ", out var sql);
 
         await using var command = new SQLiteCommand(p_connection);
-        command.CommandText =
-                $"INSERT OR REPLACE INTO {TABLE_DOCUMENT_META} (doc_type, namespace, version, last_modified) " +
-                $"VALUES (@doc_type, @namespace, @version, @last_modified) " +
-                $"RETURNING doc_id; ";
-        command.Parameters.AddWithValue("@doc_type", _docType);
-        command.Parameters.AddWithValue("@namespace", ns);
-        command.Parameters.AddWithValue("@version", 0L);
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("@doc_id", Interlocked.Increment(ref p_documentsCounter));
+        command.Parameters.AddWithValue("@key", _key);
         command.Parameters.AddWithValue("@last_modified", now.UtcTicks);
+        command.Parameters.AddWithValue("@created", now.UtcTicks);
+        command.Parameters.AddWithValue("@version", 1);
+        command.Parameters.AddWithValue("@data", _data.ToString(Newtonsoft.Json.Formatting.None));
 
         await using var reader = await command.ExecuteReaderAsync(_ct);
         if (await reader.ReadAsync(_ct))
-            return new DocumentInfo(reader.GetInt32(0), _docType, ns, 0L, now);
+        {
+            var docId = reader.GetInt32(0);
+            var version = reader.GetInt64(1);
+            var created = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
+            return new DocumentEntry(docId, _namespace, _key, now, created, version, _data);
+        }
 
         throw new InvalidOperationException($"Can't create document - db reader returned no result");
     }
 
-    public async Task DeleteDocumentAsync(int _docId, CancellationToken _ct)
+    public async Task<DocumentEntry> WriteDocumentAsync(string _namespace, int _key, JToken _data, CancellationToken _ct)
     {
+        return await WriteDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), _data, _ct);
+    }
+
+    public async Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull
+    {
+        return await WriteDocumentAsync(_namespace, _key, JToken.FromObject(_data), _ct);
+    }
+
+    public async Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull
+    {
+        return await WriteDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), JToken.FromObject(_data), _ct);
+    }
+
+    /// <summary>
+    /// Writes document to document
+    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleRecordAttribute"/>, records are treated as strongly-typed, so T = int IS NOT EQUAL to T = long or T = int?</para>
+    /// </summary>
+    public async Task<DocumentEntry> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull
+    {
+        var tableName = GetTableNameFromType(typeof(T));
+
+        return await WriteDocumentAsync(tableName, _entryId, JToken.FromObject(_data), _ct);
+    }
+
+    /// <summary>
+    /// Creates new document or overwrites old
+    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleRecordAttribute"/>, records are treated as strongly-typed, so T = int IS NOT EQUAL to T = long or T = int?</para>
+    /// </summary>
+    public async Task<DocumentEntry> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull
+    {
+        return await WriteSimpleDocumentAsync(_entryId.ToString(CultureInfo.InvariantCulture), _data, _ct);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="_namespace"></param>
+    /// <param name="_key">Key of entry to delete. If <see cref="null"/> then delete all entries in namespace</param>
+    /// <param name="_from"></param>
+    /// <param name="_to"></param>
+    /// <param name="_ct"></param>
+    /// <returns></returns>
+    public async Task DeleteDocumentsAsync(
+        string _namespace,
+        string? _key,
+        DateTimeOffset? _from,
+        DateTimeOffset? _to,
+        CancellationToken _ct)
+    {
+        var normalizedTableName = GetNormalizedTableName(_namespace);
+
+        using var inject = InjectTableCreation(normalizedTableName,
+                        $"DELETE FROM [{normalizedTableName}] " +
+                        $"WHERE " +
+                        $"  (@key IS NULL OR @key=key) AND " +
+                        $"  (@from IS NULL OR last_modified>=@from) AND " +
+                        $"  (@to IS NULL OR last_modified<=@to); ", out var sql);
+
         await using var cmd = new SQLiteCommand(p_connection);
-        cmd.CommandText =
-                        $"DELETE FROM {TABLE_DOCUMENT_META} " +
-                        $"WHERE doc_id=@doc_id; ";
-        cmd.Parameters.AddWithValue("@doc_id", _docId);
+        cmd.CommandText = sql;
+        cmd.Parameters.AddWithValue("@key", _key);
+        cmd.Parameters.AddWithValue("@from", _from?.UtcTicks);
+        cmd.Parameters.AddWithValue("@to", _to?.UtcTicks);
 
         await cmd.ExecuteNonQueryAsync(_ct);
     }
 
-    public async IAsyncEnumerable<DocumentInfo> ListDocumentsAsync(
-        string? _docType,
-        string? _namespace,
+    public async Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
+    {
+        var tableName = GetTableNameFromType(typeof(T));
+
+        await DeleteDocumentsAsync(tableName, _entryId, null, null, _ct);
+    }
+
+    public async Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
+    {
+        await DeleteSimpleDocumentAsync<T>(_entryId.ToString(CultureInfo.InvariantCulture), _ct);
+    }
+
+    public async IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
+        string _namespace,
         DateTimeOffset? _from,
         DateTimeOffset? _to,
         [EnumeratorCancellation] CancellationToken _ct)
     {
-        await using var cmd = new SQLiteCommand(p_connection);
-        cmd.CommandText =
-            $"SELECT doc_id, doc_type, namespace, version, last_modified " +
-            $"FROM {TABLE_DOCUMENT_META} " +
+        var normalizedTableName = GetNormalizedTableName(_namespace);
+
+        using var inject = InjectTableCreation(normalizedTableName,
+            $"SELECT doc_id, key, last_modified, created, version, data " +
+            $"FROM [{normalizedTableName}] " +
             $"WHERE " +
-            $"  (@doc_type IS NULL OR doc_type=@doc_type) AND " +
-            $"  (@namespace IS NULL OR namespace=@namespace) AND " +
             $"  (@from IS NULL OR last_modified>=@from) AND " +
-            $"  (@to IS NULL OR last_modified<=@to); ";
-        cmd.Parameters.AddWithValue("@doc_type", _docType);
-        cmd.Parameters.AddWithValue("@namespace", _namespace);
+            $"  (@to IS NULL OR last_modified<=@to); ", out var sql);
+
+        await using var cmd = new SQLiteCommand(p_connection);
+        cmd.CommandText = sql;
         cmd.Parameters.AddWithValue("@from", _from?.UtcTicks);
         cmd.Parameters.AddWithValue("@to", _to?.UtcTicks);
 
@@ -83,166 +167,13 @@ public class SqliteDocumentStorage : IDocumentStorage
         while (await reader.ReadAsync(_ct))
         {
             var docId = reader.GetInt32(0);
-            var docType = reader.GetString(1);
-            var @namespace = reader.GetString(2);
-            var version = reader.GetInt64(3);
-            var lastModified = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
-
-            yield return new DocumentInfo(docId, docType, @namespace, version, lastModified);
-        }
-    }
-
-    public async Task<DocumentInfo?> GetDocumentAsync(int _docId, CancellationToken _ct)
-    {
-        await using var cmd = new SQLiteCommand(p_connection);
-        cmd.CommandText =
-            $"SELECT doc_type, namespace, version, last_modified " +
-            $"FROM {TABLE_DOCUMENT_META} " +
-            $"WHERE " +
-            $"  doc_id=@doc_id ";
-        cmd.Parameters.AddWithValue("@doc_id", _docId);
-
-        await using var reader = await cmd.ExecuteReaderAsync(_ct);
-        if (await reader.ReadAsync(_ct))
-        {
-            var docType = reader.GetString(0);
-            var @namespace = reader.GetString(1);
-            var version = reader.GetInt64(2);
-            var lastModified = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
-
-            return new DocumentInfo(_docId, docType, @namespace, version, lastModified);
-        }
-
-        return null;
-    }
-
-    public async Task<DocumentRecord> WriteRecordAsync(int _docId, string _tableId, string? _recordKey, JToken _data, CancellationToken _ct)
-    {
-        if (_recordKey == "")
-            throw new ArgumentOutOfRangeException(nameof(_recordKey), "Record key must be null or non-empty string!");
-
-        var now = DateTimeOffset.UtcNow;
-
-        await using var command = new SQLiteCommand(p_connection);
-        command.CommandText =
-                $"UPDATE {TABLE_DOCUMENT_META} " +
-                $"SET " +
-                $"  last_modified=@last_modified, " +
-                $"  version=version+1 " +
-                $"WHERE doc_id=@doc_id; " +
-                $"INSERT OR REPLACE INTO {TABLE_DOCUMENT_DATA} (doc_id, table_id, record_key, last_modified, data) " +
-                $"VALUES (@doc_id, @table_id, @record_key, @last_modified, @data) " +
-                $"ON CONFLICT (doc_id, table_id, record_key) " +
-                $"DO UPDATE SET " +
-                $"  last_modified=@last_modified, " +
-                $"  data=@data " +
-                $"RETURNING record_id; ";
-        command.Parameters.AddWithValue("@doc_id", _docId);
-        command.Parameters.AddWithValue("@table_id", _tableId);
-        command.Parameters.AddWithValue("@record_key", _recordKey ?? "");
-        command.Parameters.AddWithValue("@last_modified", now.UtcTicks);
-        command.Parameters.AddWithValue("@data", _data.ToString(Newtonsoft.Json.Formatting.None));
-
-        await using var reader = await command.ExecuteReaderAsync(_ct);
-        if (await reader.ReadAsync(_ct))
-            return new DocumentRecord(reader.GetInt32(0), _docId, _tableId, _recordKey, now, _data);
-
-        throw new InvalidOperationException($"Can't create record - db reader returned no result");
-    }
-
-    /// <summary>
-    /// Writes record to document
-    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleRecordAttribute"/>, records are treated as strongly-typed, so T = int IS NOT EQUAL to T = long or T = int?</para>
-    /// </summary>
-    public async Task<DocumentRecord> WriteSimpleRecordAsync<T>(int _docId, T _data, CancellationToken _ct) where T : notnull
-    {
-        var tableName = GetTableNameFromType(typeof(T));
-
-        return await WriteRecordAsync(_docId, tableName, null, JToken.FromObject(_data), _ct);
-    }
-
-    public async Task DeleteRecordsAsync(
-        int _docId,
-        string? _tableId,
-        string? _recordKey,
-        DateTimeOffset? _from,
-        DateTimeOffset? _to,
-        CancellationToken _ct)
-    {
-        if (_recordKey == "")
-            throw new ArgumentOutOfRangeException(nameof(_recordKey), "Record key must be null or non-empty string!");
-
-        var now = DateTimeOffset.UtcNow;
-
-        await using var cmd = new SQLiteCommand(p_connection);
-        cmd.CommandText =
-                        $"DELETE FROM {TABLE_DOCUMENT_DATA} " +
-                        $"WHERE " +
-                        $"  doc_id=@doc_id AND " +
-                        $"  (@table_id IS NULL OR @table_id=table_id) AND " +
-                        $"  (@record_key IS NULL OR @record_key=record_key) AND " +
-                        $"  (@from IS NULL OR last_modified>=@from) AND " +
-                        $"  (@to IS NULL OR last_modified<=@to); " +
-                        $"UPDATE {TABLE_DOCUMENT_META} " +
-                        $"SET " +
-                        $"  last_modified=@last_modified, " +
-                        $"  version=version+1 " +
-                        $"WHERE doc_id=@doc_id; ";
-        cmd.Parameters.AddWithValue("@doc_id", _docId);
-        cmd.Parameters.AddWithValue("@table_id", _tableId);
-        cmd.Parameters.AddWithValue("@record_key", _recordKey);
-        cmd.Parameters.AddWithValue("@from", _from?.UtcTicks);
-        cmd.Parameters.AddWithValue("@to", _to?.UtcTicks);
-        cmd.Parameters.AddWithValue("@last_modified", now.UtcTicks);
-
-        await cmd.ExecuteNonQueryAsync(_ct);
-    }
-
-    public async Task DeleteSimpleRecordAsync<T>(int _docId, CancellationToken _ct) where T : notnull
-    {
-        var tableName = GetTableNameFromType(typeof(T));
-
-        await DeleteRecordsAsync(_docId, tableName, null, null, null, _ct);
-    }
-
-    public async IAsyncEnumerable<DocumentRecord> ListRecordsAsync(
-        int? _docId,
-        string? _tableId,
-        string? _recordKey,
-        DateTimeOffset? _from,
-        DateTimeOffset? _to,
-        [EnumeratorCancellation] CancellationToken _ct)
-    {
-        if (_recordKey == "")
-            throw new ArgumentOutOfRangeException(nameof(_recordKey), "Record key must be null or non-empty string!");
-
-        await using var cmd = new SQLiteCommand(p_connection);
-        cmd.CommandText =
-            $"SELECT record_id, doc_id, table_id, record_key, last_modified, data " +
-            $"FROM {TABLE_DOCUMENT_DATA} " +
-            $"WHERE " +
-            $"  (@doc_id IS NULL OR doc_id=@doc_id) AND " +
-            $"  (@table_id IS NULL OR table_id=@table_id) AND " +
-            $"  (@record_key IS NULL OR record_key=@record_key) AND " +
-            $"  (@from IS NULL OR last_modified>=@from) AND " +
-            $"  (@to IS NULL OR last_modified<=@to); ";
-        cmd.Parameters.AddWithValue("@doc_id", _docId);
-        cmd.Parameters.AddWithValue("@table_id", _tableId);
-        cmd.Parameters.AddWithValue("@record_key", _recordKey);
-        cmd.Parameters.AddWithValue("@from", _from?.UtcTicks);
-        cmd.Parameters.AddWithValue("@to", _to?.UtcTicks);
-
-        await using var reader = await cmd.ExecuteReaderAsync(_ct);
-        while (await reader.ReadAsync(_ct))
-        {
-            var recordId = reader.GetInt32(0);
-            var docId = reader.GetInt32(1);
-            var tableId = reader.GetString(2);
-            var recordKey = reader.GetString(3);
-            var lastModified = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
+            var optionalKey = reader.GetString(1);
+            var lastModified = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
+            var created = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
+            var version = reader.GetInt64(4);
             var data = JToken.Parse(reader.GetString(5));
 
-            yield return new DocumentRecord(recordId, docId, tableId, recordKey != "" ? recordKey : null, lastModified, data);
+            yield return new DocumentEntry(docId, _namespace, optionalKey, lastModified, created, version, data);
         }
     }
 
@@ -250,113 +181,186 @@ public class SqliteDocumentStorage : IDocumentStorage
     /// Retrieves the list of records from document
     /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleRecordAttribute"/>, records are treated as strongly-typed, so T = int IS NOT EQUAL to T = long or T = int?</para>
     /// </summary>
-    public async IAsyncEnumerable<DocumentTypedRecord<T>> ListSimpleRecordsAsync<T>(
-        int? _docId,
-        string? _tableId,
-        string? _recordKey,
+    public async IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
         DateTimeOffset? _from,
         DateTimeOffset? _to,
         [EnumeratorCancellation] CancellationToken _ct)
     {
-        await foreach (var record in ListRecordsAsync(_docId, _tableId, _recordKey, _from, _to, _ct))
+        var tableName = GetTableNameFromType(typeof(T));
+
+        await foreach (var document in ListDocumentsAsync(tableName, _from, _to, _ct))
         {
-            var data = record.Data.ToObject<T>();
+            var data = document.Data.ToObject<T>();
             if (data == null)
                 continue;
 
-            var typedRecord = new DocumentTypedRecord<T>(
-                record.RecordId,
-                record.DocId,
-                record.TableId,
-                record.RecordKey,
-                record.LastModified,
+            var typedDocument = new DocumentTypedEntry<T>(
+                document.DocId,
+                document.Namespace,
+                document.Key,
+                document.LastModified,
+                document.Created,
+                document.Version,
                 data);
 
-            yield return typedRecord;
+            yield return typedDocument;
         }
     }
 
-    public async Task<DocumentRecord?> ReadRecordAsync(int _recordId, CancellationToken _ct)
+    public async Task<DocumentEntry?> ReadDocumentAsync(
+        string _namespace,
+        string _key,
+        CancellationToken _ct)
     {
-        await using var cmd = new SQLiteCommand(p_connection);
-        cmd.CommandText =
-            $"SELECT doc_id, table_id, record_key, last_modified, data " +
-            $"FROM {TABLE_DOCUMENT_DATA} " +
+        var normalizedTableName = GetNormalizedTableName(_namespace);
+
+        using var inject = InjectTableCreation(normalizedTableName,
+            $"SELECT doc_id, key, last_modified, created, version, data " +
+            $"FROM [{normalizedTableName}] " +
             $"WHERE " +
-            $"  record_id=@record_id; ";
-        cmd.Parameters.AddWithValue("@record_id", _recordId);
+            $"  key=@key; ", out var sql);
+
+        await using var cmd = new SQLiteCommand(p_connection);
+        cmd.CommandText = sql;
+        cmd.Parameters.AddWithValue("@key", _key);
 
         await using var reader = await cmd.ExecuteReaderAsync(_ct);
         if (await reader.ReadAsync(_ct))
         {
             var docId = reader.GetInt32(0);
-            var tableId = reader.GetString(1);
-            var recordKey = reader.GetString(2);
-            var lastModified = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
-            var data = JToken.Parse(reader.GetString(4));
+            var optionalKey = reader.GetString(1);
+            var lastModified = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
+            var created = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
+            var version = reader.GetInt64(4);
+            var data = JToken.Parse(reader.GetString(5));
 
-            return new DocumentRecord(_recordId, docId, tableId, recordKey != "" ? recordKey : null, lastModified, data);
+            return new DocumentEntry(docId, _namespace, optionalKey, lastModified, created, version, data);
         }
 
         return null;
     }
 
-    public async Task<DocumentRecord?> ReadRecordAsync(
-        int _docId,
-        string _tableId,
-        string? _recordKey,
+    public async Task<DocumentEntry?> ReadDocumentAsync(
+        string _namespace,
+        int _key,
         CancellationToken _ct)
     {
-        await using var cmd = new SQLiteCommand(p_connection);
-        cmd.CommandText =
-            $"SELECT record_id, record_key, last_modified, data " +
-            $"FROM {TABLE_DOCUMENT_DATA} " +
-            $"WHERE " +
-            $"  doc_id=@doc_id AND " +
-            $"  table_id=@table_id AND " +
-            $"  record_key=@record_key; " +
-        cmd.Parameters.AddWithValue("@doc_id", _docId);
-        cmd.Parameters.AddWithValue("@table_id", _tableId);
-        cmd.Parameters.AddWithValue("@record_key", _recordKey ?? "");
-
-        await using var reader = await cmd.ExecuteReaderAsync(_ct);
-        if (await reader.ReadAsync(_ct))
-        {
-            var recordId = reader.GetInt32(0);
-            var recordKey = reader.GetString(1);
-            var lastModified = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
-            var data = JToken.Parse(reader.GetString(3));
-
-            return new DocumentRecord(recordId, _docId, _tableId, recordKey != "" ? recordKey : null, lastModified, data);
-        }
-
-        return null;
+        return await ReadDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), _ct);
     }
 
-    /// <summary>
-    /// Reads record from document
-    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleRecordAttribute"/>, records are treated as strongly-typed, so T = int IS NOT EQUAL to T = long or T = int?</para>
-    /// </summary>
-    public async Task<DocumentTypedRecord<T>?> ReadSimpleRecordAsync<T>(int _docId, CancellationToken _ct) where T : notnull
+    public async Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(
+        string _namespace,
+        string _key,
+        CancellationToken _ct)
     {
-        var tableName = GetTableNameFromType(typeof(T));
-
-        var record = await ReadRecordAsync(_docId, tableName, null, _ct);
-        if (record == null)
+        var document = await ReadDocumentAsync(_namespace, _key, _ct);
+        if (document == null)
             return null;
 
-        var data = record.Data.ToObject<T>();
+        var data = document.Data.ToObject<T>();
         if (data == null)
             return null;
 
-        return new DocumentTypedRecord<T>(
-            record.RecordId, 
-            record.DocId, 
-            record.TableId, 
-            record.RecordKey, 
-            record.LastModified, 
+        var typedDocument = new DocumentTypedEntry<T>(
+            document.DocId,
+            document.Namespace,
+            document.Key,
+            document.LastModified,
+            document.Created,
+            document.Version,
+            data);
+
+        return typedDocument;
+    }
+
+    public async Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(
+        string _namespace,
+        int _key,
+        CancellationToken _ct)
+    {
+        return await ReadTypedDocumentAsync<T>(_namespace, _key.ToString(CultureInfo.InvariantCulture), _ct);
+    }
+
+    /// <summary>
+    /// Reads document from document
+    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleRecordAttribute"/>, records are treated as strongly-typed, so T = int IS NOT EQUAL to T = long or T = int?</para>
+    /// </summary>
+    public async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
+    {
+        var tableName = GetTableNameFromType(typeof(T));
+
+        var document = await ReadDocumentAsync(tableName, _entryId, _ct);
+        if (document == null)
+            return null;
+
+        var data = document.Data.ToObject<T>();
+        if (data == null)
+            return null;
+
+        return new DocumentTypedEntry<T>(
+            document.DocId,
+            document.Namespace,
+            document.Key,
+            document.LastModified,
+            document.Created,
+            document.Version,
             data);
     }
+
+    /// <summary>
+    /// Reads document from document
+    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleRecordAttribute"/>, records are treated as strongly-typed, so T = int IS NOT EQUAL to T = long or T = int?</para>
+    /// </summary>
+    public async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
+    {
+        return await ReadSimpleDocumentAsync<T>(_entryId.ToString(), _ct);
+    }
+
+    private string GetTableNameFromType(Type _type)
+    {
+        if (p_tableNamesPerType.TryGetValue(_type, out var tableName))
+            return tableName;
+
+        tableName = _type.GetCustomAttribute<SimpleRecordAttribute>()?.TableName;
+
+        if (tableName == null)
+        {
+            var underlyingType = Nullable.GetUnderlyingType(_type);
+            if (underlyingType != null)
+                tableName = $"autotype_nullable_{underlyingType.FullName?.ToLower() ?? underlyingType.Name.ToLower()}";
+            else
+                tableName = $"autotype_{_type.FullName?.ToLower() ?? _type.Name.ToLower()}";
+        }
+
+        tableName = tableName.Replace('.', '_').Replace("-", "_");
+
+        p_tableNamesPerType[_type] = tableName;
+        return tableName;
+    }
+
+    private IDisposable InjectTableCreation(string _tableId, string _sql, out string _resultSql)
+    {
+        if (!p_existingTables.Contains(_tableId))
+        {
+            _resultSql =
+                $"CREATE TABLE IF NOT EXISTS '{_tableId}' " +
+                $"( " +
+                $"  doc_id INTEGER PRIMARY KEY, " +
+                $"  key TEXT NOT NULL UNIQUE, " +
+                $"  last_modified INTEGER NOT NULL, " +
+                $"  created INTEGER NOT NULL, " +
+                $"  version INTEGER NOT NULL, " +
+                $"  data TEXT NOT NULL " +
+                $"); " + _sql;
+
+            return Disposable.Create(() => p_existingTables.Add(_tableId));
+        }
+
+        _resultSql = _sql;
+        return Disposable.Empty;
+    }
+
+    private static string GetNormalizedTableName(string _tableName) => $"afs_{_tableName}".Replace('.', '_').Replace("-", "_");
 
     private static SQLiteConnection GetConnection(string _dbFilePath, IReadOnlyLifetime _lifetime)
     {
@@ -379,50 +383,50 @@ public class SqliteDocumentStorage : IDocumentStorage
         return connection;
     }
 
-    private void Migrate()
+    private static long GetLatestDocumentId(SQLiteConnection _connection)
     {
-        using var cmd = new SQLiteCommand(p_connection);
-        cmd.CommandText =
-                $"PRAGMA foreign_keys = ON; " +
-                $"CREATE TABLE IF NOT EXISTS {TABLE_DOCUMENT_META} " +
-                $"( " +
-                $"  doc_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                $"  doc_type TEXT NOT NULL, " +
-                $"  namespace TEXT NOT NULL, " +
-                $"  version INTEGER NOT NULL, " +
-                $"  last_modified INTEGER NOT NULL " +
-                $"); " +
-                $"CREATE TABLE IF NOT EXISTS {TABLE_DOCUMENT_DATA} " +
-                $"( " +
-                $"  record_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                $"  doc_id INTEGER NOT NULL REFERENCES {TABLE_DOCUMENT_META}(doc_id) ON DELETE CASCADE, " +
-                $"  table_id TEXT NOT NULL, " +
-                $"  record_key TEXT NOT NULL, " +
-                $"  last_modified INTEGER NOT NULL, " +
-                $"  data TEXT NOT NULL, " +
-                $"  UNIQUE(doc_id, table_id, record_key) " +
-                $"); ";
-        cmd.ExecuteNonQuery();
-    }
+        var tables = new HashSet<string>();
 
-    private string GetTableNameFromType(Type _type)
-    {
-        if (p_tableNamesPerType.TryGetValue(_type, out var tableName))
-            return tableName;
-
-        tableName = _type.GetCustomAttribute<SimpleRecordAttribute>()?.TableName;
-
-        if (tableName == null)
+        using (var cmdTableNames = new SQLiteCommand(_connection))
         {
-            var underlyingType = Nullable.GetUnderlyingType(_type);
-            if (underlyingType != null)
-                tableName = $"primitive-type-nullable-{underlyingType.FullName?.ToLower() ?? underlyingType.Name.ToLower()}";
-            else
-                tableName = $"primitive-type-{_type.FullName?.ToLower() ?? _type.Name.ToLower()}";
+            cmdTableNames.CommandText =
+                $"SELECT name " +
+                $"FROM sqlite_schema " +
+                $"WHERE " +
+                $"  type ='table' AND " +
+                $"  name LIKE 'afs_%';";
+
+            using var reader = cmdTableNames.ExecuteReader();
+            while (reader.Read())
+            {
+                var tableName = reader.GetString(0);
+                tables.Add(tableName);
+            }
         }
 
-        p_tableNamesPerType[_type] = tableName;
-        return tableName;
+        var counter = -1L;
+
+        foreach (var tableName in tables)
+        {
+            using (var cmd = new SQLiteCommand(_connection))
+            {
+                cmd.CommandText =
+                    $"SELECT MAX(doc_id) " +
+                    $"FROM @table_name; ";
+
+                cmd.Parameters.AddWithValue("@table_name", tableName);
+
+                try
+                {
+                    var max = (long)cmd.ExecuteScalar();
+
+                    counter = Math.Max(counter, max);
+                }
+                catch { }
+            }
+        }
+
+        return counter + 1;
     }
 
 }

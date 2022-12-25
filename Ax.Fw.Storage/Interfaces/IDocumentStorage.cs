@@ -6,17 +6,21 @@ namespace Ax.Fw.Storage.Interfaces;
 
 public interface IDocumentStorage
 {
-    Task<DocumentInfo> CreateDocumentAsync(string _docType, string? _namespace, CancellationToken _ct);
-    Task DeleteDocumentAsync(int _docId, CancellationToken _ct);
-    Task DeleteRecordsAsync(int _docId, string? _tableId, string? _recordKey, DateTimeOffset? _from, DateTimeOffset? _to, CancellationToken _ct);
-    Task DeleteSimpleRecordAsync<T>(int _docId, CancellationToken _ct) where T : notnull;
-    Task<DocumentInfo?> GetDocumentAsync(int _docId, CancellationToken _ct);
-    Task<DocumentRecord?> ReadRecordAsync(int _docId, string _tableId, string? _recordKey, CancellationToken _ct);
-    Task<DocumentRecord?> ReadRecordAsync(int _recordId, CancellationToken _ct);
-    Task<DocumentTypedRecord<T>?> ReadSimpleRecordAsync<T>(int _docId, CancellationToken _ct) where T : notnull;
-    IAsyncEnumerable<DocumentInfo> ListDocumentsAsync(string? _docType, string? _namespace, DateTimeOffset? _from, DateTimeOffset? _to, [EnumeratorCancellation] CancellationToken _ct);
-    IAsyncEnumerable<DocumentTypedRecord<T>> ListSimpleRecordsAsync<T>(int? _docId, string? _tableId, string? _recordKey, DateTimeOffset? _from, DateTimeOffset? _to, [EnumeratorCancellation] CancellationToken _ct);
-    IAsyncEnumerable<DocumentRecord> ListRecordsAsync(int? _docId, string? _tableId, string? _recordKey, DateTimeOffset? _from, DateTimeOffset? _to, [EnumeratorCancellation] CancellationToken _ct);
-    Task<DocumentRecord> WriteRecordAsync(int _docId, string _tableId, string? _recordKey, JToken _data, CancellationToken _ct);
-    Task<DocumentRecord> WriteSimpleRecordAsync<T>(int _docId, T _data, CancellationToken _ct) where T : notnull;
+    Task DeleteDocumentsAsync(string _namespace, string? _key, DateTimeOffset? _from, DateTimeOffset? _to, CancellationToken _ct);
+    Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull;
+    Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull;
+    IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(string _namespace, DateTimeOffset? _from, DateTimeOffset? _to, [EnumeratorCancellation] CancellationToken _ct);
+    IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(DateTimeOffset? _from, DateTimeOffset? _to, [EnumeratorCancellation] CancellationToken _ct);
+    Task<DocumentEntry?> ReadDocumentAsync(string _namespace, string _key, CancellationToken _ct);
+    Task<DocumentEntry?> ReadDocumentAsync(string _namespace, int _key, CancellationToken _ct);
+    Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull;
+    Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull;
+    Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(string _namespace, string _key, CancellationToken _ct);
+    Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(string _namespace, int _key, CancellationToken _ct);
+    Task<DocumentEntry> WriteDocumentAsync(string _namespace, string _key, JToken _data, CancellationToken _ct);
+    Task<DocumentEntry> WriteDocumentAsync(string _namespace, int _key, JToken _data, CancellationToken _ct);
+    Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull;
+    Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull;
+    Task<DocumentEntry> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull;
+    Task<DocumentEntry> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull;
 }
