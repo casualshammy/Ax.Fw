@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Ax.Fw.Storage\Ax.Fw.Storage.csproj" />
+    <ProjectReference Include="..\Ax.Fw.Tests\Ax.Fw.Tests.csproj" />
     <ProjectReference Include="..\Ax.Fw\Ax.Fw.csproj" />
   </ItemGroup>
 

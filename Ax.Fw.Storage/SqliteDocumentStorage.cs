@@ -1,4 +1,5 @@
-﻿using Ax.Fw.SharedTypes.Interfaces;
+﻿using Ax.Fw.Extensions;
+using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Storage.Attributes;
 using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Interfaces;
@@ -6,8 +7,10 @@ using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
 using System.Data.SQLite;
 using System.Globalization;
-using System.Reactive.Disposables;
+using System.Reactive;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
@@ -17,33 +20,64 @@ public class SqliteDocumentStorage : IDocumentStorage
 {
     private readonly SQLiteConnection p_connection;
     private readonly ConcurrentDictionary<Type, string> p_tableNamesPerType = new();
-    private readonly HashSet<string> p_existingTables = new();
     private long p_documentsCounter = 0;
 
     public SqliteDocumentStorage(string _dbFilePath, IReadOnlyLifetime _lifetime)
     {
-        p_connection = _lifetime.DisposeOnCompleted(GetConnection(_dbFilePath, _lifetime));
-        p_documentsCounter = GetLatestDocumentId(p_connection);
+        p_connection = _lifetime.DisposeOnCompleted(new SQLiteConnection($"Data Source={_dbFilePath};Version=3;").OpenAndReturn());
+
+        using var command = _lifetime.DisposeOnCompleted(new SQLiteCommand(p_connection));
+        command.CommandText = 
+            $"CREATE TABLE IF NOT EXISTS document_data " +
+            $"( " +
+            $"  doc_id INTEGER PRIMARY KEY, " +
+            $"  namespace TEXT NOT NULL, " +
+            $"  key TEXT NOT NULL, " +
+            $"  last_modified INTEGER NOT NULL, " +
+            $"  created INTEGER NOT NULL, " +
+            $"  version INTEGER NOT NULL, " +
+            $"  data TEXT NOT NULL, " +
+            $"  UNIQUE(namespace, key) " +
+            $"); ";
+
+        command.ExecuteNonQuery();
+
+        p_documentsCounter = GetLatestDocumentId();
+
+        Observable
+            .Timer(TimeSpan.FromHours(1))
+            .StartWith(0)
+            .Delay(TimeSpan.FromMinutes(10))
+            .Subscribe(_ =>
+            {
+                try
+                {
+                    using var command = new SQLiteCommand(p_connection);
+                    command.CommandText = "VACUUM;";
+                    command.ExecuteNonQuery();
+                }
+                catch { }
+            }, _lifetime);
     }
 
     public async Task<DocumentEntry> WriteDocumentAsync(string _namespace, string _key, JToken _data, CancellationToken _ct)
     {
-        var normalizedTableName = GetNormalizedTableName(_namespace);
         var now = DateTimeOffset.UtcNow;
 
-        using var inject = InjectTableCreation(normalizedTableName,
-            $"INSERT OR REPLACE INTO [{normalizedTableName}] (doc_id, key, last_modified, created, version, data) " +
-            $"VALUES (@doc_id, @key, @last_modified, @created, @version, @data) " +
-            $"ON CONFLICT (key) " +
+        var insertSql =
+            $"INSERT OR REPLACE INTO document_data (doc_id, namespace, key, last_modified, created, version, data) " +
+            $"VALUES (@doc_id, @namespace, @key, @last_modified, @created, @version, @data) " +
+            $"ON CONFLICT (namespace, key) " +
             $"DO UPDATE SET " +
             $"  last_modified=@last_modified, " +
             $"  version=version+1, " +
             $"  data=@data " +
-            $"RETURNING doc_id, version, created; ", out var sql);
+            $"RETURNING doc_id, version, created; ";
 
         await using var command = new SQLiteCommand(p_connection);
-        command.CommandText = sql;
+        command.CommandText = insertSql;
         command.Parameters.AddWithValue("@doc_id", Interlocked.Increment(ref p_documentsCounter));
+        command.Parameters.AddWithValue("@namespace", _namespace);
         command.Parameters.AddWithValue("@key", _key);
         command.Parameters.AddWithValue("@last_modified", now.UtcTicks);
         command.Parameters.AddWithValue("@created", now.UtcTicks);
@@ -113,17 +147,17 @@ public class SqliteDocumentStorage : IDocumentStorage
         DateTimeOffset? _to,
         CancellationToken _ct)
     {
-        var normalizedTableName = GetNormalizedTableName(_namespace);
-
-        using var inject = InjectTableCreation(normalizedTableName,
-                        $"DELETE FROM [{normalizedTableName}] " +
-                        $"WHERE " +
-                        $"  (@key IS NULL OR @key=key) AND " +
-                        $"  (@from IS NULL OR last_modified>=@from) AND " +
-                        $"  (@to IS NULL OR last_modified<=@to); ", out var sql);
+        var deleteSql =
+            $"DELETE FROM document_data " +
+            $"WHERE " +
+            $"  @namespace=namespace AND " +
+            $"  (@key IS NULL OR @key=key) AND " +
+            $"  (@from IS NULL OR last_modified>=@from) AND " +
+            $"  (@to IS NULL OR last_modified<=@to); ";
 
         await using var cmd = new SQLiteCommand(p_connection);
-        cmd.CommandText = sql;
+        cmd.CommandText = deleteSql;
+        cmd.Parameters.AddWithValue("@namespace", _namespace);
         cmd.Parameters.AddWithValue("@key", _key);
         cmd.Parameters.AddWithValue("@from", _from?.UtcTicks);
         cmd.Parameters.AddWithValue("@to", _to?.UtcTicks);
@@ -149,17 +183,19 @@ public class SqliteDocumentStorage : IDocumentStorage
         DateTimeOffset? _to,
         [EnumeratorCancellation] CancellationToken _ct)
     {
-        var normalizedTableName = GetNormalizedTableName(_namespace);
-
-        using var inject = InjectTableCreation(normalizedTableName,
+        var listSql =
             $"SELECT doc_id, key, last_modified, created, version, data " +
-            $"FROM [{normalizedTableName}] " +
+            $"FROM document_data " +
             $"WHERE " +
+            $"  @namespace=namespace AND " +
             $"  (@from IS NULL OR last_modified>=@from) AND " +
-            $"  (@to IS NULL OR last_modified<=@to); ", out var sql);
+            $"  (@to IS NULL OR last_modified<=@to); ";
+
+        //await CreateTableIfNeeded(normalizedTableName, _ct);
 
         await using var cmd = new SQLiteCommand(p_connection);
-        cmd.CommandText = sql;
+        cmd.CommandText = listSql;
+        cmd.Parameters.AddWithValue("@namespace", _namespace);
         cmd.Parameters.AddWithValue("@from", _from?.UtcTicks);
         cmd.Parameters.AddWithValue("@to", _to?.UtcTicks);
 
@@ -212,16 +248,18 @@ public class SqliteDocumentStorage : IDocumentStorage
         string _key,
         CancellationToken _ct)
     {
-        var normalizedTableName = GetNormalizedTableName(_namespace);
-
-        using var inject = InjectTableCreation(normalizedTableName,
+        var readSql =
             $"SELECT doc_id, key, last_modified, created, version, data " +
-            $"FROM [{normalizedTableName}] " +
+            $"FROM document_data " +
             $"WHERE " +
-            $"  key=@key; ", out var sql);
+            $"  @namespace=namespace AND " +
+            $"  key=@key; ";
+
+        //await CreateTableIfNeeded(normalizedTableName, _ct);
 
         await using var cmd = new SQLiteCommand(p_connection);
-        cmd.CommandText = sql;
+        cmd.CommandText = readSql;
+        cmd.Parameters.AddWithValue("@namespace", _namespace);
         cmd.Parameters.AddWithValue("@key", _key);
 
         await using var reader = await cmd.ExecuteReaderAsync(_ct);
@@ -338,92 +376,23 @@ public class SqliteDocumentStorage : IDocumentStorage
         return tableName;
     }
 
-    private IDisposable InjectTableCreation(string _tableId, string _sql, out string _resultSql)
+    private long GetLatestDocumentId()
     {
-        if (!p_existingTables.Contains(_tableId))
-        {
-            _resultSql =
-                $"CREATE TABLE IF NOT EXISTS '{_tableId}' " +
-                $"( " +
-                $"  doc_id INTEGER PRIMARY KEY, " +
-                $"  key TEXT NOT NULL UNIQUE, " +
-                $"  last_modified INTEGER NOT NULL, " +
-                $"  created INTEGER NOT NULL, " +
-                $"  version INTEGER NOT NULL, " +
-                $"  data TEXT NOT NULL " +
-                $"); " + _sql;
-
-            return Disposable.Create(() => p_existingTables.Add(_tableId));
-        }
-
-        _resultSql = _sql;
-        return Disposable.Empty;
-    }
-
-    private static string GetNormalizedTableName(string _tableName) => $"afs_{_tableName}".Replace('.', '_').Replace("-", "_");
-
-    private static SQLiteConnection GetConnection(string _dbFilePath, IReadOnlyLifetime _lifetime)
-    {
-        var connection = new SQLiteConnection($"Data Source={_dbFilePath};Version=3;").OpenAndReturn();
-        Observable
-            .Timer(TimeSpan.FromHours(1))
-            .StartWith(0)
-            .Delay(TimeSpan.FromMinutes(10))
-            .Subscribe(_ =>
-            {
-                try
-                {
-                    using var command = new SQLiteCommand(connection);
-                    command.CommandText = "VACUUM;";
-                    command.ExecuteNonQuery();
-                }
-                catch { }
-            }, _lifetime.Token);
-
-        return connection;
-    }
-
-    private static long GetLatestDocumentId(SQLiteConnection _connection)
-    {
-        var tables = new HashSet<string>();
-
-        using (var cmdTableNames = new SQLiteCommand(_connection))
-        {
-            cmdTableNames.CommandText =
-                $"SELECT name " +
-                $"FROM sqlite_schema " +
-                $"WHERE " +
-                $"  type ='table' AND " +
-                $"  name LIKE 'afs_%';";
-
-            using var reader = cmdTableNames.ExecuteReader();
-            while (reader.Read())
-            {
-                var tableName = reader.GetString(0);
-                tables.Add(tableName);
-            }
-        }
-
         var counter = -1L;
 
-        foreach (var tableName in tables)
+        using (var cmd = new SQLiteCommand(p_connection))
         {
-            using (var cmd = new SQLiteCommand(_connection))
+            cmd.CommandText =
+                $"SELECT MAX(doc_id) " +
+                $"FROM document_data; ";
+
+            try
             {
-                cmd.CommandText =
-                    $"SELECT MAX(doc_id) " +
-                    $"FROM @table_name; ";
+                var max = (long)cmd.ExecuteScalar();
 
-                cmd.Parameters.AddWithValue("@table_name", tableName);
-
-                try
-                {
-                    var max = (long)cmd.ExecuteScalar();
-
-                    counter = Math.Max(counter, max);
-                }
-                catch { }
+                counter = Math.Max(counter, max);
             }
+            catch { }
         }
 
         return counter + 1;

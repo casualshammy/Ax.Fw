@@ -1,6 +1,9 @@
 ﻿# Ax.Fw.Storage
 ### Simple document storage provider based on SQLite
 ---
+#### Why?
+I know there are many no-sql embedded database engines. Why I selected SQLite? THB just for fun.
+---
 #### Usage example:
 ```csharp
 // getting lifetime
@@ -13,16 +16,20 @@ try
 {
 	var storage = new SqliteDocumentStorage(dbFile, lifetime);
 	
-	// create document; document instance contains meta data - namespace, version, last modified datetime, etc
-	var doc = await storage.CreateDocumentAsync("test_doc_type", null, lifetime.Token);
+	// create document; pair 'namespace - key' is unique; any json serializable data can be stored
+	var doc = await storage.WriteDocumentAsync(_namespace: "default", _key: "test-key", _data: "test-data-0", lifetime.Token);
 
-	// create record; record instance contains actual data; one document can contain multiple records
-	var record = await storage.WriteSimpleRecordAsync(doc.DocId, "test-data", lifetime.Token);
+	// retrieve data
+	var readDoc = await storage.ReadDocumentAsync(_namespace: "default", _key: "test-key", lifetime.Token);
 
-	// retrieve data; simple records in document are distinguished by type (strongly-typed)
-	var data = await storage.ReadSimpleRecordAsync<string>(doc.DocId, lifetime.Token);
+	Assert.Equal("test-data-0", readDoc?.Data.ToObject<string>());
 
-	Assert.Equal("test-data", data?.Data);
+	// there are also 'simple' documents; namespace of simple documents is automatically determined by data type
+	var simpleDoc = await storage.WriteSimpleDocumentAsync(_entryId: 123, _data: "test_data", lifetime.Token);
+
+	var readSimpleDoc = await storage.ReadSimpleDocumentAsync<string>(_entryId: 123, lifetime.Token);
+
+	Assert.Equal("test_data", readSimpleDoc?.Data);
 }
 finally
 {
