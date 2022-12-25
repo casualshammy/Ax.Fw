@@ -172,7 +172,7 @@ public class SqliteDocumentStorageTests
         var dbFile = GetDbTmpPath();
         try
         {
-            var entriesCount = 100000;
+            var entriesCount = 10000;
             var storage = new SqliteDocumentStorage(dbFile, lifetime);
 
             var enumerable = Enumerable.Range(0, entriesCount);
@@ -219,7 +219,7 @@ public class SqliteDocumentStorageTests
     }
 
     [Theory]
-    [Repeat(1000)]
+    [Repeat(100)]
     public async Task CheckIfDocIdCalculatedOnDbOpenAsync(int _)
     {
         var lifetime0 = new Lifetime();
