@@ -1,4 +1,5 @@
 using Ax.Fw.Extensions;
+using Ax.Fw.Storage.Attributes;
 using Ax.Fw.Tests.Tools;
 using System.Diagnostics;
 using Xunit.Abstractions;
@@ -7,6 +8,9 @@ namespace Ax.Fw.Storage.Tests;
 
 public class SqliteDocumentStorageTests
 {
+    [SimpleDocument("simple-record")]
+    record DataRecord(int Id, string Name);
+
     private readonly ITestOutputHelper p_output;
 
     public SqliteDocumentStorageTests(ITestOutputHelper _output)
@@ -165,59 +169,6 @@ public class SqliteDocumentStorageTests
         }
     }
 
-    [Fact]
-    public async Task StressTestAsync()
-    {
-        var lifetime = new Lifetime();
-        var dbFile = GetDbTmpPath();
-        try
-        {
-            var entriesCount = 10000;
-            var storage = new SqliteDocumentStorage(dbFile, lifetime);
-
-            var enumerable = Enumerable.Range(0, entriesCount);
-
-            var sw = Stopwatch.StartNew();
-
-            await Parallel.ForEachAsync(enumerable, lifetime.Token, async (_key, _ct) =>
-            {
-                var i = _key;
-                await storage.WriteDocumentAsync("test-table", _key, $"test-data-{i}", lifetime.Token);
-            });
-
-            var writeElapsed = sw.Elapsed;
-
-            var list = await storage.ListDocumentsAsync("test-table", null, null, lifetime.Token).ToListAsync(lifetime.Token);
-            Assert.Equal(entriesCount, list.Count);
-
-            var listElapsed = sw.Elapsed - writeElapsed;
-
-            await Parallel.ForEachAsync(enumerable, lifetime.Token, async (_key, _ct) =>
-            {
-                var i = _key;
-
-                var result = await storage.ReadTypedDocumentAsync<string>("test-table", _key, lifetime.Token);
-                if (result == null)
-                    Assert.Fail($"Entry is null!");
-
-                if (result.Data != $"test-data-{i}")
-                    Assert.Fail($"Entry is incorrect!");
-            });
-
-            var readElapsed = sw.Elapsed - listElapsed - writeElapsed;
-
-            p_output.WriteLine($"Write: {writeElapsed} ({writeElapsed.TotalMilliseconds / entriesCount} ms/entry)");
-            p_output.WriteLine($"List: {listElapsed} ({listElapsed.TotalMilliseconds / entriesCount} ms/entry)");
-            p_output.WriteLine($"Read: {readElapsed} ({readElapsed.TotalMilliseconds / entriesCount} ms/entry)");
-        }
-        finally
-        {
-            await lifetime.CompleteAsync();
-            if (!new FileInfo(dbFile).TryDelete())
-                Assert.Fail($"Can't delete file '{dbFile}'");
-        }
-    }
-
     [Theory]
     [Repeat(100)]
     public async Task CheckIfDocIdCalculatedOnDbOpenAsync(int _)
@@ -257,6 +208,31 @@ public class SqliteDocumentStorageTests
         {
             await lifetime0.CompleteAsync();
             await lifetime1.CompleteAsync();
+            if (!new FileInfo(dbFile).TryDelete())
+                Assert.Fail($"Can't delete file '{dbFile}'");
+        }
+    }
+
+    [Fact]
+    public async Task CheckAttributeAsync()
+    {
+        var lifetime = new Lifetime();
+        var dbFile = GetDbTmpPath();
+        try
+        {
+            var storage = new SqliteDocumentStorage(dbFile, lifetime);
+
+            var document0 = await storage.WriteSimpleDocumentAsync(100, new DataRecord(100, "100"), lifetime.Token);
+            var document1 = await storage.ReadSimpleDocumentAsync<DataRecord>(100, lifetime.Token);
+            var document2 = await storage.ReadDocumentAsync("simple-record", 100, lifetime.Token);
+
+            Assert.NotNull(document0);
+            Assert.NotNull(document1);
+            Assert.NotNull(document2);
+        }
+        finally
+        {
+            await lifetime.CompleteAsync();
             if (!new FileInfo(dbFile).TryDelete())
                 Assert.Fail($"Can't delete file '{dbFile}'");
         }
