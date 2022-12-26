@@ -58,13 +58,13 @@ public class CompareDbTests
 
             var readElapsed = sw.Elapsed - listElapsed - writeElapsed;
 
-            p_output.WriteLine($"Write: {writeElapsed} ({writeElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
-            p_output.WriteLine($"List: {listElapsed} ({listElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
-            p_output.WriteLine($"Read: {readElapsed} ({readElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
+            p_output.WriteLine($"SQLite Write: {writeElapsed} ({writeElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
+            p_output.WriteLine($"SQLite List: {listElapsed} ({listElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
+            p_output.WriteLine($"SQLite Read: {readElapsed} ({readElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
 
-            Console.WriteLine($"Write: {writeElapsed} ({writeElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
-            Console.WriteLine($"List: {listElapsed} ({listElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
-            Console.WriteLine($"Read: {readElapsed} ({readElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
+            Console.WriteLine($"SQLite Write: {writeElapsed} ({writeElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
+            Console.WriteLine($"SQLite List: {listElapsed} ({listElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
+            Console.WriteLine($"SQLite Read: {readElapsed} ({readElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
         }
         finally
         {
@@ -117,13 +117,13 @@ public class CompareDbTests
 
             var readElapsed = sw.Elapsed - listElapsed - writeElapsed;
 
-            p_output.WriteLine($"Write: {writeElapsed} ({writeElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
-            p_output.WriteLine($"List: {listElapsed} ({listElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
-            p_output.WriteLine($"Read: {readElapsed} ({readElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
+            p_output.WriteLine($"LiteDB Write: {writeElapsed} ({writeElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
+            p_output.WriteLine($"LiteDB List: {listElapsed} ({listElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
+            p_output.WriteLine($"LiteDB Read: {readElapsed} ({readElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
 
-            Console.WriteLine($"Write: {writeElapsed} ({writeElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
-            Console.WriteLine($"List: {listElapsed} ({listElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
-            Console.WriteLine($"Read: {readElapsed} ({readElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
+            Console.WriteLine($"LiteDB Write: {writeElapsed} ({writeElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
+            Console.WriteLine($"LiteDB List: {listElapsed} ({listElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
+            Console.WriteLine($"LiteDB Read: {readElapsed} ({readElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
         }
         finally
         {

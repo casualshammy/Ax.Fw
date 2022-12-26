@@ -4,7 +4,6 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<LangVersion>latest</LangVersion>
-
 		<PackageId>$(AssemblyName)</PackageId>
 		<Version>$(Version)</Version>
 		<Description>SQLite document storage</Description>
@@ -16,6 +15,7 @@
 		<RepositoryType>git</RepositoryType>
 		<RepositoryUrl>https://github.com/casualshammy/Ax.Fw</RepositoryUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageTags>nosql;no sql;no-sql;sqlite;document;db;database</PackageTags>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="System.Data.SQLite.Core" Version="1.0.117" />
@@ -23,10 +23,10 @@
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
 	</ItemGroup>
 	<ItemGroup>
-	  <ProjectReference Include="..\Ax.Fw\Ax.Fw.csproj" />
+		<None Include="README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
 	<ItemGroup>
-		<None Include="README.md" Pack="true" PackagePath="\"/>
+	  <ProjectReference Include="..\Ax.Fw.Interfaces\Ax.Fw.SharedTypes.csproj" />
 	</ItemGroup>
 
 </Project>
