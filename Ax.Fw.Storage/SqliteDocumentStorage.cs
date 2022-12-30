@@ -53,6 +53,10 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
         p_documentsCounter = GetLatestDocumentId();
     }
 
+    /// <summary>
+    /// Upsert document to database
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Document creation is failed</exception>
     public async Task<DocumentEntry> WriteDocumentAsync(string _namespace, string _key, JToken _data, CancellationToken _ct)
     {
         var now = DateTimeOffset.UtcNow;
@@ -89,76 +93,44 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
         throw new InvalidOperationException($"Can't create document - db reader returned no result");
     }
 
-    public DocumentEntry WriteDocument(string _namespace, string _key, JToken _data)
-    {
-        var now = DateTimeOffset.UtcNow;
-
-        var insertSql =
-            $"INSERT OR REPLACE INTO document_data (doc_id, namespace, key, last_modified, created, version, data) " +
-            $"VALUES (@doc_id, @namespace, @key, @last_modified, @created, @version, @data) " +
-            $"ON CONFLICT (namespace, key) " +
-            $"DO UPDATE SET " +
-            $"  last_modified=@last_modified, " +
-            $"  version=version+1, " +
-            $"  data=@data " +
-            $"RETURNING doc_id, version, created; ";
-
-        using var command = new SQLiteCommand(p_connection);
-        command.CommandText = insertSql;
-        command.Parameters.AddWithValue("@doc_id", Interlocked.Increment(ref p_documentsCounter));
-        command.Parameters.AddWithValue("@namespace", _namespace);
-        command.Parameters.AddWithValue("@key", _key);
-        command.Parameters.AddWithValue("@last_modified", now.UtcTicks);
-        command.Parameters.AddWithValue("@created", now.UtcTicks);
-        command.Parameters.AddWithValue("@version", 1);
-        command.Parameters.AddWithValue("@data", _data.ToString(Newtonsoft.Json.Formatting.None));
-
-        using var reader = command.ExecuteReader();
-        if (reader.Read())
-        {
-            var docId = reader.GetInt32(0);
-            var version = reader.GetInt64(1);
-            var created = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
-            return new DocumentEntry(docId, _namespace, _key, now, created, version, _data);
-        }
-
-        throw new InvalidOperationException($"Can't create document - db reader returned no result");
-    }
-
+    /// <summary>
+    /// Upsert document to database
+    /// </summary>
     public async Task<DocumentEntry> WriteDocumentAsync(string _namespace, int _key, JToken _data, CancellationToken _ct)
     {
         return await WriteDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), _data, _ct);
     }
 
+    /// <summary>
+    /// Upsert document to database
+    /// </summary>
     public async Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull
     {
         return await WriteDocumentAsync(_namespace, _key, JToken.FromObject(_data), _ct);
     }
 
+    /// <summary>
+    /// Upsert document to database
+    /// </summary>
     public async Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull
     {
         return await WriteDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), JToken.FromObject(_data), _ct);
     }
 
-    public DocumentEntry WriteDocument<T>(string _namespace, int _key, T _data) where T : notnull
-    {
-        return WriteDocument(_namespace, _key.ToString(CultureInfo.InvariantCulture), JToken.FromObject(_data));
-    }
-
     /// <summary>
-    /// Writes document to document
-    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, records are treated as strongly-typed, so T = int IS NOT EQUAL to T = long or T = int?</para>
+    /// Upsert document to database
+    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
     /// </summary>
     public async Task<DocumentEntry> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull
     {
-        var tableName = GetNamespaceFromType(typeof(T));
+        var ns = GetNamespaceFromType(typeof(T));
 
-        return await WriteDocumentAsync(tableName, _entryId, JToken.FromObject(_data), _ct);
+        return await WriteDocumentAsync(ns, _entryId, JToken.FromObject(_data), _ct);
     }
 
     /// <summary>
-    /// Creates new document or overwrites old
-    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, records are treated as strongly-typed, so T = int IS NOT EQUAL to T = long or T = int?</para>
+    /// Upsert document to database
+    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
     /// </summary>
     public async Task<DocumentEntry> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull
     {
@@ -166,14 +138,8 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
     }
 
     /// <summary>
-    /// 
+    /// Delete document from the database
     /// </summary>
-    /// <param name="_namespace"></param>
-    /// <param name="_key">Key of entry to delete. If <see cref="null"/> then delete all entries in namespace</param>
-    /// <param name="_from"></param>
-    /// <param name="_to"></param>
-    /// <param name="_ct"></param>
-    /// <returns></returns>
     public async Task DeleteDocumentsAsync(
         string _namespace,
         string? _key,
@@ -199,18 +165,65 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
         await cmd.ExecuteNonQueryAsync(_ct);
     }
 
+    /// <summary>
+    /// Delete document from the database
+    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
+    /// </summary>
     public async Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
     {
-        var tableName = GetNamespaceFromType(typeof(T));
+        var ns = GetNamespaceFromType(typeof(T));
 
-        await DeleteDocumentsAsync(tableName, _entryId, null, null, _ct);
+        await DeleteDocumentsAsync(ns, _entryId, null, null, _ct);
     }
 
+    /// <summary>
+    /// Delete document from the database
+    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
+    /// </summary>
     public async Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
     {
         await DeleteSimpleDocumentAsync<T>(_entryId.ToString(CultureInfo.InvariantCulture), _ct);
     }
 
+    /// <summary>
+    /// List documents meta info (without data)
+    /// </summary>
+    public async IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
+        string _namespace,
+        DateTimeOffset? _from,
+        DateTimeOffset? _to,
+        [EnumeratorCancellation] CancellationToken _ct)
+    {
+        var listSql =
+            $"SELECT doc_id, key, last_modified, created, version " +
+            $"FROM document_data " +
+            $"WHERE " +
+            $"  @namespace=namespace AND " +
+            $"  (@from IS NULL OR last_modified>=@from) AND " +
+            $"  (@to IS NULL OR last_modified<=@to); ";
+
+        await using var cmd = new SQLiteCommand(p_connection);
+        cmd.CommandText = listSql;
+        cmd.Parameters.AddWithValue("@namespace", _namespace);
+        cmd.Parameters.AddWithValue("@from", _from?.UtcTicks);
+        cmd.Parameters.AddWithValue("@to", _to?.UtcTicks);
+
+        await using var reader = await cmd.ExecuteReaderAsync(_ct);
+        while (await reader.ReadAsync(_ct))
+        {
+            var docId = reader.GetInt32(0);
+            var optionalKey = reader.GetString(1);
+            var lastModified = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
+            var created = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
+            var version = reader.GetInt64(4);
+
+            yield return new DocumentEntryMeta(docId, _namespace, optionalKey, lastModified, created, version);
+        }
+    }
+
+    /// <summary>
+    /// List documents
+    /// </summary>
     public async IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
         string _namespace,
         DateTimeOffset? _from,
@@ -248,17 +261,17 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
     }
 
     /// <summary>
-    /// Retrieves the list of records from document
-    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, records are treated as strongly-typed, so T = int IS NOT EQUAL to T = long or T = int?</para>
+    /// List documents
+    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
     /// </summary>
     public async IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
         DateTimeOffset? _from,
         DateTimeOffset? _to,
         [EnumeratorCancellation] CancellationToken _ct)
     {
-        var tableName = GetNamespaceFromType(typeof(T));
+        var ns = GetNamespaceFromType(typeof(T));
 
-        await foreach (var document in ListDocumentsAsync(tableName, _from, _to, _ct))
+        await foreach (var document in ListDocumentsAsync(ns, _from, _to, _ct))
         {
             var data = document.Data.ToObject<T>();
             if (data == null)
@@ -277,6 +290,9 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
         }
     }
 
+    /// <summary>
+    /// Read document from the database
+    /// </summary>
     public async Task<DocumentEntry?> ReadDocumentAsync(
         string _namespace,
         string _key,
@@ -312,6 +328,9 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
         return null;
     }
 
+    /// <summary>
+    /// Read document from the database
+    /// </summary>
     public async Task<DocumentEntry?> ReadDocumentAsync(
         string _namespace,
         int _key,
@@ -320,6 +339,9 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
         return await ReadDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), _ct);
     }
 
+    /// <summary>
+    /// Read document from the database and deserialize data
+    /// </summary>
     public async Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(
         string _namespace,
         string _key,
@@ -345,6 +367,9 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
         return typedDocument;
     }
 
+    /// <summary>
+    /// Read document from the database and deserialize data
+    /// </summary>
     public async Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(
         string _namespace,
         int _key,
@@ -354,14 +379,14 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
     }
 
     /// <summary>
-    /// Reads document from document
-    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, records are treated as strongly-typed, so T = int IS NOT EQUAL to T = long or T = int?</para>
+    /// Read document from the database and deserialize data
+    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
     /// </summary>
     public async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
     {
-        var tableName = GetNamespaceFromType(typeof(T));
+        var ns = GetNamespaceFromType(typeof(T));
 
-        var document = await ReadDocumentAsync(tableName, _entryId, _ct);
+        var document = await ReadDocumentAsync(ns, _entryId, _ct);
         if (document == null)
             return null;
 
@@ -380,25 +405,24 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
     }
 
     /// <summary>
-    /// Reads document from document
-    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, records are treated as strongly-typed, so T = int IS NOT EQUAL to T = long or T = int?</para>
+    /// Read document from the database and deserialize data
+    /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
     /// </summary>
     public async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
     {
         return await ReadSimpleDocumentAsync<T>(_entryId.ToString(), _ct);
     }
 
+    /// <summary>
+    /// Compacts the database, trimming unused space
+    /// </summary>
     public async Task CompactDatabase(CancellationToken _ct)
     {
-        try
-        {
-            await using var command = new SQLiteCommand(p_connection);
-            command.CommandText = "VACUUM;";
-            await command.ExecuteNonQueryAsync(_ct);
-        }
-        catch { }
+        await using var command = new SQLiteCommand(p_connection);
+        command.CommandText = "VACUUM;";
+        await command.ExecuteNonQueryAsync(_ct);
     }
-        
+
     protected virtual void Dispose(bool _disposing)
     {
         if (!p_disposedValue)
@@ -455,7 +479,7 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
             catch { }
         }
 
-        return counter + 1;
+        return counter;
     }
 
 }

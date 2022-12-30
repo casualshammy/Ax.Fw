@@ -1,8 +1,6 @@
 using Ax.Fw.Extensions;
 using Ax.Fw.Storage.Attributes;
 using Ax.Fw.Tests.Tools;
-using System.Diagnostics;
-using Xunit.Abstractions;
 
 namespace Ax.Fw.Storage.Tests;
 
@@ -11,16 +9,11 @@ public class SqliteDocumentStorageTests
     [SimpleDocument("simple-record")]
     record DataRecord(int Id, string Name);
 
-    private readonly ITestOutputHelper p_output;
-
-    public SqliteDocumentStorageTests(ITestOutputHelper _output)
-    {
-        p_output = _output;
-    }
-
+#pragma warning disable xUnit1026 // Theory methods should use all of their parameters
     [Theory]
     [Repeat(100)]
     public async Task TestSimpleRecordCreateDeleteAsync(int _)
+#pragma warning restore xUnit1026 // Theory methods should use all of their parameters
     {
         var lifetime = new Lifetime();
         var dbFile = GetDbTmpPath();
@@ -46,9 +39,13 @@ public class SqliteDocumentStorageTests
         }
     }
 
+#pragma warning disable xUnit1026 // Theory methods should use all of their parameters
+#pragma warning disable IDE0060 // Remove unused parameter
     [Theory]
     [Repeat(100)]
     public async Task TestDocVersionLastModifiedAsync(int __)
+#pragma warning restore IDE0060 // Remove unused parameter
+#pragma warning restore xUnit1026 // Theory methods should use all of their parameters
     {
         var lifetime = new Lifetime();
         var dbFile = GetDbTmpPath();
@@ -77,6 +74,7 @@ public class SqliteDocumentStorageTests
         }
     }
 
+#pragma warning disable xUnit1026 // Theory methods should use all of their parameters
     [Theory]
     [Repeat(100)]
     public async Task TestSimpleRecordUniqueAsync(int _)
@@ -106,6 +104,7 @@ public class SqliteDocumentStorageTests
         }
     }
 
+#pragma warning disable xUnit1026 // Theory methods should use all of their parameters
     [Theory]
     [Repeat(100)]
     public async Task TestRecordUniqueAsync(int _)
@@ -140,6 +139,7 @@ public class SqliteDocumentStorageTests
         }
     }
 
+#pragma warning disable xUnit1026 // Theory methods should use all of their parameters
     [Theory]
     [Repeat(100)]
     public async Task TestUniquenessOfRecordsAndDocsAsync(int _)
@@ -151,7 +151,7 @@ public class SqliteDocumentStorageTests
             var storage = new SqliteDocumentStorage(dbFile, lifetime);
 
             var record0 = await storage.WriteDocumentAsync("test-table", "test-key", "test-data-0", lifetime.Token);
-            Assert.Equal(1, record0.DocId);
+            Assert.Equal(0, record0.DocId);
 
             await storage.DeleteDocumentsAsync("test-table", "test-key", null, null, lifetime.Token);
 
@@ -159,7 +159,7 @@ public class SqliteDocumentStorageTests
             Assert.Empty(list0);
 
             var record1 = await storage.WriteDocumentAsync("test-table", "test-key", "test-data-0", lifetime.Token);
-            Assert.NotEqual(1, record1.DocId);
+            Assert.NotEqual(0, record1.DocId);
         }
         finally
         {
@@ -169,6 +169,7 @@ public class SqliteDocumentStorageTests
         }
     }
 
+#pragma warning disable xUnit1026 // Theory methods should use all of their parameters
     [Theory]
     [Repeat(100)]
     public async Task CheckIfDocIdCalculatedOnDbOpenAsync(int _)
@@ -197,7 +198,7 @@ public class SqliteDocumentStorageTests
 
             await lifetime0.CompleteAsync();
 
-            Assert.Equal(entriesCount * 3, lastDocId);
+            Assert.Equal(entriesCount * 3, lastDocId + 1);
 
             var storage1 = new SqliteDocumentStorage(dbFile, lifetime1);
             var document = await storage1.WriteDocumentAsync("test-table", entriesCount + 1, "test-data", lifetime1.Token);
@@ -239,5 +240,4 @@ public class SqliteDocumentStorageTests
     }
 
     private static string GetDbTmpPath() => $"{Path.GetTempFileName()}";
-
 }

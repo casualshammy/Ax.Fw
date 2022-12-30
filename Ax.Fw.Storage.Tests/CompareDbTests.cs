@@ -34,7 +34,7 @@ public class CompareDbTests
             await Parallel.ForEachAsync(enumerable, lifetime.Token, async (_key, _ct) =>
             {
                 var i = _key;
-                storage.WriteDocument("test-table", _key, $"test-data-{i}");
+                await storage.WriteDocumentAsync("test-table", _key, $"test-data-{i}", _ct);
             });
 
             var writeElapsed = sw.Elapsed;
@@ -88,7 +88,7 @@ public class CompareDbTests
 
             var sw = Stopwatch.StartNew();
 
-            await Parallel.ForEachAsync(enumerable, lifetime.Token, async (_key, _ct) =>
+            Parallel.ForEach(enumerable, _key =>
             {
                 var i = _key;
                 col.Insert(new LiteDbEntry(i, $"test-data-{i}"));
@@ -103,7 +103,7 @@ public class CompareDbTests
 
             col.EnsureIndex(_x => _x.Key);
 
-            await Parallel.ForEachAsync(enumerable, lifetime.Token, async (_key, _ct) =>
+            Parallel.ForEach(enumerable, _key =>
             {
                 var i = _key;
 
