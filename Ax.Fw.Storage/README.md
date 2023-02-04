@@ -30,6 +30,10 @@ try
 	var readSimpleDoc = await storage.ReadSimpleDocumentAsync<string>(_entryId: 123, lifetime.Token);
 
 	Assert.Equal("test_data", readSimpleDoc?.Data);
+
+	// you also can attach in-memory cache to document storage
+	// cache makes read operations significantly faster
+	var cachedStorage = storage.ToCached(_maxValuesCached: 1000, _cacheTtl: TimeSpan.FromSeconds(60));
 }
 finally
 {

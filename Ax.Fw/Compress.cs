@@ -1,5 +1,4 @@
-﻿#nullable enable
-using Ax.Fw.Extensions;
+﻿using Ax.Fw.Extensions;
 using Ax.Fw.Rnd;
 using Ax.Fw.SharedTypes.Data;
 using Newtonsoft.Json;

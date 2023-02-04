@@ -2,9 +2,8 @@
 
   <PropertyGroup>
       <TargetFrameworks>netstandard21;net472;net6.0</TargetFrameworks>
-      <ImplicitUsings>enable</ImplicitUsings>
+      <ImplicitUsings>disable</ImplicitUsings>
       <Nullable>enable</Nullable>
-	  <ImplicitUsings>disable</ImplicitUsings>
 	  <LangVersion>latest</LangVersion>
 	  <Authors>Axio</Authors>
 	  <Copyright>Axio</Copyright>

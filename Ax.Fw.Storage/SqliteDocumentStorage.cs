@@ -2,6 +2,7 @@
 using Ax.Fw.Storage.Attributes;
 using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Interfaces;
+using Ax.Fw.Storage.Toolkit;
 using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
 using System.Data.SQLite;
@@ -15,7 +16,6 @@ namespace Ax.Fw.Storage;
 public class SqliteDocumentStorage : IDocumentStorage, IDisposable
 {
     private readonly SQLiteConnection p_connection;
-    private readonly ConcurrentDictionary<Type, string> p_namespacePerType = new();
     private long p_documentsCounter = 0;
     private bool p_disposedValue;
 
@@ -123,7 +123,7 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
     /// </summary>
     public async Task<DocumentEntry> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull
     {
-        var ns = GetNamespaceFromType(typeof(T));
+        var ns = typeof(T).GetNamespaceFromType();
 
         return await WriteDocumentAsync(ns, _entryId, JToken.FromObject(_data), _ct);
     }
@@ -171,7 +171,7 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
     /// </summary>
     public async Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
     {
-        var ns = GetNamespaceFromType(typeof(T));
+        var ns = typeof(T).GetNamespaceFromType();
 
         await DeleteDocumentsAsync(ns, _entryId, null, null, _ct);
     }
@@ -269,7 +269,7 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
         DateTimeOffset? _to,
         [EnumeratorCancellation] CancellationToken _ct)
     {
-        var ns = GetNamespaceFromType(typeof(T));
+        var ns = typeof(T).GetNamespaceFromType();
 
         await foreach (var document in ListDocumentsAsync(ns, _from, _to, _ct))
         {
@@ -384,7 +384,7 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
     /// </summary>
     public async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
     {
-        var ns = GetNamespaceFromType(typeof(T));
+        var ns = typeof(T).GetNamespaceFromType();
 
         var document = await ReadDocumentAsync(ns, _entryId, _ct);
         if (document == null)
@@ -438,26 +438,6 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
     {
         Dispose(_disposing: true);
         GC.SuppressFinalize(this);
-    }
-
-    private string GetNamespaceFromType(Type _type)
-    {
-        if (p_namespacePerType.TryGetValue(_type, out var ns))
-            return ns;
-
-        ns = _type.GetCustomAttribute<SimpleDocumentAttribute>()?.Namespace;
-
-        if (ns == null)
-        {
-            var underlyingType = Nullable.GetUnderlyingType(_type);
-            if (underlyingType != null)
-                ns = $"autotype_nullable_{underlyingType.FullName?.ToLower() ?? underlyingType.Name.ToLower()}";
-            else
-                ns = $"autotype_{_type.FullName?.ToLower() ?? _type.Name.ToLower()}";
-        }
-
-        p_namespacePerType[_type] = ns;
-        return ns;
     }
 
     private long GetLatestDocumentId()

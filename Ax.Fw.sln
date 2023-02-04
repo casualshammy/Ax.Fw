@@ -15,11 +15,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.TcpBus.Tests", "Ax.Fw
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.SharedTypes", "Ax.Fw.Interfaces\Ax.Fw.SharedTypes.csproj", "{2B0DB987-F80F-406F-8EA9-B4FF06651D66}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E4AF9821-3890-442A-987C-593DFE14442F}"
-	ProjectSection(SolutionItems) = preProject
-		.editorconfig = .editorconfig
-	EndProjectSection
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.MetroFramework", "Ax.Fw.MetroFramework\Ax.Fw.MetroFramework.csproj", "{1C137AB9-E926-422F-8C04-4D6095041AD9}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.MetroFramework.Sandbox", "Ax.Fw.MetroFramework.Sandbox\Ax.Fw.MetroFramework.Sandbox.csproj", "{CA260428-3614-4A06-8065-9B7108A0D4F1}"
