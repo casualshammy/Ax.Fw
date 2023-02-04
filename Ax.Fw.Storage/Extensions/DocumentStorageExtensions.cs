@@ -1,10 +1,11 @@
-﻿using Ax.Fw.Storage.Attributes;
-using Ax.Fw.Storage.Extensions;
+﻿using Ax.Fw.SharedTypes.Attributes;
+using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Storage.Interfaces;
+using Ax.Fw.Storage.StorageTypes;
 using System.Collections.Concurrent;
 using System.Reflection;
 
-namespace Ax.Fw.Storage.Toolkit;
+namespace Ax.Fw.Storage.Extensions;
 
 public static class DocumentStorageExtensions
 {
@@ -43,6 +44,24 @@ public static class DocumentStorageExtensions
     var cacheOverhead = _maxValuesCached / 10;
 
     return new CachedSqliteDocumentStorage(_storage, cacheMaxValues, cacheOverhead, _cacheTtl);
+  }
+
+  /// <summary>
+  /// Apply document retention rules to storage.
+  /// <br/>
+  /// Storage will be periodically scanned. Too old documents will be removed during scans.
+  /// </summary>
+  /// <param name="_documentMaxAgeFromCreation">All documents older than this value will be removed</param>
+  /// <param name="_scanInterval">How often to perform scans. Default is 10 min</param>
+  /// <returns></returns>
+  public static IDocumentStorage WithRetentionRules(
+    this IDocumentStorage _storage, 
+    IReadOnlyLifetime _lifetime,
+    TimeSpan? _documentMaxAgeFromCreation = null,
+    TimeSpan? _documentMaxAgeFromLastChange = null,
+    TimeSpan? _scanInterval = null)
+  {
+    return new DocumentStorageWithRetentionRules(_storage, _lifetime, _documentMaxAgeFromCreation, _documentMaxAgeFromLastChange, _scanInterval);
   }
 
 }

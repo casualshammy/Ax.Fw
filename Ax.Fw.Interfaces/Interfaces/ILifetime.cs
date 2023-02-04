@@ -1,8 +1,9 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace Ax.Fw.SharedTypes.Interfaces;
 
-public interface ILifetime : IReadOnlyLifetime
+public interface ILifetime : IReadOnlyLifetime, IDisposable
 {
     void Complete();
     Task CompleteAsync();

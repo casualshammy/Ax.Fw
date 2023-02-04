@@ -1,4 +1,6 @@
-﻿namespace Ax.Fw.Storage.Attributes;
+﻿using System;
+
+namespace Ax.Fw.SharedTypes.Attributes;
 
 [AttributeUsage(AttributeTargets.Class)]
 public class SimpleDocumentAttribute : Attribute

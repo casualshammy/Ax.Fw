@@ -1,5 +1,5 @@
 using Ax.Fw.Extensions;
-using Ax.Fw.Storage.Attributes;
+using Ax.Fw.SharedTypes.Attributes;
 using Ax.Fw.Tests.Tools;
 
 namespace Ax.Fw.Storage.Tests;
