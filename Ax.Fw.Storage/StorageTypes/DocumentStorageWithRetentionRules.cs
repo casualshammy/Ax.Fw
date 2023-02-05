@@ -26,10 +26,11 @@ public class DocumentStorageWithRetentionRules : IDocumentStorage
 
     Observable
       .Interval(_scanInterval ?? TimeSpan.FromMinutes(10), scheduler)
+      .StartWithDefault()
       .SelectAsync(async (_, _ct) =>
       {
         var now = DateTimeOffset.UtcNow;
-        var docsToDelete = new List<DocumentEntryMeta>();
+        var docsToDelete = new HashSet<DocumentEntryMeta>();
 
         await foreach (var doc in _documentStorage.ListDocumentsMetaAsync(null, null, null, _ct).ConfigureAwait(false))
         {
