@@ -7,6 +7,8 @@ namespace Ax.Fw.Storage.Interfaces;
 public interface IDocumentStorage
 {
     Task CompactDatabase(CancellationToken _ct);
+    Task<int> Count(string? _namespace, CancellationToken _ct);
+    Task<int> CountSimpleDocument<T>(CancellationToken _ct);
     Task DeleteDocumentsAsync(string _namespace, string? _key, DateTimeOffset? _from, DateTimeOffset? _to, CancellationToken _ct);
     Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull;
     Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull;

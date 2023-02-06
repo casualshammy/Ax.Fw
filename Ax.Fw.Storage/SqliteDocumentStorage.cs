@@ -8,7 +8,6 @@ using System.Data.SQLite;
 using System.Globalization;
 using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
-using System.Xml.Linq;
 
 namespace Ax.Fw.Storage;
 
@@ -420,6 +419,34 @@ public class SqliteDocumentStorage : IDocumentStorage, IDisposable
     await using var command = new SQLiteCommand(p_connection);
     command.CommandText = "VACUUM;";
     await command.ExecuteNonQueryAsync(_ct);
+  }
+
+  public async Task<int> Count(string? _namespace, CancellationToken _ct)
+  {
+    var readSql =
+        $"SELECT COUNT(*) " +
+        $"FROM document_data " +
+        $"WHERE " +
+        $"  (@namespace IS NULL OR @namespace=namespace); ";
+
+    await using var cmd = new SQLiteCommand(p_connection);
+    cmd.CommandText = readSql;
+    cmd.Parameters.AddWithValue("@namespace", _namespace);
+
+    await using var reader = await cmd.ExecuteReaderAsync(_ct);
+    if (await reader.ReadAsync(_ct))
+    {
+      var count = reader.GetInt32(0);
+      return count;
+    }
+
+    return 0;
+  }
+
+  public async Task<int> CountSimpleDocument<T>(CancellationToken _ct)
+  {
+    var ns = typeof(T).GetNamespaceFromType();
+    return await Count(ns, _ct);
   }
 
   protected virtual void Dispose(bool _disposing)

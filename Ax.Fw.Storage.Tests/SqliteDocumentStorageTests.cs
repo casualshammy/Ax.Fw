@@ -6,238 +6,272 @@ namespace Ax.Fw.Storage.Tests;
 
 public class SqliteDocumentStorageTests
 {
-    [SimpleDocument("simple-record")]
-    record DataRecord(int Id, string Name);
+  [SimpleDocument("simple-record")]
+  record DataRecord(int Id, string Name);
 
 #pragma warning disable xUnit1026 // Theory methods should use all of their parameters
-    [Theory]
-    [Repeat(100)]
-    public async Task TestSimpleRecordCreateDeleteAsync(int _)
+  [Theory]
+  [Repeat(100)]
+  public async Task TestSimpleRecordCreateDeleteAsync(int _)
 #pragma warning restore xUnit1026 // Theory methods should use all of their parameters
+  {
+    var lifetime = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    try
     {
-        var lifetime = new Lifetime();
-        var dbFile = GetDbTmpPath();
-        try
-        {
-            var storage = new SqliteDocumentStorage(dbFile, lifetime);
-            var doc = await storage.WriteSimpleDocumentAsync(_entryId: 123, _data: "test_data", lifetime.Token);
+      var storage = new SqliteDocumentStorage(dbFile, lifetime);
+      var doc = await storage.WriteSimpleDocumentAsync(_entryId: 123, _data: "test_data", lifetime.Token);
 
-            var data0 = await storage.ReadSimpleDocumentAsync<string>(_entryId: 123, lifetime.Token);
+      var data0 = await storage.ReadSimpleDocumentAsync<string>(_entryId: 123, lifetime.Token);
 
-            Assert.Equal("test_data", data0?.Data);
+      Assert.Equal("test_data", data0?.Data);
 
-            await storage.DeleteSimpleDocumentAsync<string>(123, lifetime.Token);
-            var data1 = await storage.ReadSimpleDocumentAsync<string>(123, lifetime.Token);
+      await storage.DeleteSimpleDocumentAsync<string>(123, lifetime.Token);
+      var data1 = await storage.ReadSimpleDocumentAsync<string>(123, lifetime.Token);
 
-            Assert.Null(data1);
-        }
-        finally
-        {
-            await lifetime.CompleteAsync();
-            if (!new FileInfo(dbFile).TryDelete())
-                Assert.Fail($"Can't delete file '{dbFile}'");
-        }
+      Assert.Null(data1);
     }
+    finally
+    {
+      await lifetime.CompleteAsync();
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
+    }
+  }
 
 #pragma warning disable xUnit1026 // Theory methods should use all of their parameters
 #pragma warning disable IDE0060 // Remove unused parameter
-    [Theory]
-    [Repeat(100)]
-    public async Task TestDocVersionLastModifiedAsync(int __)
+  [Theory]
+  [Repeat(100)]
+  public async Task TestDocVersionLastModifiedAsync(int __)
 #pragma warning restore IDE0060 // Remove unused parameter
 #pragma warning restore xUnit1026 // Theory methods should use all of their parameters
+  {
+    var lifetime = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    try
     {
-        var lifetime = new Lifetime();
-        var dbFile = GetDbTmpPath();
-        try
-        {
-            var storage = new SqliteDocumentStorage(dbFile, lifetime);
-            var doc0 = await storage.WriteSimpleDocumentAsync(123, "test_data", lifetime.Token);
-            var doc1 = await storage.ReadSimpleDocumentAsync<string>(123, lifetime.Token);
+      var storage = new SqliteDocumentStorage(dbFile, lifetime);
+      var doc0 = await storage.WriteSimpleDocumentAsync(123, "test_data", lifetime.Token);
+      var doc1 = await storage.ReadSimpleDocumentAsync<string>(123, lifetime.Token);
 
-            Assert.Equal(doc0.Version, doc1?.Version);
-            Assert.Equal(doc0.LastModified, doc1?.LastModified);
-            Assert.Equal(doc0.Created, doc1?.Created);
+      Assert.Equal(doc0.Version, doc1?.Version);
+      Assert.Equal(doc0.LastModified, doc1?.LastModified);
+      Assert.Equal(doc0.Created, doc1?.Created);
 
-            _ = await storage.WriteSimpleDocumentAsync(123, "test-data-new", lifetime.Token);
+      _ = await storage.WriteSimpleDocumentAsync(123, "test-data-new", lifetime.Token);
 
-            var doc2 = await storage.ReadSimpleDocumentAsync<string>(123, lifetime.Token);
-            Assert.NotEqual(doc0.Version, doc2?.Version);
-            Assert.NotEqual(doc0.LastModified, doc2?.LastModified);
-            Assert.Equal(doc0.Created, doc2?.Created);
-        }
-        finally
-        {
-            await lifetime.CompleteAsync();
-            if (!new FileInfo(dbFile).TryDelete())
-                Assert.Fail($"Can't delete file '{dbFile}'");
-        }
+      var doc2 = await storage.ReadSimpleDocumentAsync<string>(123, lifetime.Token);
+      Assert.NotEqual(doc0.Version, doc2?.Version);
+      Assert.NotEqual(doc0.LastModified, doc2?.LastModified);
+      Assert.Equal(doc0.Created, doc2?.Created);
     }
+    finally
+    {
+      await lifetime.CompleteAsync();
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
+    }
+  }
 
 #pragma warning disable xUnit1026 // Theory methods should use all of their parameters
-    [Theory]
-    [Repeat(100)]
-    public async Task TestSimpleRecordUniqueAsync(int _)
+  [Theory]
+  [Repeat(100)]
+  public async Task TestSimpleRecordUniqueAsync(int _)
+  {
+    var lifetime = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    try
     {
-        var lifetime = new Lifetime();
-        var dbFile = GetDbTmpPath();
-        try
-        {
-            var storage = new SqliteDocumentStorage(dbFile, lifetime);
+      var storage = new SqliteDocumentStorage(dbFile, lifetime);
 
-            var record0 = await storage.WriteSimpleDocumentAsync(123, "test-data-0", lifetime.Token);
-            var record1 = await storage.WriteSimpleDocumentAsync(123, "test-data-1", lifetime.Token);
-            var record2 = await storage.ReadSimpleDocumentAsync<string>(123, lifetime.Token);
+      var record0 = await storage.WriteSimpleDocumentAsync(123, "test-data-0", lifetime.Token);
+      var record1 = await storage.WriteSimpleDocumentAsync(123, "test-data-1", lifetime.Token);
+      var record2 = await storage.ReadSimpleDocumentAsync<string>(123, lifetime.Token);
 
-            Assert.NotEqual(record0.Data.ToObject<string>(), record2?.Data);
-            Assert.Equal("test-data-1", record2?.Data);
-            Assert.Equal(record0.DocId, record2?.DocId);
+      Assert.NotEqual(record0.Data.ToObject<string>(), record2?.Data);
+      Assert.Equal("test-data-1", record2?.Data);
+      Assert.Equal(record0.DocId, record2?.DocId);
 
-            var list = await storage.ListSimpleDocumentsAsync<string>(null, null, lifetime.Token).ToListAsync(lifetime.Token);
-            Assert.Single(list);
-        }
-        finally
-        {
-            await lifetime.CompleteAsync();
-            if (!new FileInfo(dbFile).TryDelete())
-                Assert.Fail($"Can't delete file '{dbFile}'");
-        }
+      var list = await storage.ListSimpleDocumentsAsync<string>(null, null, lifetime.Token).ToListAsync(lifetime.Token);
+      Assert.Single(list);
     }
+    finally
+    {
+      await lifetime.CompleteAsync();
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
+    }
+  }
 
 #pragma warning disable xUnit1026 // Theory methods should use all of their parameters
-    [Theory]
-    [Repeat(100)]
-    public async Task TestRecordUniqueAsync(int _)
+  [Theory]
+  [Repeat(100)]
+  public async Task TestRecordUniqueAsync(int _)
+  {
+    var lifetime = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    try
     {
-        var lifetime = new Lifetime();
-        var dbFile = GetDbTmpPath();
-        try
-        {
-            var ns = "test_table";
-            var key = "test-key";
+      var ns = "test_table";
+      var key = "test-key";
 
-            var storage = new SqliteDocumentStorage(dbFile, lifetime);
+      var storage = new SqliteDocumentStorage(dbFile, lifetime);
 
-            var record0 = await storage.WriteDocumentAsync(_namespace: ns, _key: key, _data: "test-data-0", lifetime.Token);
+      var record0 = await storage.WriteDocumentAsync(_namespace: ns, _key: key, _data: "test-data-0", lifetime.Token);
 
-            var record1 = await storage.WriteDocumentAsync(ns, key, "test-data-1", lifetime.Token);
+      var record1 = await storage.WriteDocumentAsync(ns, key, "test-data-1", lifetime.Token);
 
-            var record2 = await storage.ReadDocumentAsync(ns, key, lifetime.Token);
+      var record2 = await storage.ReadDocumentAsync(ns, key, lifetime.Token);
 
-            Assert.NotEqual(record0.Data.ToObject<string>(), record2?.Data.ToObject<string>());
-            Assert.Equal("test-data-1", record2?.Data.ToObject<string>());
-            Assert.Equal(record0.DocId, record2?.DocId);
+      Assert.NotEqual(record0.Data.ToObject<string>(), record2?.Data.ToObject<string>());
+      Assert.Equal("test-data-1", record2?.Data.ToObject<string>());
+      Assert.Equal(record0.DocId, record2?.DocId);
 
-            var list = await storage.ListDocumentsAsync(ns, null, null, lifetime.Token).ToListAsync(lifetime.Token);
-            Assert.Single(list);
-        }
-        finally
-        {
-            await lifetime.CompleteAsync();
-            if (!new FileInfo(dbFile).TryDelete())
-                Assert.Fail($"Can't delete file '{dbFile}'");
-        }
+      var list = await storage.ListDocumentsAsync(ns, null, null, lifetime.Token).ToListAsync(lifetime.Token);
+      Assert.Single(list);
     }
+    finally
+    {
+      await lifetime.CompleteAsync();
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
+    }
+  }
 
 #pragma warning disable xUnit1026 // Theory methods should use all of their parameters
-    [Theory]
-    [Repeat(100)]
-    public async Task TestUniquenessOfRecordsAndDocsAsync(int _)
+  [Theory]
+  [Repeat(100)]
+  public async Task TestUniquenessOfRecordsAndDocsAsync(int _)
+  {
+    var lifetime = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    try
     {
-        var lifetime = new Lifetime();
-        var dbFile = GetDbTmpPath();
-        try
-        {
-            var storage = new SqliteDocumentStorage(dbFile, lifetime);
+      var storage = new SqliteDocumentStorage(dbFile, lifetime);
 
-            var record0 = await storage.WriteDocumentAsync("test-table", "test-key", "test-data-0", lifetime.Token);
-            Assert.Equal(0, record0.DocId);
+      var record0 = await storage.WriteDocumentAsync("test-table", "test-key", "test-data-0", lifetime.Token);
+      Assert.Equal(0, record0.DocId);
 
-            await storage.DeleteDocumentsAsync("test-table", "test-key", null, null, lifetime.Token);
+      await storage.DeleteDocumentsAsync("test-table", "test-key", null, null, lifetime.Token);
 
-            var list0 = await storage.ListDocumentsAsync("test-table", null, null, lifetime.Token).ToListAsync(lifetime.Token);
-            Assert.Empty(list0);
+      var list0 = await storage.ListDocumentsAsync("test-table", null, null, lifetime.Token).ToListAsync(lifetime.Token);
+      Assert.Empty(list0);
 
-            var record1 = await storage.WriteDocumentAsync("test-table", "test-key", "test-data-0", lifetime.Token);
-            Assert.NotEqual(0, record1.DocId);
-        }
-        finally
-        {
-            await lifetime.CompleteAsync();
-            if (!new FileInfo(dbFile).TryDelete())
-                Assert.Fail($"Can't delete file '{dbFile}'");
-        }
+      var record1 = await storage.WriteDocumentAsync("test-table", "test-key", "test-data-0", lifetime.Token);
+      Assert.NotEqual(0, record1.DocId);
     }
+    finally
+    {
+      await lifetime.CompleteAsync();
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
+    }
+  }
 
 #pragma warning disable xUnit1026 // Theory methods should use all of their parameters
-    [Theory]
-    [Repeat(100)]
-    public async Task CheckIfDocIdCalculatedOnDbOpenAsync(int _)
+  [Theory]
+  [Repeat(100)]
+  public async Task CheckIfDocIdCalculatedOnDbOpenAsync(int _)
+  {
+    var lifetime0 = new Lifetime();
+    var lifetime1 = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    try
     {
-        var lifetime0 = new Lifetime();
-        var lifetime1 = new Lifetime();
-        var dbFile = GetDbTmpPath();
-        try
-        {
-            // open db, write documents, then close db
-            var entriesCount = 100;
-            var storage0 = new SqliteDocumentStorage(dbFile, lifetime0);
-            var enumerable = Enumerable.Range(0, entriesCount);
+      // open db, write documents, then close db
+      var entriesCount = 100;
+      var storage0 = new SqliteDocumentStorage(dbFile, lifetime0);
+      var enumerable = Enumerable.Range(0, entriesCount);
 
-            var lastDocId = 0;
-            await Parallel.ForEachAsync(enumerable, lifetime0.Token, async (_key, _ct) =>
-            {
-                var document0 = await storage0.WriteDocumentAsync("test-table0", _key, "test-data", lifetime0.Token);
-                var document1 = await storage0.WriteDocumentAsync("test-table1", _key, "test-data", lifetime0.Token);
-                var document2 = await storage0.WriteDocumentAsync("test-table2", _key, "test-data", lifetime0.Token);
+      var lastDocId = 0;
+      await Parallel.ForEachAsync(enumerable, lifetime0.Token, async (_key, _ct) =>
+      {
+        var document0 = await storage0.WriteDocumentAsync("test-table0", _key, "test-data", lifetime0.Token);
+        var document1 = await storage0.WriteDocumentAsync("test-table1", _key, "test-data", lifetime0.Token);
+        var document2 = await storage0.WriteDocumentAsync("test-table2", _key, "test-data", lifetime0.Token);
 
-                lastDocId = Math.Max(lastDocId, document0.DocId);
-                lastDocId = Math.Max(lastDocId, document1.DocId);
-                lastDocId = Math.Max(lastDocId, document2.DocId);
-            });
+        lastDocId = Math.Max(lastDocId, document0.DocId);
+        lastDocId = Math.Max(lastDocId, document1.DocId);
+        lastDocId = Math.Max(lastDocId, document2.DocId);
+      });
 
-            await lifetime0.CompleteAsync();
+      await lifetime0.CompleteAsync();
 
-            Assert.Equal(entriesCount * 3, lastDocId + 1);
+      Assert.Equal(entriesCount * 3, lastDocId + 1);
 
-            var storage1 = new SqliteDocumentStorage(dbFile, lifetime1);
-            var document = await storage1.WriteDocumentAsync("test-table", entriesCount + 1, "test-data", lifetime1.Token);
+      var storage1 = new SqliteDocumentStorage(dbFile, lifetime1);
+      var document = await storage1.WriteDocumentAsync("test-table", entriesCount + 1, "test-data", lifetime1.Token);
 
-            Assert.True(document.DocId > lastDocId);
-        }
-        finally
-        {
-            await lifetime0.CompleteAsync();
-            await lifetime1.CompleteAsync();
-            if (!new FileInfo(dbFile).TryDelete())
-                Assert.Fail($"Can't delete file '{dbFile}'");
-        }
+      Assert.True(document.DocId > lastDocId);
     }
-
-    [Fact]
-    public async Task CheckAttributeAsync()
+    finally
     {
-        var lifetime = new Lifetime();
-        var dbFile = GetDbTmpPath();
-        try
-        {
-            var storage = new SqliteDocumentStorage(dbFile, lifetime);
-
-            var document0 = await storage.WriteSimpleDocumentAsync(100, new DataRecord(100, "100"), lifetime.Token);
-            var document1 = await storage.ReadSimpleDocumentAsync<DataRecord>(100, lifetime.Token);
-            var document2 = await storage.ReadDocumentAsync("simple-record", 100, lifetime.Token);
-
-            Assert.NotNull(document0);
-            Assert.NotNull(document1);
-            Assert.NotNull(document2);
-        }
-        finally
-        {
-            await lifetime.CompleteAsync();
-            if (!new FileInfo(dbFile).TryDelete())
-                Assert.Fail($"Can't delete file '{dbFile}'");
-        }
+      await lifetime0.CompleteAsync();
+      await lifetime1.CompleteAsync();
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
     }
+  }
 
-    private static string GetDbTmpPath() => $"{Path.GetTempFileName()}";
+  [Fact]
+  public async Task CheckAttributeAsync()
+  {
+    var lifetime = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    try
+    {
+      var storage = new SqliteDocumentStorage(dbFile, lifetime);
+
+      var document0 = await storage.WriteSimpleDocumentAsync(100, new DataRecord(100, "100"), lifetime.Token);
+      var document1 = await storage.ReadSimpleDocumentAsync<DataRecord>(100, lifetime.Token);
+      var document2 = await storage.ReadDocumentAsync("simple-record", 100, lifetime.Token);
+
+      Assert.NotNull(document0);
+      Assert.NotNull(document1);
+      Assert.NotNull(document2);
+    }
+    finally
+    {
+      await lifetime.CompleteAsync();
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
+    }
+  }
+
+  [Fact]
+  public async Task CheckCountMethodAsync()
+  {
+    var lifetime = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    try
+    {
+      var wrongNs = "wrong_ns";
+      var storage = new SqliteDocumentStorage(dbFile, lifetime);
+      Assert.Equal(0, await storage.CountSimpleDocument<DataRecord>(lifetime.Token));
+      Assert.Equal(0, await storage.Count(wrongNs, lifetime.Token));
+
+      for (int i = 0; i < 3; i++)
+      {
+        await storage.WriteSimpleDocumentAsync(i, new DataRecord(i, i.ToString()), lifetime.Token);
+        Assert.Equal(i + 1, await storage.CountSimpleDocument<DataRecord>(lifetime.Token));
+        Assert.Equal(0, await storage.Count(wrongNs, lifetime.Token));
+      }
+
+      for (int i = 0; i < 3; i++)
+      {
+        await storage.DeleteSimpleDocumentAsync<DataRecord>(i, lifetime.Token);
+        Assert.Equal(2 - i, await storage.CountSimpleDocument<DataRecord>(lifetime.Token));
+        Assert.Equal(0, await storage.Count(wrongNs, lifetime.Token));
+      }
+    }
+    finally
+    {
+      await lifetime.CompleteAsync();
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
+    }
+  }
+
+  private static string GetDbTmpPath() => $"{Path.GetTempFileName()}";
 }

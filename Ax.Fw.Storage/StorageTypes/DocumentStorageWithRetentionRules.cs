@@ -106,4 +106,8 @@ public class DocumentStorageWithRetentionRules : IDocumentStorage
   public Task<DocumentEntry> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull
     => p_documentStorage.WriteSimpleDocumentAsync(_entryId, _data, _ct);
 
+  public Task<int> Count(string? _namespace, CancellationToken _ct) => p_documentStorage.Count(_namespace, _ct);
+
+  public Task<int> CountSimpleDocument<T>(CancellationToken _ct) => p_documentStorage.CountSimpleDocument<T>(_ct);
+
 }
