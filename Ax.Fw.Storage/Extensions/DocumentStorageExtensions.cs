@@ -1,5 +1,5 @@
 ﻿using Ax.Fw.SharedTypes.Attributes;
-using Ax.Fw.SharedTypes.Interfaces;
+using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Interfaces;
 using Ax.Fw.Storage.StorageTypes;
 using System.Collections.Concurrent;
@@ -38,7 +38,7 @@ public static class DocumentStorageExtensions
   /// </summary>
   /// <param name="_maxValuesCached">Max number of values to store in cache</param>
   /// <returns></returns>
-  public static IDocumentStorage ToCached(this IDocumentStorage _storage, int _maxValuesCached, TimeSpan _cacheTtl)
+  public static DocumentStorage ToCached(this DocumentStorage _storage, int _maxValuesCached, TimeSpan _cacheTtl)
   {
     var cacheMaxValues = _maxValuesCached - _maxValuesCached / 10;
     var cacheOverhead = _maxValuesCached / 10;
@@ -53,15 +53,16 @@ public static class DocumentStorageExtensions
   /// </summary>
   /// <param name="_documentMaxAgeFromCreation">All documents older than this value will be removed</param>
   /// <param name="_scanInterval">How often to perform scans. Default is 10 min</param>
+  /// <param name="_onDocDeleteCallback">This callback will be called when doc is deleted</param>
   /// <returns></returns>
-  public static IDocumentStorage WithRetentionRules(
-    this IDocumentStorage _storage, 
-    IReadOnlyLifetime _lifetime,
+  public static DocumentStorage WithRetentionRules(
+    this DocumentStorage _storage,
     TimeSpan? _documentMaxAgeFromCreation = null,
     TimeSpan? _documentMaxAgeFromLastChange = null,
-    TimeSpan? _scanInterval = null)
+    TimeSpan? _scanInterval = null,
+    Action<DocumentEntryMeta>? _onDocDeleteCallback = null)
   {
-    return new DocumentStorageWithRetentionRules(_storage, _lifetime, _documentMaxAgeFromCreation, _documentMaxAgeFromLastChange, _scanInterval);
+    return new DocumentStorageWithRetentionRules(_storage, _documentMaxAgeFromCreation, _documentMaxAgeFromLastChange, _scanInterval, _onDocDeleteCallback);
   }
 
 }

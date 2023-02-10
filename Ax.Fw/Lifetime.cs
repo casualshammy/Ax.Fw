@@ -53,9 +53,7 @@ public class Lifetime : ILifetime
 
   public IObservable<bool> OnCompleteStarted => p_flow.Take(1).ObserveOnThreadPool().Select(_ => true);
 
-#if NETSTANDARD2_1_OR_GREATER || NET6_0_OR_GREATER
   [return: NotNullIfNotNull(parameterName: "_instance")]
-#endif
   public T? DisposeOnCompleted<T>(T? _instance) where T : IDisposable
   {
     if (p_cts.Token.IsCancellationRequested)
@@ -69,7 +67,6 @@ public class Lifetime : ILifetime
     return _instance;
   }
 
-#if NETSTANDARD2_1_OR_GREATER || NET6_0_OR_GREATER
   [return: NotNullIfNotNull(parameterName: "_instance")]
   public T? DisposeAsyncOnCompleted<T>(T? _instance) where T : IAsyncDisposable
   {
@@ -83,7 +80,6 @@ public class Lifetime : ILifetime
     });
     return _instance;
   }
-#endif
 
   public void DoOnCompleted(Func<Task> _action)
   {

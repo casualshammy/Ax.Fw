@@ -27,7 +27,7 @@ public class CachedSqliteDocumentStorageTests
     try
     {
       var entries = Enumerable.Range(0, 1000).ToArray();
-      var storage = new SqliteDocumentStorage(dbFile, lifetime);
+      var storage = lifetime.DisposeOnCompleted(new SqliteDocumentStorage(dbFile));
 
       // warm-up
       foreach (var entry in entries)
