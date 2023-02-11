@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace Ax.Fw.Storage.Interfaces;
 
-public abstract class DocumentStorage : DisposableStack
+public abstract class DocumentStorage : DisposableStack, IDocumentStorage
 {
   public abstract Task CompactDatabase(CancellationToken _ct);
   public abstract Task<int> Count(string? _namespace, CancellationToken _ct);

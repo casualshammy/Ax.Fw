@@ -8,12 +8,12 @@ public abstract class DisposableStack : IDisposable
   private readonly ILifetime p_lifetime = new Lifetime();
   private volatile bool p_disposedValue;
 
-  public T ToDispose<T>(T _value) where T : IDisposable
+  protected T ToDispose<T>(T _value) where T : IDisposable
   {
     return p_lifetime.DisposeOnCompleted(_value);
   }
 
-  public T ToDisposeAsync<T>(T _value) where T : IAsyncDisposable
+  protected T ToDisposeAsync<T>(T _value) where T : IAsyncDisposable
   {
     return p_lifetime.DisposeAsyncOnCompleted(_value);
   }
