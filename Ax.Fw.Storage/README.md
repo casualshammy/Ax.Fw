@@ -13,7 +13,7 @@ var dbFile = GetDbPath();
 try
 {
 	// create database or open existing; you can omit lifetime parameter, but you should call `Dispose` in this case
-	var storage = new SqliteDocumentStorage(dbFile, lifetime);
+	using var storage = new SqliteDocumentStorage(dbFile, lifetime);
 	
 	// create document; pair 'namespace - key' is unique; any json serializable data can be stored
 	var doc = await storage.WriteDocumentAsync(_namespace: "default", _key: "test-key", _data: "test-data-0", lifetime.Token);
@@ -33,7 +33,12 @@ try
 
 	// you also can attach in-memory cache to document storage
 	// cache makes read operations significantly faster
-	var cachedStorage = storage.ToCached(_maxValuesCached: 1000, _cacheTtl: TimeSpan.FromSeconds(60));
+	using var cachedStorage = storage.ToCached(_maxValuesCached: 1000, _cacheTtl: TimeSpan.FromSeconds(60));
+
+	// you also can attach retention rules to document storage
+	// documents older than certain age will be automatically deleted
+	using var storageWithRules = storage
+		.WithRetentionRules(TimeSpan.FromHours(1), TimeSpan.FromHours(1), TimeSpan.FromMinutes(10));
 }
 finally
 {

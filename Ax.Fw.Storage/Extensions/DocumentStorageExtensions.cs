@@ -53,16 +53,16 @@ public static class DocumentStorageExtensions
   /// </summary>
   /// <param name="_documentMaxAgeFromCreation">All documents older than this value will be removed</param>
   /// <param name="_scanInterval">How often to perform scans. Default is 10 min</param>
-  /// <param name="_onDocDeleteCallback">This callback will be called when doc is deleted</param>
+  /// <param name="_onDocsDeleteCallback">This callback will be called when documents are deleted</param>
   /// <returns></returns>
   public static DocumentStorage WithRetentionRules(
     this DocumentStorage _storage,
     TimeSpan? _documentMaxAgeFromCreation = null,
     TimeSpan? _documentMaxAgeFromLastChange = null,
     TimeSpan? _scanInterval = null,
-    Action<DocumentEntryMeta>? _onDocDeleteCallback = null)
+    Action<HashSet<DocumentEntryMeta>>? _onDocsDeleteCallback = null)
   {
-    return new DocumentStorageWithRetentionRules(_storage, _documentMaxAgeFromCreation, _documentMaxAgeFromLastChange, _scanInterval, _onDocDeleteCallback);
+    return new DocumentStorageWithRetentionRules(_storage, _documentMaxAgeFromCreation, _documentMaxAgeFromLastChange, _scanInterval, _onDocsDeleteCallback);
   }
 
 }

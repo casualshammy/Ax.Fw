@@ -17,7 +17,7 @@ public class DocumentStorageWithRetentionRules : DocumentStorage
     TimeSpan? _documentMaxAgeFromCreation = null,
     TimeSpan? _documentMaxAgeFromLastChange = null,
     TimeSpan? _scanInterval = null,
-    Action<DocumentEntryMeta>? _onDocDeleteCallback = null)
+    Action<HashSet<DocumentEntryMeta>>? _onDocsDeleteCallback = null)
   {
     p_documentStorage = ToDispose(_documentStorage);
 
@@ -26,6 +26,7 @@ public class DocumentStorageWithRetentionRules : DocumentStorage
     var subscription = Observable
       .Interval(_scanInterval ?? TimeSpan.FromMinutes(10), scheduler)
       .StartWithDefault()
+      .ObserveOn(scheduler)
       .SelectAsync(async (_, _ct) =>
       {
         var now = DateTimeOffset.UtcNow;
@@ -42,10 +43,13 @@ public class DocumentStorageWithRetentionRules : DocumentStorage
         }
 
         foreach (var doc in docsToDelete)
-        {
           await _documentStorage.DeleteDocumentsAsync(doc.Namespace, doc.Key, null, null, _ct);
-          _onDocDeleteCallback?.Invoke(doc);
+
+        try
+        {
+          _onDocsDeleteCallback?.Invoke(docsToDelete);
         }
+        catch { }
       }, scheduler)
       .Subscribe();
 
