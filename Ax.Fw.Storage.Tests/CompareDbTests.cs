@@ -39,7 +39,7 @@ public class CompareDbTests
 
       var writeElapsed = sw.Elapsed;
 
-      var list = await storage.ListDocumentsAsync("test-table", null, null, lifetime.Token).ToListAsync(lifetime.Token);
+      var list = await storage.ListDocumentsAsync("test-table", _ct: lifetime.Token).ToListAsync(lifetime.Token);
       Assert.Equal(PROBLEM_SIZE, list.Count);
 
       var listElapsed = sw.Elapsed - writeElapsed;

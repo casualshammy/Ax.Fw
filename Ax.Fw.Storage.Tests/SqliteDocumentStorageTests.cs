@@ -1,5 +1,6 @@
 using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Attributes;
+using Ax.Fw.Storage.Extensions;
 using Ax.Fw.Storage.Interfaces;
 using Ax.Fw.Tests.Tools;
 using System.Diagnostics;
@@ -109,7 +110,7 @@ public class SqliteDocumentStorageTests
       Assert.Equal("test-data-1", record2?.Data);
       Assert.Equal(record0.DocId, record2?.DocId);
 
-      var list = await storage.ListSimpleDocumentsAsync<string>(null, null, lifetime.Token).ToListAsync(lifetime.Token);
+      var list = await storage.ListSimpleDocumentsAsync<string>(_ct: lifetime.Token).ToListAsync(lifetime.Token);
       Assert.Single(list);
     }
     finally
@@ -144,7 +145,7 @@ public class SqliteDocumentStorageTests
       Assert.Equal("test-data-1", record2?.Data.ToObject<string>());
       Assert.Equal(record0.DocId, record2?.DocId);
 
-      var list = await storage.ListDocumentsAsync(ns, null, null, lifetime.Token).ToListAsync(lifetime.Token);
+      var list = await storage.ListDocumentsAsync(ns, _ct: lifetime.Token).ToListAsync(lifetime.Token);
       Assert.Single(list);
     }
     finally
@@ -171,7 +172,7 @@ public class SqliteDocumentStorageTests
 
       await storage.DeleteDocumentsAsync("test-table", "test-key", null, null, lifetime.Token);
 
-      var list0 = await storage.ListDocumentsAsync("test-table", null, null, lifetime.Token).ToListAsync(lifetime.Token);
+      var list0 = await storage.ListDocumentsAsync("test-table", _ct: lifetime.Token).ToListAsync(lifetime.Token);
       Assert.Empty(list0);
 
       var record1 = await storage.WriteDocumentAsync("test-table", "test-key", "test-data-0", lifetime.Token);

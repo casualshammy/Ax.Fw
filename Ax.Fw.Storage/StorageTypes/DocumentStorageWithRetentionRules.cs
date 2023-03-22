@@ -76,8 +76,13 @@ public class DocumentStorageWithRetentionRules : DocumentStorage
     => p_documentStorage.DeleteSimpleDocumentAsync<T>(_entryId, _ct);
 
 #pragma warning disable CS8424
-  public override IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(string _namespace, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default)
-    => p_documentStorage.ListDocumentsAsync(_namespace, _from, _to, _ct);
+  public override IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
+    string _namespace,
+    LikeExpr? _keyLikeExpression = null,
+    DateTimeOffset? _from = null, 
+    DateTimeOffset? _to = null, 
+    [EnumeratorCancellation] CancellationToken _ct = default)
+    => p_documentStorage.ListDocumentsAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
 
   public override IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
     string? _namespace, 
@@ -87,8 +92,12 @@ public class DocumentStorageWithRetentionRules : DocumentStorage
     [EnumeratorCancellation] CancellationToken _ct = default)
     => p_documentStorage.ListDocumentsMetaAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
 
-  public override IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default)
-    => p_documentStorage.ListSimpleDocumentsAsync<T>(_from, _to, _ct);
+  public override IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
+    LikeExpr? _keyLikeExpression = null, 
+    DateTimeOffset? _from = null, 
+    DateTimeOffset? _to = null, 
+    [EnumeratorCancellation] CancellationToken _ct = default)
+    => p_documentStorage.ListSimpleDocumentsAsync<T>(_keyLikeExpression, _from, _to, _ct);
 #pragma warning restore CS8424
 
   public override Task<DocumentEntry?> ReadDocumentAsync(string _namespace, string _key, CancellationToken _ct)

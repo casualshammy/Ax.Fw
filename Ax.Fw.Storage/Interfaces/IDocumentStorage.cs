@@ -13,14 +13,40 @@ public interface IDocumentStorage
   Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull;
   Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull;
 #pragma warning disable CS8424 // The EnumeratorCancellationAttribute will have no effect. The attribute is only effective on a parameter of type CancellationToken in an async-iterator method returning IAsyncEnumerable
-  IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(string _namespace, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
+
+  /// <summary>
+  /// List documents
+  /// </summary>
+  /// /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
+  IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
+    string _namespace,
+    LikeExpr? _keyLikeExpression = null,
+    DateTimeOffset? _from = null, 
+    DateTimeOffset? _to = null, 
+    [EnumeratorCancellation] CancellationToken _ct = default);
 
   /// <summary>
   /// List documents meta info (without data)
   /// </summary>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(string? _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
-  IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
+  IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
+    string? _namespace, 
+    LikeExpr? _keyLikeExpression = null, 
+    DateTimeOffset? _from = null, 
+    DateTimeOffset? _to = null, 
+    [EnumeratorCancellation] CancellationToken _ct = default);
+
+  /// <summary>
+  /// List documents
+  /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
+  /// </summary>
+  /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
+  IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
+    LikeExpr? _keyLikeExpression = null,
+    DateTimeOffset? _from = null, 
+    DateTimeOffset? _to = null, 
+    [EnumeratorCancellation] CancellationToken _ct = default);
+
 #pragma warning restore CS8424 // The EnumeratorCancellationAttribute will have no effect. The attribute is only effective on a parameter of type CancellationToken in an async-iterator method returning IAsyncEnumerable
   Task<DocumentEntry?> ReadDocumentAsync(string _namespace, string _key, CancellationToken _ct);
   Task<DocumentEntry?> ReadDocumentAsync(string _namespace, int _key, CancellationToken _ct);

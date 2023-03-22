@@ -57,9 +57,14 @@ public class CachedSqliteDocumentStorage : DocumentStorage
   }
 
 #pragma warning disable CS8424
-  public override IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(string _namespace, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default)
+  public override IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
+    string _namespace, 
+    LikeExpr? _keyLikeExpression = null, 
+    DateTimeOffset? _from = null, 
+    DateTimeOffset? _to = null, 
+    [EnumeratorCancellation] CancellationToken _ct = default)
   {
-    return p_documentStorage.ListDocumentsAsync(_namespace, _from, _to, _ct);
+    return p_documentStorage.ListDocumentsAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
   }
 
   public override IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
@@ -72,9 +77,13 @@ public class CachedSqliteDocumentStorage : DocumentStorage
     return p_documentStorage.ListDocumentsMetaAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
   }
 
-  public override IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default)
+  public override IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
+    LikeExpr? _keyLikeExpression = null, 
+    DateTimeOffset? _from = null, 
+    DateTimeOffset? _to = null, 
+    [EnumeratorCancellation] CancellationToken _ct = default)
   {
-    return p_documentStorage.ListSimpleDocumentsAsync<T>(_from, _to, _ct);
+    return p_documentStorage.ListSimpleDocumentsAsync<T>(_keyLikeExpression, _from, _to, _ct);
   }
 #pragma warning restore CS8424
 
