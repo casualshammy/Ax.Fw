@@ -55,7 +55,7 @@ public class ImprovedDocumentStorageTests
       p_output.WriteLine($"Non-cached: {elapsed}");
 
       // cached
-      var cachedStorage = storage.WithCache(entries.Length, TimeSpan.FromSeconds(60), lifetime);
+      var cachedStorage = storage.WithCache(entries.Length, TimeSpan.FromSeconds(60));
       sw.Restart();
       foreach (var entry in entries)
       {

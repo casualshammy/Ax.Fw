@@ -43,13 +43,12 @@ public static class DocumentStorageExtensions
   public static DocumentStorage WithCache(
     this DocumentStorage _storage, 
     int _maxValuesCached, 
-    TimeSpan _cacheTtl, 
-    IReadOnlyLifetime _lifetime)
+    TimeSpan _cacheTtl)
   {
     var cacheMaxValues = _maxValuesCached - _maxValuesCached / 10;
     var cacheOverhead = _maxValuesCached / 10;
 
-    return new CachedSqliteDocumentStorage(_storage, cacheMaxValues, cacheOverhead, _cacheTtl, _lifetime);
+    return new CachedSqliteDocumentStorage(_storage, cacheMaxValues, cacheOverhead, _cacheTtl);
   }
 
   /// <summary>

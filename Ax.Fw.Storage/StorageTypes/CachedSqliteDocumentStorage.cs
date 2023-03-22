@@ -1,6 +1,5 @@
 ﻿using Ax.Fw.Cache;
 using Ax.Fw.Extensions;
-using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Extensions;
 using Ax.Fw.Storage.Interfaces;
@@ -21,20 +20,19 @@ public class CachedSqliteDocumentStorage : DocumentStorage
     DocumentStorage _documentStorage,
     int _cacheCapacity,
     int _cacheOverhead,
-    TimeSpan _cacheTtl,
-    IReadOnlyLifetime _lifetime)
+    TimeSpan _cacheTtl)
   {
     p_documentStorage = ToDispose(_documentStorage);
     p_cache = new SyncCache<CacheKey, DocumentEntry>(new SyncCacheSettings(_cacheCapacity, _cacheOverhead, _cacheTtl));
 
     if (_documentStorage is DocumentStorageWithRetentionRules docStorageWithRetention)
     {
-      docStorageWithRetention.DeletedDocsFlow.
+      ToDispose(docStorageWithRetention.DeletedDocsFlow.
         Subscribe(_docs =>
         {
           foreach (var doc in _docs)
             RemoveEntriesFromCache(doc.Namespace, doc.Key);
-        }, _lifetime);
+        }));
     }
   }
 
