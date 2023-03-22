@@ -33,7 +33,7 @@ public class ImprovedDocumentStorageTests
       foreach (var entry in entries)
       {
         await storage.WriteSimpleDocumentAsync(entry, new DataRecord(entry, entry.ToString()), lifetime.Token);
-        var doc = await storage.ReadSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
+        _ = await storage.ReadSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
         await storage.DeleteSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
       }
 
@@ -55,7 +55,7 @@ public class ImprovedDocumentStorageTests
       p_output.WriteLine($"Non-cached: {elapsed}");
 
       // cached
-      var cachedStorage = storage.ToCached(entries.Length, TimeSpan.FromSeconds(60));
+      var cachedStorage = storage.WithCache(entries.Length, TimeSpan.FromSeconds(60), lifetime);
       sw.Restart();
       foreach (var entry in entries)
       {

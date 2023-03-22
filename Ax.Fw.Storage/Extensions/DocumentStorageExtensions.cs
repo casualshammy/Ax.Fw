@@ -1,8 +1,10 @@
 ﻿using Ax.Fw.SharedTypes.Attributes;
+using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Interfaces;
 using Ax.Fw.Storage.StorageTypes;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Reflection;
 
 namespace Ax.Fw.Storage.Extensions;
@@ -38,12 +40,16 @@ public static class DocumentStorageExtensions
   /// </summary>
   /// <param name="_maxValuesCached">Max number of values to store in cache</param>
   /// <returns></returns>
-  public static DocumentStorage ToCached(this DocumentStorage _storage, int _maxValuesCached, TimeSpan _cacheTtl)
+  public static DocumentStorage WithCache(
+    this DocumentStorage _storage, 
+    int _maxValuesCached, 
+    TimeSpan _cacheTtl, 
+    IReadOnlyLifetime _lifetime)
   {
     var cacheMaxValues = _maxValuesCached - _maxValuesCached / 10;
     var cacheOverhead = _maxValuesCached / 10;
 
-    return new CachedSqliteDocumentStorage(_storage, cacheMaxValues, cacheOverhead, _cacheTtl);
+    return new CachedSqliteDocumentStorage(_storage, cacheMaxValues, cacheOverhead, _cacheTtl, _lifetime);
   }
 
   /// <summary>
@@ -60,7 +66,7 @@ public static class DocumentStorageExtensions
     TimeSpan? _documentMaxAgeFromCreation = null,
     TimeSpan? _documentMaxAgeFromLastChange = null,
     TimeSpan? _scanInterval = null,
-    Action<HashSet<DocumentEntryMeta>>? _onDocsDeleteCallback = null)
+    Action<ImmutableHashSet<DocumentEntryMeta>>? _onDocsDeleteCallback = null)
   {
     return new DocumentStorageWithRetentionRules(_storage, _documentMaxAgeFromCreation, _documentMaxAgeFromLastChange, _scanInterval, _onDocsDeleteCallback);
   }

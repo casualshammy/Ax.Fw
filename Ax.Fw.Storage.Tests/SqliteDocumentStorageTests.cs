@@ -1,13 +1,29 @@
 using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Attributes;
+using Ax.Fw.Storage.Interfaces;
 using Ax.Fw.Tests.Tools;
+using System.Diagnostics;
 
 namespace Ax.Fw.Storage.Tests;
 
 public class SqliteDocumentStorageTests
 {
   [SimpleDocument("simple-record")]
-  record DataRecord(int Id, string Name);
+  record DataRecord(int Id, string Name)
+  {
+    public string GetStorageKey() => $"{Id}.{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+    public static int? GetIdFromStorageKey(string _storageKey)
+    {
+      var split = _storageKey.Split('.', StringSplitOptions.RemoveEmptyEntries);
+      if (split.Length != 2)
+        return null;
+
+      if (!int.TryParse(split[0], out var projectId))
+        return null;
+
+      return projectId;
+    }
+  };
 
 #pragma warning disable xUnit1026 // Theory methods should use all of their parameters
   [Theory]
@@ -264,6 +280,99 @@ public class SqliteDocumentStorageTests
         Assert.Equal(2 - i, await storage.CountSimpleDocuments<DataRecord>(lifetime.Token));
         Assert.Equal(0, await storage.Count(wrongNs, lifetime.Token));
       }
+    }
+    finally
+    {
+      await lifetime.CompleteAsync();
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
+    }
+  }
+
+  [Fact]
+  public async Task TestLikeOperatorSpeedAsync()
+  {
+    var lifetime = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    try
+    {
+      var totalEntriesCount = 10000;
+      IDocumentStorage storage = lifetime.DisposeOnCompleted(new SqliteDocumentStorage(dbFile));
+      for (var i = 0; i < 10000; i++)
+      {
+        var entry = new DataRecord(i % 100, string.Empty);
+        _ = await storage.WriteSimpleDocumentAsync(entry.GetStorageKey(), entry, lifetime.Token);
+      }
+
+      var targetIdStart = 1;
+      var targetIdMiddle = totalEntriesCount / 2;
+      var targetIdEnd = totalEntriesCount - 1;
+
+      // ==========================================================
+
+      var targetIdSwStart = Stopwatch.StartNew();
+      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _ct: lifetime.Token))
+      {
+        var id = DataRecord.GetIdFromStorageKey(doc.Key);
+        if (id == targetIdStart)
+          break;
+      }
+      targetIdSwStart.Stop();
+
+      var targetIdSwStartLike = Stopwatch.StartNew();
+      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new Data.LikeExpr($"{targetIdStart}.%"), _ct: lifetime.Token))
+      {
+        var id = DataRecord.GetIdFromStorageKey(doc.Key);
+        if (id == targetIdStart)
+          break;
+      }
+      targetIdSwStartLike.Stop();
+
+      Assert.True(targetIdSwStartLike.Elapsed < targetIdSwStart.Elapsed);
+
+      // ==========================================================
+
+      var targetIdSwMiddle = Stopwatch.StartNew();
+      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _ct: lifetime.Token))
+      {
+        var id = DataRecord.GetIdFromStorageKey(doc.Key);
+        if (id == targetIdMiddle)
+          break;
+      }
+      targetIdSwMiddle.Stop();
+
+      var targetIdSwMiddleLike = Stopwatch.StartNew();
+      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new Data.LikeExpr($"{targetIdMiddle}.%"), _ct: lifetime.Token))
+      {
+        var id = DataRecord.GetIdFromStorageKey(doc.Key);
+        if (id == targetIdMiddle)
+          break;
+      }
+      targetIdSwMiddleLike.Stop();
+
+      Assert.True(targetIdSwMiddleLike.Elapsed < targetIdSwMiddle.Elapsed);
+
+      // ==========================================================
+
+      var targetIdSwEnd = Stopwatch.StartNew();
+      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _ct: lifetime.Token))
+      {
+        var id = DataRecord.GetIdFromStorageKey(doc.Key);
+        if (id == targetIdEnd)
+          break;
+      }
+      targetIdSwEnd.Stop();
+
+      var targetIdSwEndLike = Stopwatch.StartNew();
+      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new Data.LikeExpr($"{targetIdEnd}.%"), _ct: lifetime.Token))
+      {
+        var id = DataRecord.GetIdFromStorageKey(doc.Key);
+        if (id == targetIdEnd)
+          break;
+      }
+      targetIdSwEndLike.Stop();
+
+      Assert.True(targetIdSwEndLike.Elapsed < targetIdSwEnd.Elapsed);
     }
     finally
     {

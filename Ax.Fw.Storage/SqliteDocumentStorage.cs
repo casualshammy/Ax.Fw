@@ -137,9 +137,9 @@ public class SqliteDocumentStorage : DocumentStorage
   public override async Task DeleteDocumentsAsync(
       string _namespace,
       string? _key,
-      DateTimeOffset? _from,
-      DateTimeOffset? _to,
-      CancellationToken _ct)
+      DateTimeOffset? _from = null, 
+      DateTimeOffset? _to = null, 
+      CancellationToken _ct = default)
   {
     var deleteSql =
         $"DELETE FROM document_data " +
@@ -182,23 +182,27 @@ public class SqliteDocumentStorage : DocumentStorage
   /// <summary>
   /// List documents meta info (without data)
   /// </summary>
+  /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
   public override async IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
       string? _namespace,
-      DateTimeOffset? _from,
-      DateTimeOffset? _to,
-      [EnumeratorCancellation] CancellationToken _ct)
+      LikeExpr? _keyLikeExpression = null,
+      DateTimeOffset? _from = null,
+      DateTimeOffset? _to = null,
+      [EnumeratorCancellation] CancellationToken _ct = default)
   {
     var listSql =
         $"SELECT doc_id, namespace, key, last_modified, created, version " +
         $"FROM document_data " +
         $"WHERE " +
         $"  (@namespace IS NULL OR @namespace=namespace) AND " +
+        $"  (@key_like IS NULL OR key LIKE @key_like) AND " +
         $"  (@from IS NULL OR last_modified>=@from) AND " +
         $"  (@to IS NULL OR last_modified<=@to); ";
 
     await using var cmd = new SQLiteCommand(p_connection);
     cmd.CommandText = listSql;
     cmd.Parameters.AddWithValue("@namespace", _namespace);
+    cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression?.Pattern);
     cmd.Parameters.AddWithValue("@from", _from?.UtcTicks);
     cmd.Parameters.AddWithValue("@to", _to?.UtcTicks);
 
@@ -220,9 +224,9 @@ public class SqliteDocumentStorage : DocumentStorage
   /// </summary>
   public override async IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
       string _namespace,
-      DateTimeOffset? _from,
-      DateTimeOffset? _to,
-      [EnumeratorCancellation] CancellationToken _ct)
+      DateTimeOffset? _from = null, 
+      DateTimeOffset? _to = null, 
+      [EnumeratorCancellation] CancellationToken _ct = default)
   {
     var listSql =
         $"SELECT doc_id, key, last_modified, created, version, data " +
@@ -259,9 +263,9 @@ public class SqliteDocumentStorage : DocumentStorage
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
   public override async IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
-      DateTimeOffset? _from,
-      DateTimeOffset? _to,
-      [EnumeratorCancellation] CancellationToken _ct)
+      DateTimeOffset? _from = null, 
+      DateTimeOffset? _to = null, 
+      [EnumeratorCancellation] CancellationToken _ct = default)
   {
     var ns = typeof(T).GetNamespaceFromType();
 

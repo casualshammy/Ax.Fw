@@ -1,4 +1,6 @@
 ﻿using Ax.Fw.Cache;
+using Ax.Fw.Extensions;
+using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Extensions;
 using Ax.Fw.Storage.Interfaces;
@@ -19,26 +21,28 @@ public class CachedSqliteDocumentStorage : DocumentStorage
     DocumentStorage _documentStorage,
     int _cacheCapacity,
     int _cacheOverhead,
-    TimeSpan _cacheTtl)
+    TimeSpan _cacheTtl,
+    IReadOnlyLifetime _lifetime)
   {
     p_documentStorage = ToDispose(_documentStorage);
     p_cache = new SyncCache<CacheKey, DocumentEntry>(new SyncCacheSettings(_cacheCapacity, _cacheOverhead, _cacheTtl));
+
+    if (_documentStorage is DocumentStorageWithRetentionRules docStorageWithRetention)
+    {
+      docStorageWithRetention.DeletedDocsFlow.
+        Subscribe(_docs =>
+        {
+          foreach (var doc in _docs)
+            RemoveEntriesFromCache(doc.Namespace, doc.Key);
+        }, _lifetime);
+    }
   }
 
   public override Task CompactDatabase(CancellationToken _ct) => p_documentStorage.CompactDatabase(_ct);
 
-  public override Task DeleteDocumentsAsync(string _namespace, string? _key, DateTimeOffset? _from, DateTimeOffset? _to, CancellationToken _ct)
+  public override Task DeleteDocumentsAsync(string _namespace, string? _key, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default)
   {
-    foreach (var cacheEntry in p_cache.GetValues())
-    {
-      var cacheKey = cacheEntry.Key;
-      var cacheValue = cacheEntry.Value;
-      if (cacheValue == null)
-        continue;
-
-      if (_namespace == cacheKey.Namespace && (_key == null || _key == cacheKey.Key))
-        p_cache.TryRemove(cacheKey, out _);
-    }
+    RemoveEntriesFromCache(_namespace, _key);
 
     return p_documentStorage.DeleteDocumentsAsync(_namespace, _key, _from, _to, _ct);
   }
@@ -55,17 +59,22 @@ public class CachedSqliteDocumentStorage : DocumentStorage
   }
 
 #pragma warning disable CS8424
-  public override IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(string _namespace, DateTimeOffset? _from, DateTimeOffset? _to, [EnumeratorCancellation] CancellationToken _ct)
+  public override IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(string _namespace, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default)
   {
     return p_documentStorage.ListDocumentsAsync(_namespace, _from, _to, _ct);
   }
 
-  public override IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(string? _namespace, DateTimeOffset? _from, DateTimeOffset? _to, [EnumeratorCancellation] CancellationToken _ct)
+  public override IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
+    string? _namespace,
+    LikeExpr? _keyLikeExpression = null, 
+    DateTimeOffset? _from = null, 
+    DateTimeOffset? _to = null, 
+    [EnumeratorCancellation] CancellationToken _ct = default)
   {
-    return p_documentStorage.ListDocumentsMetaAsync(_namespace, _from, _to, _ct);
+    return p_documentStorage.ListDocumentsMetaAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
   }
 
-  public override IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(DateTimeOffset? _from, DateTimeOffset? _to, [EnumeratorCancellation] CancellationToken _ct)
+  public override IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default)
   {
     return p_documentStorage.ListSimpleDocumentsAsync<T>(_from, _to, _ct);
   }
@@ -158,5 +167,19 @@ public class CachedSqliteDocumentStorage : DocumentStorage
   public override Task<int> Count(string? _namespace, CancellationToken _ct) => p_documentStorage.Count(_namespace, _ct);
 
   public override Task<int> CountSimpleDocuments<T>(CancellationToken _ct) => p_documentStorage.CountSimpleDocuments<T>(_ct);
+
+  private void RemoveEntriesFromCache(string _namespace, string? _key)
+  {
+    foreach (var cacheEntry in p_cache.GetValues())
+    {
+      var cacheKey = cacheEntry.Key;
+      var cacheValue = cacheEntry.Value;
+      if (cacheValue == null)
+        continue;
+
+      if (_namespace == cacheKey.Namespace && (_key == null || _key == cacheKey.Key))
+        p_cache.TryRemove(cacheKey, out _);
+    }
+  }
 
 }

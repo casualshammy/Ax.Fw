@@ -2,8 +2,10 @@
 using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Interfaces;
 using Newtonsoft.Json.Linq;
+using System.Collections.Immutable;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 
 namespace Ax.Fw.Storage.StorageTypes;
@@ -11,15 +13,17 @@ namespace Ax.Fw.Storage.StorageTypes;
 public class DocumentStorageWithRetentionRules : DocumentStorage
 {
   private readonly DocumentStorage p_documentStorage;
+  private readonly Subject<ImmutableHashSet<DocumentEntryMeta>> p_deletedDocsFlow;
 
   internal DocumentStorageWithRetentionRules(
     DocumentStorage _documentStorage,
     TimeSpan? _documentMaxAgeFromCreation = null,
     TimeSpan? _documentMaxAgeFromLastChange = null,
     TimeSpan? _scanInterval = null,
-    Action<HashSet<DocumentEntryMeta>>? _onDocsDeleteCallback = null)
+    Action<ImmutableHashSet<DocumentEntryMeta>>? _onDocsDeleteCallback = null)
   {
     p_documentStorage = ToDispose(_documentStorage);
+    p_deletedDocsFlow = ToDispose(new Subject<ImmutableHashSet<DocumentEntryMeta>>());
 
     ToDispose(Pool<EventLoopScheduler>.Get(out var scheduler));
 
@@ -30,24 +34,26 @@ public class DocumentStorageWithRetentionRules : DocumentStorage
       .SelectAsync(async (_, _ct) =>
       {
         var now = DateTimeOffset.UtcNow;
-        var docsToDelete = new HashSet<DocumentEntryMeta>();
+        var docsToDeleteBuilder = ImmutableHashSet.CreateBuilder<DocumentEntryMeta>();
 
-        await foreach (var doc in _documentStorage.ListDocumentsMetaAsync(null, null, null, _ct).ConfigureAwait(false))
+        await foreach (var doc in _documentStorage.ListDocumentsMetaAsync(null, _ct: _ct).ConfigureAwait(false))
         {
           var docAge = now - doc.Created;
           var docLastModifiedAge = now - doc.LastModified;
           if (_documentMaxAgeFromCreation != null && docAge > _documentMaxAgeFromCreation)
-            docsToDelete.Add(doc);
+            docsToDeleteBuilder.Add(doc);
           else if (_documentMaxAgeFromLastChange != null && docLastModifiedAge > _documentMaxAgeFromLastChange)
-            docsToDelete.Add(doc);
+            docsToDeleteBuilder.Add(doc);
         }
 
-        foreach (var doc in docsToDelete)
+        foreach (var doc in docsToDeleteBuilder)
           await _documentStorage.DeleteDocumentsAsync(doc.Namespace, doc.Key, null, null, _ct);
 
         try
         {
-          _onDocsDeleteCallback?.Invoke(docsToDelete);
+          var hashSet = docsToDeleteBuilder.ToImmutable();
+          p_deletedDocsFlow.OnNext(hashSet);
+          _onDocsDeleteCallback?.Invoke(hashSet);
         }
         catch { }
       }, scheduler)
@@ -56,9 +62,11 @@ public class DocumentStorageWithRetentionRules : DocumentStorage
     ToDispose(subscription);
   }
 
+  public IObservable<ImmutableHashSet<DocumentEntryMeta>> DeletedDocsFlow => p_deletedDocsFlow;
+
   public override Task CompactDatabase(CancellationToken _ct) => p_documentStorage.CompactDatabase(_ct);
 
-  public override Task DeleteDocumentsAsync(string _namespace, string? _key, DateTimeOffset? _from, DateTimeOffset? _to, CancellationToken _ct)
+  public override Task DeleteDocumentsAsync(string _namespace, string? _key, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default)
     => p_documentStorage.DeleteDocumentsAsync(_namespace, _key, _from, _to, _ct);
 
   public override Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct)
@@ -68,13 +76,18 @@ public class DocumentStorageWithRetentionRules : DocumentStorage
     => p_documentStorage.DeleteSimpleDocumentAsync<T>(_entryId, _ct);
 
 #pragma warning disable CS8424
-  public override IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(string _namespace, DateTimeOffset? _from, DateTimeOffset? _to, [EnumeratorCancellation] CancellationToken _ct)
+  public override IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(string _namespace, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default)
     => p_documentStorage.ListDocumentsAsync(_namespace, _from, _to, _ct);
 
-  public override IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(string? _namespace, DateTimeOffset? _from, DateTimeOffset? _to, [EnumeratorCancellation] CancellationToken _ct)
-    => p_documentStorage.ListDocumentsMetaAsync(_namespace, _from, _to, _ct);
+  public override IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
+    string? _namespace, 
+    LikeExpr? _keyLikeExpression = null, 
+    DateTimeOffset? _from = null, 
+    DateTimeOffset? _to = null, 
+    [EnumeratorCancellation] CancellationToken _ct = default)
+    => p_documentStorage.ListDocumentsMetaAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
 
-  public override IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(DateTimeOffset? _from, DateTimeOffset? _to, [EnumeratorCancellation] CancellationToken _ct)
+  public override IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default)
     => p_documentStorage.ListSimpleDocumentsAsync<T>(_from, _to, _ct);
 #pragma warning restore CS8424
 
