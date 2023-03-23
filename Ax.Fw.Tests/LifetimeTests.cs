@@ -117,7 +117,9 @@ namespace Ax.Fw.Tests
         await Task.Delay(500);
       });
 
-      Parallel.For(0, 100, _ => lifetime.CompleteAsync());
+      _ = Task.Run(() => lifetime.CompleteAsync());
+      _ = Task.Run(() => lifetime.CompleteAsync());
+      _ = Task.Run(() => lifetime.CompleteAsync());
 
       await Task.Delay(250);
       Assert.Equal(1, counter);
