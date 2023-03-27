@@ -4,7 +4,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -36,7 +35,7 @@ public class SyncCache<TKey, TValue> : ISyncCache<TKey, TValue> where TKey : not
   public bool TryGet(TKey _key, out TValue? _value)
   {
     var now = DateTimeOffset.UtcNow;
-    if (p_table.TryGetValue(_key, out SyncCacheEntry<TValue?> entry))
+    if (p_table.TryGetValue(_key, out SyncCacheEntry<TValue?>? entry))
     {
       if (entry.ValidUntil > now)
       {

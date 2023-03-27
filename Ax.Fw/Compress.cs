@@ -1,5 +1,4 @@
 ﻿using Ax.Fw.Extensions;
-using Ax.Fw.Rnd;
 using Ax.Fw.SharedTypes.Data;
 using Newtonsoft.Json;
 using System;
@@ -28,7 +27,7 @@ public static class Compress
 
         var filesRelativePaths = directory
             .GetFiles("*.*", SearchOption.AllDirectories)
-            .ToDictionary(_x => _x, _x => _x.FullName.Substring(directory.FullName.Length).TrimStart('\\', '/'));
+            .ToDictionary(_x => _x, _x => _x.FullName[directory.FullName.Length..].TrimStart('\\', '/'));
 
         await CompressListOfFilesAsync(filesRelativePaths, _zipPath, _progressReport, _ct);
     }
@@ -45,7 +44,7 @@ public static class Compress
 
         var filesRelativePaths = directory
             .GetFiles("*.*", SearchOption.AllDirectories)
-            .ToDictionary(_x => _x, _x => _x.FullName.Substring(directory.FullName.Length).TrimStart('\\', '/'));
+            .ToDictionary(_x => _x, _x => _x.FullName[directory.FullName.Length..].TrimStart('\\', '/'));
 
         await CompressListOfFilesAsync(filesRelativePaths, _outputStream, _progressReport, _ct);
     }
@@ -56,7 +55,7 @@ public static class Compress
         Action<TypedProgress<FileSystemInfo>>? _progressReport,
         CancellationToken _ct)
     {
-        var tmpFile = $"{_zipPath}-{ThreadSafeRandomProvider.GetThreadRandom().Next()}.zip";
+        var tmpFile = $"{_zipPath}-{Utilities.SharedRandom.Next()}.zip";
 
         try
         {
@@ -99,7 +98,7 @@ public static class Compress
                 var entry = archive.CreateEntry(fileRelativePath);
                 using (var entryStream = entry.Open())
                 using (var file = File.OpenRead(fileInfo.FullName))
-                    await file.CopyToAsync(entryStream);
+                    await file.CopyToAsync(entryStream, _ct);
 
                 filesSizeProcessed += fileInfo.Length;
                 _progressReport?.Invoke(new TypedProgress<FileSystemInfo>(filesSizeProcessed, totalFilesSize, fileInfo));
@@ -154,7 +153,7 @@ public static class Compress
                 }
 
                 var fileInfo = new FileInfo(fileAbsolutePath);
-                if (!fileInfo.Directory.Exists)
+                if (fileInfo.Directory?.Exists == false)
                     Directory.CreateDirectory(fileInfo.Directory.FullName);
 
                 using (var entryStream = entry.Open())

@@ -25,7 +25,7 @@ public class PoolTests
     }
 
     [Fact(Timeout = 5000)]
-    public async Task SimplePoolTestAsync()
+    public void SimplePoolTest()
     {
         var instance0 = Pool<EventLoopScheduler>.Get(out var _eventLoopScheduler0);
         var instance1 = Pool<EventLoopScheduler>.Get(out var _eventLoopScheduler1);
