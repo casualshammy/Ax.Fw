@@ -427,6 +427,18 @@ public class SqliteDocumentStorage : DocumentStorage
     await command.ExecuteNonQueryAsync(_ct);
   }
 
+  /// <summary>
+  /// Flushes temporary file to main database file
+  /// </summary>
+  /// <param name="_force">If true, forcefully performs full flush and then truncates temporary file to zero bytes</param>
+  /// <returns></returns>
+  public override async Task FlushAsync(bool _force, CancellationToken _ct)
+  {
+    await using var command = new SQLiteCommand(p_connection);
+    command.CommandText = $"PRAGMA wal_checkpoint({(_force ? "TRUNCATE" : "PASSIVE")});";
+    await command.ExecuteNonQueryAsync(_ct);
+  }
+
   public override async Task<int> Count(string? _namespace, CancellationToken _ct)
   {
     var readSql =

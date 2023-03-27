@@ -4,6 +4,8 @@ using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Extensions;
 using Ax.Fw.Storage.Interfaces;
 using Newtonsoft.Json.Linq;
+using System.Data.Common;
+using System.Data.SQLite;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 
@@ -37,6 +39,13 @@ public class CachedSqliteDocumentStorage : DocumentStorage
   }
 
   public override Task CompactDatabase(CancellationToken _ct) => p_documentStorage.CompactDatabase(_ct);
+
+  /// <summary>
+  /// Flushes temporary file to main database file
+  /// </summary>
+  /// <param name="_force">If true, forcefully performs full flush and then truncates temporary file to zero bytes</param>
+  /// <returns></returns>
+  public override Task FlushAsync(bool _force, CancellationToken _ct) => p_documentStorage.FlushAsync(_force, _ct);
 
   public override Task DeleteDocumentsAsync(string _namespace, string? _key, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default)
   {

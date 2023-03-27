@@ -383,5 +383,39 @@ public class SqliteDocumentStorageTests
     }
   }
 
+  [Fact]
+  public async Task TestFlushFeatureAsync()
+  {
+    var lifetime = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    try
+    {
+      var storage = lifetime.DisposeOnCompleted(new SqliteDocumentStorage(dbFile));
+      for (var i = 0; i < 1000; i++)
+      {
+        var entry = new DataRecord(i % 100, string.Empty);
+        _ = await storage.WriteSimpleDocumentAsync(entry.GetStorageKey(), entry, lifetime.Token);
+      }
+
+      var walFile = new FileInfo($"{dbFile}-wal");
+      Assert.True(walFile.Exists);
+
+      var origWalFileSize = walFile.Length;
+      await storage.FlushAsync(false, lifetime.Token);
+      walFile.Refresh();
+      Assert.Equal(origWalFileSize, walFile.Length);
+
+      await storage.FlushAsync(true, lifetime.Token);
+      walFile.Refresh();
+      Assert.Equal(0, walFile.Length);
+    }
+    finally
+    {
+      await lifetime.CompleteAsync();
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
+    }
+  }
+
   private static string GetDbTmpPath() => $"{Path.GetTempFileName()}";
 }

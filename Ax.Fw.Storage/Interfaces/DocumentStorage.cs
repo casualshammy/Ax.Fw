@@ -7,6 +7,14 @@ namespace Ax.Fw.Storage.Interfaces;
 public abstract class DocumentStorage : DisposableStack, IDocumentStorage
 {
   public abstract Task CompactDatabase(CancellationToken _ct);
+
+  /// <summary>
+  /// Flushes temporary file (WAL) to main database file
+  /// </summary>
+  /// <param name="_force">If true, forcefully performs full flush and then truncates temporary file to zero bytes</param>
+  /// <returns></returns>
+  public abstract Task FlushAsync(bool _force, CancellationToken _ct);
+
   public abstract Task<int> Count(string? _namespace, CancellationToken _ct);
   public abstract Task<int> CountSimpleDocuments<T>(CancellationToken _ct);
   public abstract Task DeleteDocumentsAsync(string _namespace, string? _key, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default);
