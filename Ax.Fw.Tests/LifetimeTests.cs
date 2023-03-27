@@ -117,9 +117,9 @@ namespace Ax.Fw.Tests
         await Task.Delay(500);
       });
 
-      _ = Task.Run(() => lifetime.CompleteAsync());
-      _ = Task.Run(() => lifetime.CompleteAsync());
-      _ = Task.Run(() => lifetime.CompleteAsync());
+      _ = Task.Factory.StartNew(() => lifetime.CompleteAsync(), TaskCreationOptions.LongRunning);
+      _ = Task.Factory.StartNew(() => lifetime.CompleteAsync(), TaskCreationOptions.LongRunning);
+      _ = Task.Factory.StartNew(() => lifetime.CompleteAsync(), TaskCreationOptions.LongRunning);
 
       await Task.Delay(250);
       Assert.Equal(1, counter);
