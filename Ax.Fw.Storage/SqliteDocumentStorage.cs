@@ -98,7 +98,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// <summary>
   /// Upsert document to database
   /// </summary>
-  public async Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct)
+  public async Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull
   {
     return await WriteDocumentAsync(_namespace, _key, JToken.FromObject(_data), _ct);
   }
@@ -106,7 +106,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// <summary>
   /// Upsert document to database
   /// </summary>
-  public async Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct)
+  public async Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull
   {
     return await WriteDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), JToken.FromObject(_data), _ct);
   }
@@ -115,7 +115,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// Upsert document to database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public async Task<DocumentEntry> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct)
+  public async Task<DocumentEntry> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
 
@@ -126,7 +126,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// Upsert document to database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public async Task<DocumentEntry> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct)
+  public async Task<DocumentEntry> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull
   {
     return await WriteSimpleDocumentAsync(_entryId.ToString(CultureInfo.InvariantCulture), _data, _ct);
   }
@@ -163,7 +163,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// Delete document from the database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public async Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct)
+  public async Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
 
@@ -174,7 +174,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// Delete document from the database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public async Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct)
+  public async Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
   {
     await DeleteSimpleDocumentAsync<T>(_entryId.ToString(CultureInfo.InvariantCulture), _ct);
   }
@@ -386,7 +386,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// Read document from the database and deserialize data
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public  async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct)
+  public  async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
 
@@ -412,7 +412,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// Read document from the database and deserialize data
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public  async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct)
+  public  async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
   {
     return await ReadSimpleDocumentAsync<T>(_entryId.ToString(), _ct);
   }
