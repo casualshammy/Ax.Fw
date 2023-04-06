@@ -10,7 +10,7 @@ using System.Runtime.CompilerServices;
 
 namespace Ax.Fw.Storage;
 
-public class SqliteDocumentStorage : DocumentStorage
+public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
 {
   private readonly SQLiteConnection p_connection;
   private long p_documentsCounter = 0;
@@ -51,7 +51,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// Upsert document to database
   /// </summary>
   /// <exception cref="InvalidOperationException">Document creation is failed</exception>
-  public override async Task<DocumentEntry> WriteDocumentAsync(string _namespace, string _key, JToken _data, CancellationToken _ct)
+  public async Task<DocumentEntry> WriteDocumentAsync(string _namespace, string _key, JToken _data, CancellationToken _ct)
   {
     var now = DateTimeOffset.UtcNow;
 
@@ -90,7 +90,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// <summary>
   /// Upsert document to database
   /// </summary>
-  public override async Task<DocumentEntry> WriteDocumentAsync(string _namespace, int _key, JToken _data, CancellationToken _ct)
+  public async Task<DocumentEntry> WriteDocumentAsync(string _namespace, int _key, JToken _data, CancellationToken _ct)
   {
     return await WriteDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), _data, _ct);
   }
@@ -98,7 +98,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// <summary>
   /// Upsert document to database
   /// </summary>
-  public override async Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct)
+  public async Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct)
   {
     return await WriteDocumentAsync(_namespace, _key, JToken.FromObject(_data), _ct);
   }
@@ -106,7 +106,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// <summary>
   /// Upsert document to database
   /// </summary>
-  public override async Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct)
+  public async Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct)
   {
     return await WriteDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), JToken.FromObject(_data), _ct);
   }
@@ -115,7 +115,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// Upsert document to database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public override async Task<DocumentEntry> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct)
+  public async Task<DocumentEntry> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct)
   {
     var ns = typeof(T).GetNamespaceFromType();
 
@@ -126,7 +126,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// Upsert document to database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public override async Task<DocumentEntry> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct)
+  public async Task<DocumentEntry> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct)
   {
     return await WriteSimpleDocumentAsync(_entryId.ToString(CultureInfo.InvariantCulture), _data, _ct);
   }
@@ -134,7 +134,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// <summary>
   /// Delete document from the database
   /// </summary>
-  public override async Task DeleteDocumentsAsync(
+  public async Task DeleteDocumentsAsync(
       string _namespace,
       string? _key,
       DateTimeOffset? _from = null,
@@ -163,7 +163,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// Delete document from the database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public override async Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct)
+  public async Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct)
   {
     var ns = typeof(T).GetNamespaceFromType();
 
@@ -174,7 +174,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// Delete document from the database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public override async Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct)
+  public async Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct)
   {
     await DeleteSimpleDocumentAsync<T>(_entryId.ToString(CultureInfo.InvariantCulture), _ct);
   }
@@ -183,7 +183,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// List documents meta info (without data)
   /// </summary>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  public override async IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
+  public async IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
       string? _namespace,
       LikeExpr? _keyLikeExpression = null,
       DateTimeOffset? _from = null,
@@ -223,7 +223,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// List documents
   /// </summary>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  public override async IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
+  public  async IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
     string _namespace,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
@@ -267,7 +267,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  public override async IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
+  public  async IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
@@ -297,7 +297,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// <summary>
   /// Read document from the database
   /// </summary>
-  public override async Task<DocumentEntry?> ReadDocumentAsync(
+  public  async Task<DocumentEntry?> ReadDocumentAsync(
       string _namespace,
       string _key,
       CancellationToken _ct)
@@ -335,7 +335,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// <summary>
   /// Read document from the database
   /// </summary>
-  public override async Task<DocumentEntry?> ReadDocumentAsync(
+  public  async Task<DocumentEntry?> ReadDocumentAsync(
       string _namespace,
       int _key,
       CancellationToken _ct)
@@ -346,7 +346,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// <summary>
   /// Read document from the database and deserialize data
   /// </summary>
-  public override async Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(
+  public  async Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(
       string _namespace,
       string _key,
       CancellationToken _ct)
@@ -374,7 +374,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// <summary>
   /// Read document from the database and deserialize data
   /// </summary>
-  public override async Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(
+  public async Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(
       string _namespace,
       int _key,
       CancellationToken _ct)
@@ -386,7 +386,7 @@ public class SqliteDocumentStorage : DocumentStorage
   /// Read document from the database and deserialize data
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public override async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct)
+  public  async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct)
   {
     var ns = typeof(T).GetNamespaceFromType();
 
@@ -412,15 +412,15 @@ public class SqliteDocumentStorage : DocumentStorage
   /// Read document from the database and deserialize data
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public override async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct)
+  public  async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct)
   {
     return await ReadSimpleDocumentAsync<T>(_entryId.ToString(), _ct);
   }
 
   /// <summary>
-  /// Compacts the database, trimming unused space
+  /// Rebuilds the database file, repacking it into a minimal amount of disk space
   /// </summary>
-  public override async Task CompactDatabase(CancellationToken _ct)
+  public async Task CompactDatabase(CancellationToken _ct)
   {
     await using var command = new SQLiteCommand(p_connection);
     command.CommandText = "VACUUM;";
@@ -432,14 +432,17 @@ public class SqliteDocumentStorage : DocumentStorage
   /// </summary>
   /// <param name="_force">If true, forcefully performs full flush and then truncates temporary file to zero bytes</param>
   /// <returns></returns>
-  public override async Task FlushAsync(bool _force, CancellationToken _ct)
+  public  async Task FlushAsync(bool _force, CancellationToken _ct)
   {
     await using var command = new SQLiteCommand(p_connection);
     command.CommandText = $"PRAGMA wal_checkpoint({(_force ? "TRUNCATE" : "PASSIVE")});";
     await command.ExecuteNonQueryAsync(_ct);
   }
 
-  public override async Task<int> Count(string? _namespace, CancellationToken _ct)
+  /// <summary>
+  /// Returns number of documents in database
+  /// </summary>
+  public async Task<int> Count(string? _namespace, CancellationToken _ct)
   {
     var readSql =
         $"SELECT COUNT(*) " +
@@ -461,7 +464,10 @@ public class SqliteDocumentStorage : DocumentStorage
     return 0;
   }
 
-  public override async Task<int> CountSimpleDocuments<T>(CancellationToken _ct)
+  /// <summary>
+  /// Returns number of simple documents in database
+  /// </summary>
+  public async Task<int> CountSimpleDocuments<T>(CancellationToken _ct)
   {
     var ns = typeof(T).GetNamespaceFromType();
     return await Count(ns, _ct);

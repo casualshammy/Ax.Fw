@@ -10,13 +10,13 @@ using System.Runtime.CompilerServices;
 
 namespace Ax.Fw.Storage.StorageTypes;
 
-public class DocumentStorageWithRetentionRules : DocumentStorage
+public class DocumentStorageWithRetentionRules : DisposableStack, IDocumentStorage
 {
-  private readonly DocumentStorage p_documentStorage;
+  private readonly IDocumentStorage p_documentStorage;
   private readonly Subject<ImmutableHashSet<DocumentEntryMeta>> p_deletedDocsFlow;
 
   internal DocumentStorageWithRetentionRules(
-    DocumentStorage _documentStorage,
+    IDocumentStorage _documentStorage,
     TimeSpan? _documentMaxAgeFromCreation = null,
     TimeSpan? _documentMaxAgeFromLastChange = null,
     TimeSpan? _scanInterval = null,
@@ -64,87 +64,96 @@ public class DocumentStorageWithRetentionRules : DocumentStorage
 
   public IObservable<ImmutableHashSet<DocumentEntryMeta>> DeletedDocsFlow => p_deletedDocsFlow;
 
-  public override Task CompactDatabase(CancellationToken _ct) => p_documentStorage.CompactDatabase(_ct);
+  /// <summary>
+  /// Rebuilds the database file, repacking it into a minimal amount of disk space
+  /// </summary>
+  public Task CompactDatabase(CancellationToken _ct) => p_documentStorage.CompactDatabase(_ct);
 
   /// <summary>
   /// Flushes temporary file to main database file
   /// </summary>
   /// <param name="_force">If true, forcefully performs full flush and then truncates temporary file to zero bytes</param>
   /// <returns></returns>
-  public override Task FlushAsync(bool _force, CancellationToken _ct) => p_documentStorage.FlushAsync(_force, _ct);
+  public Task FlushAsync(bool _force, CancellationToken _ct) => p_documentStorage.FlushAsync(_force, _ct);
 
-  public override Task DeleteDocumentsAsync(string _namespace, string? _key, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default)
+  public Task DeleteDocumentsAsync(string _namespace, string? _key, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default)
     => p_documentStorage.DeleteDocumentsAsync(_namespace, _key, _from, _to, _ct);
 
-  public override Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct)
+  public Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
     => p_documentStorage.DeleteSimpleDocumentAsync<T>(_entryId, _ct);
 
-  public override Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct)
+  public Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
     => p_documentStorage.DeleteSimpleDocumentAsync<T>(_entryId, _ct);
 
 #pragma warning disable CS8424
-  public override IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
+  public IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
     string _namespace,
     LikeExpr? _keyLikeExpression = null,
-    DateTimeOffset? _from = null, 
-    DateTimeOffset? _to = null, 
+    DateTimeOffset? _from = null,
+    DateTimeOffset? _to = null,
     [EnumeratorCancellation] CancellationToken _ct = default)
     => p_documentStorage.ListDocumentsAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
 
-  public override IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
-    string? _namespace, 
-    LikeExpr? _keyLikeExpression = null, 
-    DateTimeOffset? _from = null, 
-    DateTimeOffset? _to = null, 
+  public IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
+    string? _namespace,
+    LikeExpr? _keyLikeExpression = null,
+    DateTimeOffset? _from = null,
+    DateTimeOffset? _to = null,
     [EnumeratorCancellation] CancellationToken _ct = default)
     => p_documentStorage.ListDocumentsMetaAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
 
-  public override IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
-    LikeExpr? _keyLikeExpression = null, 
-    DateTimeOffset? _from = null, 
-    DateTimeOffset? _to = null, 
+  public IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
+    LikeExpr? _keyLikeExpression = null,
+    DateTimeOffset? _from = null,
+    DateTimeOffset? _to = null,
     [EnumeratorCancellation] CancellationToken _ct = default)
     => p_documentStorage.ListSimpleDocumentsAsync<T>(_keyLikeExpression, _from, _to, _ct);
 #pragma warning restore CS8424
 
-  public override Task<DocumentEntry?> ReadDocumentAsync(string _namespace, string _key, CancellationToken _ct)
+  public Task<DocumentEntry?> ReadDocumentAsync(string _namespace, string _key, CancellationToken _ct)
     => p_documentStorage.ReadDocumentAsync(_namespace, _key, _ct);
 
-  public override Task<DocumentEntry?> ReadDocumentAsync(string _namespace, int _key, CancellationToken _ct)
+  public Task<DocumentEntry?> ReadDocumentAsync(string _namespace, int _key, CancellationToken _ct)
     => p_documentStorage.ReadDocumentAsync(_namespace, _key, _ct);
 
-  public override Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct)
+  public Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
     => p_documentStorage.ReadSimpleDocumentAsync<T>(_entryId, _ct);
 
-  public override Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct)
+  public Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
     => p_documentStorage.ReadSimpleDocumentAsync<T>(_entryId, _ct);
 
-  public override Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(string _namespace, string _key, CancellationToken _ct)
+  public Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(string _namespace, string _key, CancellationToken _ct)
     => p_documentStorage.ReadTypedDocumentAsync<T>(_namespace, _key, _ct);
 
-  public override Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(string _namespace, int _key, CancellationToken _ct)
+  public Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(string _namespace, int _key, CancellationToken _ct)
     => p_documentStorage.ReadTypedDocumentAsync<T>(_namespace, _key, _ct);
 
-  public override Task<DocumentEntry> WriteDocumentAsync(string _namespace, string _key, JToken _data, CancellationToken _ct)
+  public Task<DocumentEntry> WriteDocumentAsync(string _namespace, string _key, JToken _data, CancellationToken _ct)
     => p_documentStorage.WriteDocumentAsync(_namespace, _key, _data, _ct);
 
-  public override Task<DocumentEntry> WriteDocumentAsync(string _namespace, int _key, JToken _data, CancellationToken _ct)
+  public Task<DocumentEntry> WriteDocumentAsync(string _namespace, int _key, JToken _data, CancellationToken _ct)
     => p_documentStorage.WriteDocumentAsync(_namespace, _key, _data, _ct);
 
-  public override Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct)
+  public Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull
     => p_documentStorage.WriteDocumentAsync(_namespace, _key, _data, _ct);
 
-  public override Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct)
+  public Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull
     => p_documentStorage.WriteDocumentAsync(_namespace, _key, _data, _ct);
 
-  public override Task<DocumentEntry> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct)
+  public Task<DocumentEntry> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull
     => p_documentStorage.WriteSimpleDocumentAsync(_entryId, _data, _ct);
 
-  public override Task<DocumentEntry> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct)
+  public Task<DocumentEntry> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull
     => p_documentStorage.WriteSimpleDocumentAsync(_entryId, _data, _ct);
 
-  public override Task<int> Count(string? _namespace, CancellationToken _ct) => p_documentStorage.Count(_namespace, _ct);
+  /// <summary>
+  /// Returns number of documents in database
+  /// </summary>
+  public Task<int> Count(string? _namespace, CancellationToken _ct) => p_documentStorage.Count(_namespace, _ct);
 
-  public override Task<int> CountSimpleDocuments<T>(CancellationToken _ct) => p_documentStorage.CountSimpleDocuments<T>(_ct);
+  /// <summary>
+  /// Returns number of simple documents in database
+  /// </summary>
+  public Task<int> CountSimpleDocuments<T>(CancellationToken _ct) => p_documentStorage.CountSimpleDocuments<T>(_ct);
 
 }

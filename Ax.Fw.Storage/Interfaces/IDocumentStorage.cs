@@ -4,12 +4,30 @@ using System.Runtime.CompilerServices;
 
 namespace Ax.Fw.Storage.Interfaces;
 
-public interface IDocumentStorage
+public interface IDocumentStorage : IDisposable
 {
+  /// <summary>
+  /// Rebuilds the database file, repacking it into a minimal amount of disk space
+  /// </summary>
   Task CompactDatabase(CancellationToken _ct);
+
+  /// <summary>
+  /// Returns number of documents in database
+  /// </summary>
   Task<int> Count(string? _namespace, CancellationToken _ct);
+
+  /// <summary>
+  /// Returns number of simple documents in database
+  /// </summary>
   Task<int> CountSimpleDocuments<T>(CancellationToken _ct);
-  Task DeleteDocumentsAsync(string _namespace, string? _key, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default);
+
+  Task DeleteDocumentsAsync(
+    string _namespace, 
+    string? _key, 
+    DateTimeOffset? _from = null, 
+    DateTimeOffset? _to = null, 
+    CancellationToken _ct = default);
+
   Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull;
   Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull;
 
@@ -26,11 +44,11 @@ public interface IDocumentStorage
   /// </summary>
   /// /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
   IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
-  string _namespace,
-  LikeExpr? _keyLikeExpression = null,
-  DateTimeOffset? _from = null,
-  DateTimeOffset? _to = null,
-  [EnumeratorCancellation] CancellationToken _ct = default);
+    string _namespace,
+    LikeExpr? _keyLikeExpression = null,
+    DateTimeOffset? _from = null,
+    DateTimeOffset? _to = null,
+    [EnumeratorCancellation] CancellationToken _ct = default);
 
   /// <summary>
   /// List documents meta info (without data)

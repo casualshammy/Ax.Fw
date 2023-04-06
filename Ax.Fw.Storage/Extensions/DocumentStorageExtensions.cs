@@ -1,5 +1,4 @@
 ﻿using Ax.Fw.SharedTypes.Attributes;
-using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Interfaces;
 using Ax.Fw.Storage.StorageTypes;
@@ -40,8 +39,8 @@ public static class DocumentStorageExtensions
   /// </summary>
   /// <param name="_maxValuesCached">Max number of values to store in cache</param>
   /// <returns></returns>
-  public static DocumentStorage WithCache(
-    this DocumentStorage _storage, 
+  public static IDocumentStorage WithCache(
+    this IDocumentStorage _storage, 
     int _maxValuesCached, 
     TimeSpan _cacheTtl)
   {
@@ -60,8 +59,8 @@ public static class DocumentStorageExtensions
   /// <param name="_scanInterval">How often to perform scans. Default is 10 min</param>
   /// <param name="_onDocsDeleteCallback">This callback will be called when documents are deleted</param>
   /// <returns></returns>
-  public static DocumentStorage WithRetentionRules(
-    this DocumentStorage _storage,
+  public static IDocumentStorage WithRetentionRules(
+    this IDocumentStorage _storage,
     TimeSpan? _documentMaxAgeFromCreation = null,
     TimeSpan? _documentMaxAgeFromLastChange = null,
     TimeSpan? _scanInterval = null,
