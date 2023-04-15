@@ -269,7 +269,7 @@ public class TcpBusClient : ITcpBusClient
           .Merge(
               p_msgFlow.ObserveOn(p_scheduler).Where(_x => _x.Id == guid && _x.Data.GetType() == typeof(TRes)),
               Observable.Timer(_timeout, p_scheduler).Select(_ => new BusMsgSerial(new EmptyBusMsg(), Guid.Empty)),
-              Observable.Timer(TimeSpan.Zero).SelectAsync(async (_, _ct) =>
+              Observable.Return(Unit.Default).SelectAsync(async (_, _ct) =>
               {
                 await PostMsg(new BusMsgSerial(_req, guid), _ct);
                 return new BusMsgSerial(new EmptyBusMsg(), ignoredGuid);

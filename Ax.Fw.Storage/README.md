@@ -1,14 +1,14 @@
 # Ax.Fw.Storage
 Simple document database; based on SQLite
 ## Why?
-I just wanted to create an instance of class and write to it, read from it, list it's elements by key without thinking about "this database's BSON don't support ImmutableDictionary, meh", "that database doesn't support numeric keys, meh", "ah, I can't compare integer row with unsigned integer variable using that database, meh" and so on. Why not "key-value" storage? I also wanted to filter my objects by last changed datetime. That's it. My database is not fast as more "strongly-typed" databases (I think it's 1.1 - 1.5x slower in some scenarios), but it is reliable as any SQLite database.
+I just wanted to create an instance of class and be able to write to database, read from database, enumerate elements in database by key without thinking about "this database's BSON don't support ImmutableDictionary, meh", "that database doesn't support numeric keys, meh", "ah, I can't search for values of integer column using unsigned integer variable, meh" and so on. Why not "key-value" storage? I also wanted to filter my objects by `last changed` time. That's it. This document storage engine is not as fast as more "strongly-typed" databases (I think it's 1.1 - 1.5x slower in some scenarios), but it is reliable as any SQLite database.
 ## Usage example:
 ```csharp
-// getting lifetime
+// we need CancellationToken
 var ct = default(CancellationToken);
 
-// getting db filepath
-var dbFile = GetDbPath();
+// path to database file
+var dbFile = "/home/user/data.db"
 
 try
 {
@@ -38,7 +38,7 @@ try
     // you also can attach retention rules to document storage
     // documents older than certain age will be automatically deleted
     using var storageWithRules = storage
-    .WithRetentionRules(TimeSpan.FromHours(1), TimeSpan.FromHours(1), TimeSpan.FromMinutes(10));
+      .WithRetentionRules(TimeSpan.FromHours(1), TimeSpan.FromHours(1), TimeSpan.FromMinutes(10));
 }
 finally
 {
