@@ -50,7 +50,7 @@ namespace Ax.Fw.Tests
             1);
 
         var list = new List<int>();
-        worker.CompletedJobs
+        worker.SuccessfullyCompletedJobs
             .ObserveOn(lifetime.DisposeOnCompleted(new EventLoopScheduler())!)
             .Subscribe(_ => list.Add(0), lifetime.Token);
 
@@ -90,7 +90,7 @@ namespace Ax.Fw.Tests
             5);
 
         var list = new List<int>();
-        worker.CompletedJobs
+        worker.SuccessfullyCompletedJobs
             .ObserveOn(lifetime.DisposeOnCompleted(new EventLoopScheduler())!)
             .Subscribe(_ => list.Add(0), lifetime.Token);
 
@@ -135,7 +135,7 @@ namespace Ax.Fw.Tests
             4);
 
         var list = new List<int>();
-        worker.CompletedJobs
+        worker.SuccessfullyCompletedJobs
             .ObserveOn(lifetime.DisposeOnCompleted(new EventLoopScheduler())!)
             .Subscribe(_ => list.Add(0), lifetime.Token);
 
@@ -180,7 +180,7 @@ namespace Ax.Fw.Tests
             5);
 
         var list = new List<int>();
-        team.CompletedJobs
+        team.SuccessfullyCompletedJobs
             .ObserveOn(lifetime.DisposeOnCompleted(new EventLoopScheduler())!)
             .Subscribe(_ => list.Add(0), lifetime.Token);
 
@@ -225,7 +225,7 @@ namespace Ax.Fw.Tests
             5);
 
         var list = new List<int>();
-        team.CompletedJobs
+        team.SuccessfullyCompletedJobs
             .ObserveOn(lifetime.DisposeOnCompleted(new EventLoopScheduler())!)
             .Subscribe(_ => list.Add(0), lifetime.Token);
 
@@ -280,7 +280,7 @@ namespace Ax.Fw.Tests
             size / 2);
 
         var sw = Stopwatch.StartNew();
-        await team.CompletedJobs
+        await team.SuccessfullyCompletedJobs
             .ObserveOn(lifetime.DisposeOnCompleted(new EventLoopScheduler())!)
             .Take(size);
 

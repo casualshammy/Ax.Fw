@@ -6,10 +6,11 @@ namespace Ax.Fw.SharedTypes.Interfaces
 {
     public interface ITeam<TJob, TJobResult>
     {
-        IObservable<JobResultCtx<TJobResult?>> CompletedJobs { get; }
+        IObservable<JobResultCtx<TJobResult?>> SuccessfullyCompletedJobs { get; }
         TeamState State { get; }
+    IObservable<JobResultCtx<TJobResult?>> AllCompletedJobs { get; }
 
-        Task<TJobResult?> DoWork(TJob _job);
+    Task<TJobResult?> DoWork(TJob _job);
         void PostWork(TJob _job);
     }
 }

@@ -27,6 +27,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     command.CommandText =
         $"PRAGMA synchronous = NORMAL; " +
         $"PRAGMA journal_mode = WAL; " +
+        $"PRAGMA case_sensitive_like = true; " +
         $"CREATE TABLE IF NOT EXISTS document_data " +
         $"( " +
         $"  doc_id INTEGER PRIMARY KEY, " +

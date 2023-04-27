@@ -1,18 +1,16 @@
-﻿#nullable enable
-using System;
+﻿using System;
 
-namespace Ax.Fw.SharedTypes.Data.Workers
+namespace Ax.Fw.SharedTypes.Data.Workers;
+
+public readonly struct PenaltyInfo
 {
-    public class PenaltyInfo
-    {
-        public PenaltyInfo(bool _tryAgain, TimeSpan? _delay)
-        {
-            TryAgain = _tryAgain;
-            Delay = _delay;
-        }
+  public PenaltyInfo(bool _tryAgain, TimeSpan? _delay)
+  {
+    TryAgain = _tryAgain;
+    Delay = _delay;
+  }
 
-        public bool TryAgain { get; }
-        public TimeSpan? Delay { get; }
+  public readonly bool TryAgain;
+  public readonly TimeSpan? Delay;
 
-    }
 }

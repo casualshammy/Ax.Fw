@@ -1,17 +1,15 @@
-﻿#nullable enable
+﻿namespace Ax.Fw.SharedTypes.Data.Workers;
 
-namespace Ax.Fw.SharedTypes.Data.Workers
+public class JobResultCtx<T>
 {
-    public class JobResultCtx<T>
-    {
-        public JobResultCtx(T? _result, long _jobIndex)
-        {
-            Result = _result;
-            JobIndex = _jobIndex;
-        }
+  public JobResultCtx(bool _success, T? _result, long _jobIndex)
+  {
+    Success = _success;
+    Result = _result;
+    JobIndex = _jobIndex;
+  }
 
-        public T? Result { get; }
-        public long JobIndex { get; }
-    }
-
+  public bool Success { get; }
+  public T? Result { get; }
+  public long JobIndex { get; }
 }

@@ -44,7 +44,7 @@ public class TcpBusServer : ITcpBusServer
         p_server.Events.ClientDisconnected += ClientDisconnected;
         p_server.Events.MessageReceived += MessageReceived;
 
-        async Task<bool> sendTcpMsgJob(JobContext<TcpServerClientData> _ctx)
+        async Task<bool> sendTcpMsgJob(JobContext<TcpServerClientData, Unit> _ctx)
         {
             try
             {

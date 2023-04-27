@@ -104,7 +104,7 @@ public class TcpBusClient : ITcpBusClient
     p_client.Events.MessageReceived += MessageReceivedRaw;
     _lifetime.DoOnCompleted(() => p_client.Events.MessageReceived -= MessageReceivedRaw);
 
-    async Task<bool> sendTcpMsgJob(JobContext<TcpMessage> _ctx)
+    async Task<bool> sendTcpMsgJob(JobContext<TcpMessage, Unit> _ctx)
     {
       try
       {
