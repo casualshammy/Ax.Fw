@@ -20,7 +20,7 @@ public class FileCacheTests
     {
       using var lifetime = new Lifetime();
       var tempDir = Path.Combine(Path.GetTempPath(), Random.Shared.Next().ToString());
-      var cache = new FileCache(lifetime, tempDir, TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(10));
+      var cache = new FileCache(lifetime, tempDir, TimeSpan.FromMinutes(10), 1024 * 1024, TimeSpan.FromMinutes(10));
 
       var key = "test-key";
       var data = new byte[1024];
@@ -30,9 +30,9 @@ public class FileCacheTests
       await ms.WriteAsync(data, lifetime.Token);
       ms.Position = 0;
 
-      await cache.Store(key, ms, lifetime.Token);
+      await cache.StoreAsync(key, ms, lifetime.Token);
 
-      using var result = await cache.Get(key, lifetime.Token);
+      using var result = await cache.GetAsync(key, lifetime.Token);
 
       Assert.NotNull(result);
     }
@@ -50,7 +50,7 @@ public class FileCacheTests
     {
       using var lifetime = new Lifetime();
       var tempDir = Path.Combine(Path.GetTempPath(), Random.Shared.Next().ToString());
-      var cache = new FileCache(lifetime, tempDir, TimeSpan.FromMilliseconds(500), TimeSpan.FromMinutes(10));
+      var cache = new FileCache(lifetime, tempDir, TimeSpan.FromMilliseconds(500), 1024 * 1024, TimeSpan.FromMinutes(10));
 
       var key = "test-key";
       var data = new byte[1024];
@@ -60,11 +60,11 @@ public class FileCacheTests
       await ms.WriteAsync(data, lifetime.Token);
       ms.Position = 0;
 
-      await cache.Store(key, ms, lifetime.Token);
+      await cache.StoreAsync(key, ms, lifetime.Token);
 
       await Task.Delay(TimeSpan.FromMilliseconds(1000));
 
-      using var result = await cache.Get(key, lifetime.Token);
+      using var result = await cache.GetAsync(key, lifetime.Token);
 
       Assert.Null(result);
     }
@@ -82,7 +82,7 @@ public class FileCacheTests
     {
       using var lifetime = new Lifetime();
       var tempDir = Path.Combine(Path.GetTempPath(), Random.Shared.Next().ToString());
-      var cache = new FileCache(lifetime, tempDir, TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(100));
+      var cache = new FileCache(lifetime, tempDir, TimeSpan.FromMilliseconds(500), 1024 * 1024, TimeSpan.FromMilliseconds(100));
 
       var key = "test-key";
       var data = new byte[1024];
@@ -92,7 +92,7 @@ public class FileCacheTests
       await ms.WriteAsync(data, lifetime.Token);
       ms.Position = 0;
 
-      await cache.Store(key, ms, lifetime.Token);
+      await cache.StoreAsync(key, ms, lifetime.Token);
 
       var sizeBeforeCleanUp = await new DirectoryInfo(tempDir).CalcDirectorySizeAsync(lifetime.Token);
       Assert.NotEqual(0, sizeBeforeCleanUp);

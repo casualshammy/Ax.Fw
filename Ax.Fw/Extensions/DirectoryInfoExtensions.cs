@@ -38,13 +38,9 @@ public static class DirectoryInfoExtensions
         _ct.ThrowIfCancellationRequested();
 
         if (fsInfo is FileInfo fileInfo)
-        {
           sum += fileInfo.Length;
-        }
         else if (fsInfo is DirectoryInfo directoryInfo)
-        {
           sum += await CalcDirectorySizeAsync(directoryInfo, _ct);
-        }
       }
       return sum;
     });

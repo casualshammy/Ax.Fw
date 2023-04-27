@@ -3,14 +3,13 @@ using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Data.Workers;
 using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Workers;
-using Newtonsoft.Json;
 using System;
 using System.IO;
+using System.Linq;
 using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,57 +17,30 @@ namespace Ax.Fw.Cache;
 
 public class FileCache
 {
-  class StoreTask
-  {
-    public StoreTask(Stream _data, string _key, CancellationToken _token)
-    {
-      Data = _data;
-      Key = _key;
-      Token = _token;
-    }
-
-    public Stream Data { get; }
-    public string Key { get; }
-    public CancellationToken Token { get; }
-
-  }
-
-  class GetTask
-  {
-    public GetTask(string _key, CancellationToken _token)
-    {
-      Key = _key;
-      Token = _token;
-    }
-
-    public string Key { get; }
-    public CancellationToken Token { get; }
-
-  }
-
-  private readonly WorkerTeam<StoreTask, Unit> p_storeTeam;
-  private readonly WorkerTeam<GetTask, Stream> p_getTeam;
+  private readonly WorkerTeam<FileCacheStoreTask, Unit> p_storeTeam;
+  private readonly WorkerTeam<FileCacheGetTask, Stream> p_getTeam;
+  private readonly Subject<FileCacheStoreTask> p_storeTasksFlow;
+  private readonly Subject<FileCacheGetTask> p_getTasksFlow;
   private readonly string p_folder;
   private readonly TimeSpan p_ttl;
-  private readonly Subject<StoreTask> p_storeTasksFlow;
-  private readonly Subject<GetTask> p_getTasksFlow;
 
   public FileCache(
     IReadOnlyLifetime _lifetime,
     string _folder,
     TimeSpan _ttl,
+    long _maxFolderSize,
     TimeSpan _cleanUpInterval)
   {
     p_folder = _folder;
     p_ttl = _ttl;
 
     var scheduler = _lifetime.DisposeOnCompleted(new EventLoopScheduler());
-    p_storeTasksFlow = _lifetime.DisposeOnCompleted(new Subject<StoreTask>());
-    p_getTasksFlow = _lifetime.DisposeOnCompleted(new Subject<GetTask>());
+    p_storeTasksFlow = _lifetime.DisposeOnCompleted(new Subject<FileCacheStoreTask>());
+    p_getTasksFlow = _lifetime.DisposeOnCompleted(new Subject<FileCacheGetTask>());
 
     var schedulers = new IScheduler[] { scheduler };
     p_storeTeam = WorkerTeam.Run(p_storeTasksFlow, StoreInternalAsync, StorePenaltyAsync, _lifetime, schedulers);
-    p_getTeam = WorkerTeam.Run<GetTask, Stream>(p_getTasksFlow, GetInternalAsync, GetPenaltyAsync, _lifetime, schedulers);
+    p_getTeam = WorkerTeam.Run<FileCacheGetTask, Stream>(p_getTasksFlow, GetInternalAsync, GetPenaltyAsync, _lifetime, schedulers);
 
     Observable
       .Interval(_cleanUpInterval, scheduler)
@@ -83,45 +55,35 @@ public class FileCache
         if (!Directory.Exists(p_folder))
           return;
 
-        var files = Directory.EnumerateFiles(p_folder, "*.json", SearchOption.AllDirectories);
-        foreach (var jsonFile in files)
-        {
-          try
-          {
-            var dataFile = jsonFile[..(jsonFile.Length - 5)];
-            if (!File.Exists(dataFile))
-            {
-              File.Delete(jsonFile);
-              continue;
-            }
+        var enumerable = Directory
+          .EnumerateFiles(p_folder, "*.*", SearchOption.AllDirectories)
+          .Select(_ => new FileInfo(_))
+          .OrderByDescending(_ => _.CreationTimeUtc);
 
-            var json = File.ReadAllText(jsonFile, Encoding.UTF8);
-            var info = JsonConvert.DeserializeObject<StoredFileInfo>(json);
-            if (now - info.LastWrite > _ttl)
-            {
-              File.Delete(dataFile);
-              File.Delete(jsonFile);
-            }
-          }
-          catch (Exception ex)
-          {
-            // don't care
-          }
+        var folderSize = 0L;
+        foreach (var file in enumerable)
+        {
+          if (now - file.LastWriteTimeUtc > _ttl && file.TryDelete())
+            continue;
+
+          folderSize += file.Length;
+          if (folderSize > _maxFolderSize)
+            file.TryDelete();
         }
       }, _lifetime);
   }
 
-  public async Task Store(string _key, Stream _stream, CancellationToken _ct)
+  public async Task StoreAsync(string _key, Stream _stream, CancellationToken _ct)
   {
-    await p_storeTeam.DoWork(new StoreTask(_stream, _key, _ct));
+    await p_storeTeam.DoWork(new FileCacheStoreTask(_stream, _key, _ct));
   }
 
-  public async Task<Stream?> Get(string _key, CancellationToken _ct)
+  public async Task<Stream?> GetAsync(string _key, CancellationToken _ct)
   {
-    return await p_getTeam.DoWork(new GetTask(_key, _ct));
+    return await p_getTeam.DoWork(new FileCacheGetTask(_key, _ct));
   }
 
-  private async Task<bool> StoreInternalAsync(JobContext<StoreTask, Unit> _ctx)
+  private async Task<bool> StoreInternalAsync(JobContext<FileCacheStoreTask, Unit> _ctx)
   {
     var job = _ctx.JobInfo.Job;
     if (!job.Data.CanRead)
@@ -132,62 +94,53 @@ public class FileCache
       Directory.CreateDirectory(folder);
 
     var file = Path.Combine(folder, hash);
-    var jsonBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(new StoredFileInfo(DateTimeOffset.UtcNow)));
 
-    using var fileStream = File.Open(file, FileMode.Create, FileAccess.Write, FileShare.None);
-    using var jsonStream = File.Open($"{file}.json", FileMode.Create, FileAccess.Write, FileShare.None);
-    await job.Data.CopyToAsync(fileStream, job.Token);
-    await jsonStream.WriteAsync(jsonBytes, job.Token);
+    using (var fileStream = File.Open(file, FileMode.Create, FileAccess.Write, FileShare.None))
+      await job.Data.CopyToAsync(fileStream, job.Token);
 
     return true;
   }
 
-  private async Task<PenaltyInfo> StorePenaltyAsync(JobFailContext<StoreTask> _ctx)
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+  private async Task<PenaltyInfo> StorePenaltyAsync(JobFailContext<FileCacheStoreTask> _ctx)
   {
     if (_ctx.FailedCounter > 1)
-      return new PenaltyInfo(false, TimeSpan.Zero);
+      return new PenaltyInfo(false, null);
 
     return new PenaltyInfo(true, TimeSpan.FromMilliseconds(250));
   }
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
-  private async Task<Stream?> GetInternalAsync(JobContext<GetTask, Stream> _ctx)
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+  private async Task<Stream?> GetInternalAsync(JobContext<FileCacheGetTask, Stream> _ctx)
   {
     var job = _ctx.JobInfo.Job;
     var folder = GetFolderForKey(job.Key, out var hash);
-    if (!Directory.Exists(folder))
-      return null;
 
-    var file = Path.Combine(folder, hash);
-    if (!File.Exists(file))
+    var file = new FileInfo(Path.Combine(folder, hash));
+    if (!file.Exists)
       return null;
-
-    var rawJsonPath = $"{file}.json";
-    if (!File.Exists(rawJsonPath))
-    {
-      File.Delete(file);
-      return null;
-    }
 
     var now = DateTimeOffset.UtcNow;
-    var rawJson = File.ReadAllText(rawJsonPath, Encoding.UTF8);
-    var info = JsonConvert.DeserializeObject<StoredFileInfo>(rawJson);
-    if (now - info.LastWrite > p_ttl)
+    if (now - file.LastWriteTimeUtc > p_ttl)
     {
-      File.Delete(file);
-      File.Delete(rawJsonPath);
+      file.TryDelete();
       return null;
     }
 
-    return File.Open(file, FileMode.Open, FileAccess.Read, FileShare.Read);
+    return file.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
   }
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
-  private async Task<PenaltyInfo> GetPenaltyAsync(JobFailContext<GetTask> _ctx)
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+  private async Task<PenaltyInfo> GetPenaltyAsync(JobFailContext<FileCacheGetTask> _ctx)
   {
     if (_ctx.FailedCounter > 1)
       return new PenaltyInfo(false, TimeSpan.Zero);
 
     return new PenaltyInfo(true, TimeSpan.FromMilliseconds(250));
   }
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
   private string GetFolderForKey(string _key, out string _hash)
   {
