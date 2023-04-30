@@ -111,7 +111,20 @@ public class EncryptTests
         Assert.NotEqual(data, encryptedData);
 
         using (var decryptedMs = new MemoryStream())
-          await Assert.ThrowsAsync<CryptographicException>(async () => await Cryptography.DecryptAes(encryptedMs, decryptedMs, password.Take(password.Length - 1).ToArray(), _useFastHashing, lifetime.Token));
+        {
+          try
+          {
+            await Cryptography.DecryptAes(encryptedMs, decryptedMs, password.Take(password.Length - 1).ToArray(), _useFastHashing, lifetime.Token);
+            decryptedMs.Position = 0;
+            var decryptedData = decryptedMs.ToArray();
+            Assert.NotEqual(data, decryptedData);
+          }
+          catch (CryptographicException) { }
+          catch
+          {
+            Assert.Fail("Seems like this universe is fucked up");
+          }
+        }
 
         password[^1] = 255;
         using (var decryptedMs = new MemoryStream())
