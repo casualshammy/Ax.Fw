@@ -14,7 +14,7 @@ namespace Ax.Fw.JsonStorages;
 /// <summary>
 /// Simple storage for data in JSON files
 /// </summary>
-public class JsonObservableStorage<T> : JsonStorage<T>, IObservable<T?>
+public class JsonObservableStorage<T> : JsonStorage<T>, IJsonObservable<T?>
 {
   private readonly ReplaySubject<T?> p_changesFlow = new(1);
 
