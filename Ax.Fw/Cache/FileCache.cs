@@ -56,7 +56,7 @@ public class FileCache
           return;
 
         var enumerable = Directory
-          .EnumerateFiles(p_folder, "*.*", SearchOption.AllDirectories)
+          .EnumerateFiles(p_folder, "*", SearchOption.AllDirectories)
           .Select(_ => new FileInfo(_))
           .OrderByDescending(_ => _.CreationTimeUtc);
 
@@ -145,7 +145,7 @@ public class FileCache
   private string GetFolderForKey(string _key, out string _hash)
   {
     _hash = Cryptography.CalculateSHAHash(_key, SharedTypes.Data.HashComplexity.Bit256);
-    var folder = Path.Combine(p_folder, _hash[..2], _hash[2..2]);
+    var folder = Path.Combine(p_folder, _hash[..2], _hash[2..4]);
     return folder;
   }
 
