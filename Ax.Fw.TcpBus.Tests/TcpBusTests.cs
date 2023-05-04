@@ -57,15 +57,15 @@ public class TcpBusTests
 
         var sw = Stopwatch.StartNew();
         var bag = new ConcurrentBag<long>();
-        Parallel.For(0, 1000, _ =>
+        var intEnumerable = Enumerable.Range(0, 1000);
+        await Parallel.ForEachAsync(intEnumerable, lifetime.Token, async (_i, _ct) =>
         {
-          var i = _;
           Interlocked.Increment(ref sendCounter);
           Assert.Equal(2, server.ClientsCount);
           var swi = Stopwatch.StartNew();
-          var result = client1.PostReqResOrDefaultAsync<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(i), TimeSpan.FromSeconds(5), CancellationToken.None).Result;
+          var result = await client1.PostReqResOrDefaultAsync<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(_i), TimeSpan.FromSeconds(5), CancellationToken.None);
           bag.Add(swi.ElapsedMilliseconds);
-          Assert.Equal(i + 1, result?.Code);
+          Assert.Equal(_i + 1, result?.Code);
         });
         p_output.WriteLine($"Time: {sw.ElapsedMilliseconds}ms");
         p_output.WriteLine($"Max req time: {bag.Max()}ms");
@@ -169,15 +169,15 @@ public class TcpBusTests
 
         var sw = Stopwatch.StartNew();
         var bag = new ConcurrentBag<long>();
-        Parallel.For(0, 1000, _ =>
+        var intEnumerable = Enumerable.Range(0, 1000);
+        await Parallel.ForEachAsync(intEnumerable, lifetime.Token, async (_i, _ct) =>
         {
-          var i = _;
           Interlocked.Increment(ref sendCounter);
           Assert.Equal(2, server.ClientsCount);
           var swi = Stopwatch.StartNew();
-          var result = client1.PostReqResOrDefaultAsync<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(i), TimeSpan.FromSeconds(5), CancellationToken.None).Result;
+          var result = await client1.PostReqResOrDefaultAsync<SimpleMsgReq, SimpleMsgRes>(new SimpleMsgReq(_i), TimeSpan.FromSeconds(5), _ct);
           bag.Add(swi.ElapsedMilliseconds);
-          Assert.Equal(i + 1, result?.Code);
+          Assert.Equal(_i + 1, result?.Code);
         });
         p_output.WriteLine($"Time: {sw.ElapsedMilliseconds}ms");
         p_output.WriteLine($"Max req time: {bag.Max()}ms");

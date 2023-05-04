@@ -162,6 +162,22 @@ public static class IObservableExtensions
   public static IObservable<ImmutableHashSet<T>> DistinctUntilHashSetChanged<T>(this IObservable<ImmutableHashSet<T>> _observable)
       => _observable.DistinctUntilChanged(ImmutableHashSetComparer<T>.Default);
 
+  public static void HotAlive<T>(this IObservable<T> _this, IReadOnlyLifetime _lifetime, Action<T, IReadOnlyLifetime> _functor)
+  {
+    _this
+      .Scan((ILifetime?)null, (_acc, _entry) =>
+      {
+        _acc?.Complete();
+        var life = _lifetime.GetChildLifetime();
+        if (life == null)
+          return null;
+
+        _functor.Invoke(_entry, life);
+        return life;
+      })
+      .Subscribe(_lifetime);
+  }
+
   static class ImmutableHashSetComparer<T>
   {
     private class Comparer : IEqualityComparer<ImmutableHashSet<T>>

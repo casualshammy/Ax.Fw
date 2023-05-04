@@ -93,6 +93,7 @@ public class FileCacheTests
       ms.Position = 0;
 
       await cache.StoreAsync(key, ms, lifetime.Token);
+      await Task.Delay(100);
 
       var sizeBeforeCleanUp = await new DirectoryInfo(tempDir).CalcDirectorySizeAsync(lifetime.Token);
       Assert.NotEqual(0, sizeBeforeCleanUp);
