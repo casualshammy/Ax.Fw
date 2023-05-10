@@ -21,33 +21,49 @@ public class FileCache
   private readonly WorkerTeam<FileCacheGetTask, Stream> p_getTeam;
   private readonly Subject<FileCacheStoreTask> p_storeTasksFlow;
   private readonly Subject<FileCacheGetTask> p_getTasksFlow;
+  private readonly Subject<Unit> p_cleanReqFlow;
   private readonly string p_folder;
   private readonly TimeSpan p_ttl;
+  private readonly long p_maxFolderSize;
 
   public FileCache(
     IReadOnlyLifetime _lifetime,
     string _folder,
-    TimeSpan _ttl,
+    TimeSpan _filesTtl,
     long _maxFolderSize,
-    TimeSpan _cleanUpInterval)
+    TimeSpan? _cleanUpInterval)
   {
     p_folder = _folder;
-    p_ttl = _ttl;
+    p_ttl = _filesTtl;
+    p_maxFolderSize = _maxFolderSize;
 
     var scheduler = _lifetime.DisposeOnCompleted(new EventLoopScheduler());
     p_storeTasksFlow = _lifetime.DisposeOnCompleted(new Subject<FileCacheStoreTask>());
     p_getTasksFlow = _lifetime.DisposeOnCompleted(new Subject<FileCacheGetTask>());
+    p_cleanReqFlow = _lifetime.DisposeOnCompleted(new Subject<Unit>());
 
     var schedulers = new IScheduler[] { scheduler };
     p_storeTeam = WorkerTeam.Run(p_storeTasksFlow, StoreInternalAsync, StorePenaltyAsync, _lifetime, schedulers);
     p_getTeam = WorkerTeam.Run<FileCacheGetTask, Stream>(p_getTasksFlow, GetInternalAsync, GetPenaltyAsync, _lifetime, schedulers);
 
-    Observable
-      .Interval(_cleanUpInterval, scheduler)
-      .StartWithDefault()
+    IObservable<Unit> cleanFlow;
+    if (_cleanUpInterval != null)
+    {
+      cleanFlow = Observable
+        .Interval(_cleanUpInterval.Value, scheduler)
+        .StartWithDefault()
+        .ToUnit();
+    }
+    else
+    {
+      cleanFlow = Observable.Empty<Unit>();
+    }
+
+    cleanFlow
 #if !DEBUG
       .Delay(TimeSpan.FromMinutes(1), scheduler)
 #endif
+      .Merge(p_cleanReqFlow)
       .ObserveOn(scheduler)
       .Subscribe(_ =>
       {
@@ -63,11 +79,11 @@ public class FileCache
         var folderSize = 0L;
         foreach (var file in enumerable)
         {
-          if (now - file.LastWriteTimeUtc > _ttl && file.TryDelete())
+          if (now - file.LastWriteTimeUtc > p_ttl && file.TryDelete())
             continue;
 
           folderSize += file.Length;
-          if (folderSize > _maxFolderSize)
+          if (folderSize > p_maxFolderSize)
             file.TryDelete();
         }
       }, _lifetime);
@@ -78,10 +94,48 @@ public class FileCache
     await p_storeTeam.DoWork(new FileCacheStoreTask(_stream, _key, _ct));
   }
 
+  public void Store(string _key, Stream _stream)
+  {
+    if (!_stream.CanRead)
+      throw new IOException("Can't read stream!");
+
+    var folder = GetFolderForKey(_key, out var hash);
+    if (!Directory.Exists(folder))
+      Directory.CreateDirectory(folder);
+
+    var file = Path.Combine(folder, hash);
+
+    using (var fileStream = File.Open(file, FileMode.Create, FileAccess.Write, FileShare.None))
+      _stream.CopyTo(fileStream);
+  }
+
   public async Task<Stream?> GetAsync(string _key, CancellationToken _ct)
   {
     return await p_getTeam.DoWork(new FileCacheGetTask(_key, _ct));
   }
+
+  public Stream? Get(string _key)
+  {
+    var folder = GetFolderForKey(_key, out var hash);
+
+    var file = new FileInfo(Path.Combine(folder, hash));
+    if (!file.Exists)
+      return null;
+
+    var now = DateTimeOffset.UtcNow;
+    if (now - file.LastWriteTimeUtc > p_ttl)
+    {
+      file.TryDelete();
+      return null;
+    }
+
+    return file.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
+  }
+
+  /// <summary>
+  /// Clean-up files: removes files older than TTL and removes newer files if occupied space is bigger than MaxFolderSize
+  /// </summary>
+  public void CleanFiles() => p_cleanReqFlow.OnNext();
 
   private async Task<bool> StoreInternalAsync(JobContext<FileCacheStoreTask, Unit> _ctx)
   {
