@@ -4,6 +4,7 @@ using Ax.Fw.SharedTypes.Data.Workers;
 using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Workers;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reactive;
@@ -111,20 +112,32 @@ public class FileCache
 
   public Stream? Get(string _key)
   {
-    var folder = GetFolderForKey(_key, out var hash);
+    if (!IsKeyExists(_key, out var path))
+      return null;
 
+    return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+  }
+
+  public bool IsKeyExists(string _key, [NotNullWhen(true)] out string? _path)
+  {
+    var folder = GetFolderForKey(_key, out var hash);
     var file = new FileInfo(Path.Combine(folder, hash));
     if (!file.Exists)
-      return null;
+    {
+      _path = null;
+      return false;
+    }
 
     var now = DateTimeOffset.UtcNow;
     if (now - file.LastWriteTimeUtc > p_ttl)
     {
       file.TryDelete();
-      return null;
+      _path = null;
+      return false;
     }
 
-    return file.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
+    _path = file.FullName;
+    return true;
   }
 
   /// <summary>
