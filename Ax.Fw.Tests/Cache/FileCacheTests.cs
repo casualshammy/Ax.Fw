@@ -32,7 +32,7 @@ public class FileCacheTests
 
       await cache.StoreAsync(key, ms, lifetime.Token);
 
-      using var result = await cache.GetAsync(key, lifetime.Token);
+      using var result = cache.Get(key);
 
       Assert.NotNull(result);
     }
@@ -64,7 +64,7 @@ public class FileCacheTests
 
       await Task.Delay(TimeSpan.FromMilliseconds(1000));
 
-      using var result = await cache.GetAsync(key, lifetime.Token);
+      using var result = cache.Get(key);
 
       Assert.Null(result);
     }

@@ -17,10 +17,6 @@ namespace Ax.Fw.Cache;
 
 public class FileCache
 {
-  private readonly WorkerTeam<FileCacheStoreTask, Unit> p_storeTeam;
-  private readonly WorkerTeam<FileCacheGetTask, Stream> p_getTeam;
-  private readonly Subject<FileCacheStoreTask> p_storeTasksFlow;
-  private readonly Subject<FileCacheGetTask> p_getTasksFlow;
   private readonly Subject<Unit> p_cleanReqFlow;
   private readonly string p_folder;
   private readonly TimeSpan p_ttl;
@@ -38,13 +34,7 @@ public class FileCache
     p_maxFolderSize = _maxFolderSize;
 
     var scheduler = _lifetime.DisposeOnCompleted(new EventLoopScheduler());
-    p_storeTasksFlow = _lifetime.DisposeOnCompleted(new Subject<FileCacheStoreTask>());
-    p_getTasksFlow = _lifetime.DisposeOnCompleted(new Subject<FileCacheGetTask>());
     p_cleanReqFlow = _lifetime.DisposeOnCompleted(new Subject<Unit>());
-
-    var schedulers = new IScheduler[] { scheduler };
-    p_storeTeam = WorkerTeam.Run(p_storeTasksFlow, StoreInternalAsync, StorePenaltyAsync, _lifetime, schedulers);
-    p_getTeam = WorkerTeam.Run<FileCacheGetTask, Stream>(p_getTasksFlow, GetInternalAsync, GetPenaltyAsync, _lifetime, schedulers);
 
     IObservable<Unit> cleanFlow;
     if (_cleanUpInterval != null)
@@ -91,7 +81,17 @@ public class FileCache
 
   public async Task StoreAsync(string _key, Stream _stream, CancellationToken _ct)
   {
-    await p_storeTeam.DoWork(new FileCacheStoreTask(_stream, _key, _ct));
+    if (!_stream.CanRead)
+      throw new IOException("Can't read stream!");
+
+    var folder = GetFolderForKey(_key, out var hash);
+    if (!Directory.Exists(folder))
+      Directory.CreateDirectory(folder);
+
+    var file = Path.Combine(folder, hash);
+
+    using (var fileStream = File.Open(file, FileMode.Create, FileAccess.Write, FileShare.None))
+      await _stream.CopyToAsync(fileStream, _ct);
   }
 
   public void Store(string _key, Stream _stream)
@@ -107,11 +107,6 @@ public class FileCache
 
     using (var fileStream = File.Open(file, FileMode.Create, FileAccess.Write, FileShare.None))
       _stream.CopyTo(fileStream);
-  }
-
-  public async Task<Stream?> GetAsync(string _key, CancellationToken _ct)
-  {
-    return await p_getTeam.DoWork(new FileCacheGetTask(_key, _ct));
   }
 
   public Stream? Get(string _key)
@@ -136,65 +131,6 @@ public class FileCache
   /// Clean-up files: removes files older than TTL and removes newer files if occupied space is bigger than MaxFolderSize
   /// </summary>
   public void CleanFiles() => p_cleanReqFlow.OnNext();
-
-  private async Task<bool> StoreInternalAsync(JobContext<FileCacheStoreTask, Unit> _ctx)
-  {
-    var job = _ctx.JobInfo.Job;
-    if (!job.Data.CanRead)
-      throw new IOException("Can't read stream!");
-
-    var folder = GetFolderForKey(job.Key, out var hash);
-    if (!Directory.Exists(folder))
-      Directory.CreateDirectory(folder);
-
-    var file = Path.Combine(folder, hash);
-
-    using (var fileStream = File.Open(file, FileMode.Create, FileAccess.Write, FileShare.None))
-      await job.Data.CopyToAsync(fileStream, job.Token);
-
-    return true;
-  }
-
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-  private async Task<PenaltyInfo> StorePenaltyAsync(JobFailContext<FileCacheStoreTask> _ctx)
-  {
-    if (_ctx.FailedCounter > 1)
-      return new PenaltyInfo(false, null);
-
-    return new PenaltyInfo(true, TimeSpan.FromMilliseconds(250));
-  }
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
-
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-  private async Task<Stream?> GetInternalAsync(JobContext<FileCacheGetTask, Stream> _ctx)
-  {
-    var job = _ctx.JobInfo.Job;
-    var folder = GetFolderForKey(job.Key, out var hash);
-
-    var file = new FileInfo(Path.Combine(folder, hash));
-    if (!file.Exists)
-      return null;
-
-    var now = DateTimeOffset.UtcNow;
-    if (now - file.LastWriteTimeUtc > p_ttl)
-    {
-      file.TryDelete();
-      return null;
-    }
-
-    return file.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
-  }
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
-
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-  private async Task<PenaltyInfo> GetPenaltyAsync(JobFailContext<FileCacheGetTask> _ctx)
-  {
-    if (_ctx.FailedCounter > 1)
-      return new PenaltyInfo(false, TimeSpan.Zero);
-
-    return new PenaltyInfo(true, TimeSpan.FromMilliseconds(250));
-  }
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
   private string GetFolderForKey(string _key, out string _hash)
   {
