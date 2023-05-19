@@ -18,21 +18,36 @@ public class DependencyManager : IDependencyManager
   internal DependencyManager(
     IReadOnlyLifetime _lifetime,
     IReadOnlyDictionary<Type, Func<IExportLocatorScope, object>> _singletoneInstances,
-    IEnumerable<Assembly> _loadReferencedAssembliesFrom)
+    IEnumerable<Assembly> _loadReferencedAssembliesFrom,
+    Assembly? _scanOnlyThisAssembly)
   {
     foreach (var assembly in _loadReferencedAssembliesFrom.SelectMany(_x => _x.GetReferencedAssemblies()).DistinctBy(_x => _x.FullName))
     {
       Assembly.Load(assembly);
-      Debug.WriteLine($"{nameof(ExportClassMgr)}: Loaded assembly: {assembly?.FullName}");
+      Debug.WriteLine($"{nameof(DependencyManager)}: Loaded assembly: {assembly?.FullName}");
     }
 
     foreach (var pair in _singletoneInstances)
       p_container.Configure(_x => _x.ExportFuncWithContext((_scope, _, _) => pair.Value(_scope)).As(pair.Key).Lifestyle.Singleton());
 
-    var exportTypes = Utilities.GetTypesWithAttr<ExportClassAttribute>(true);
+    var exportClassAttrType = typeof(ExportClassAttribute);
+    Type[] exportTypes;
+
+    if (_scanOnlyThisAssembly != null)
+    {
+      exportTypes = _scanOnlyThisAssembly
+        .GetTypes()
+        .Where(_t => _t.IsDefined(exportClassAttrType, false))
+        .ToArray();
+    }
+    else
+      exportTypes = Utilities
+          .GetTypesWithAttr<ExportClassAttribute>(true)
+          .ToArray();
+
     foreach (var type in exportTypes)
     {
-      if (Attribute.GetCustomAttribute(type, typeof(ExportClassAttribute)) is not ExportClassAttribute exportInfo)
+      if (Attribute.GetCustomAttribute(type, exportClassAttrType) is not ExportClassAttribute exportInfo)
         continue;
 
       if (exportInfo.Singleton)
@@ -43,7 +58,7 @@ public class DependencyManager : IDependencyManager
 
     foreach (var type in exportTypes)
     {
-      if (Attribute.GetCustomAttribute(type, typeof(ExportClassAttribute)) is not ExportClassAttribute exportInfo)
+      if (Attribute.GetCustomAttribute(type, exportClassAttrType) is not ExportClassAttribute exportInfo)
         continue;
 
       if (exportInfo.ActivateOnStart && exportInfo.Singleton)

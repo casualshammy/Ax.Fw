@@ -10,17 +10,19 @@ namespace Ax.Fw.DependencyInjection;
 public class DependencyManagerBuilder
 {
   private readonly IReadOnlyLifetime p_lifetime;
+  private readonly Assembly? p_scanOnlyThisAssembly;
   private readonly ConcurrentDictionary<Type, Func<IExportLocatorScope, object>> p_singletons = new();
   private readonly List<Assembly> p_assemlies = new();
 
-  private DependencyManagerBuilder(IReadOnlyLifetime _lifetime)
+  private DependencyManagerBuilder(IReadOnlyLifetime _lifetime, Assembly? _scanOnlyThisAssembly)
   {
     p_lifetime = _lifetime;
+    p_scanOnlyThisAssembly = _scanOnlyThisAssembly;
   }
 
-  public static DependencyManagerBuilder Create(IReadOnlyLifetime _lifetime)
+  public static DependencyManagerBuilder Create(IReadOnlyLifetime _lifetime, Assembly? _scanOnlyThisAssembly = null)
   {
-    return new DependencyManagerBuilder(_lifetime);
+    return new DependencyManagerBuilder(_lifetime, _scanOnlyThisAssembly);
   }
 
   public DependencyManagerBuilder AddSingleton<T>(T _instance) where T : notnull
@@ -53,6 +55,6 @@ public class DependencyManagerBuilder
     return this;
   }
 
-  public DependencyManager Build() => new(p_lifetime, p_singletons, p_assemlies);
+  public DependencyManager Build() => new(p_lifetime, p_singletons, p_assemlies, p_scanOnlyThisAssembly);
 
 }
