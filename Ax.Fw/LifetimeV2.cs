@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Ax.Fw;
 
-public class LifetimeV2 : ILifetime
+public class LifetimeV2 : ILifetimeV2
 {
   private readonly ConcurrentStack<Func<Task>> p_doOnEnding = new();
   private readonly ConcurrentStack<Func<Task>> p_doOnEnded = new();
@@ -39,7 +39,7 @@ public class LifetimeV2 : ILifetime
   public bool IsCancellationRequested => p_cts.Token.IsCancellationRequested;
   public IObservable<bool> OnEnding { get; }
 
-  [return: NotNullIfNotNull(parameterName: nameof(_instance))]
+  [return: NotNullIfNotNull(parameterName: "_instance")]
   public T? ToDisposeOnEnding<T>(T? _instance) where T : IDisposable
   {
     if (Interlocked.Read(ref p_ending) == 1L)
@@ -56,7 +56,7 @@ public class LifetimeV2 : ILifetime
     return _instance;
   }
 
-  [return: NotNullIfNotNull(parameterName: nameof(_instance))]
+  [return: NotNullIfNotNull(parameterName: "_instance")]
   public T? ToDisposeAsyncOnEnding<T>(T? _instance) where T : IAsyncDisposable
   {
     if (Interlocked.Read(ref p_ending) == 1L)
