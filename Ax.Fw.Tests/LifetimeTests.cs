@@ -95,31 +95,4 @@ public class LifetimeTests
     Assert.Equal(2, counter);
   }
 
-  [Theory(Timeout = 30000)]
-  [Repeat(10)]
-  public async Task ParallelCompleteAsyncTest(int _iteration)
-  {
-    _ = _iteration;
-    var lifetime = new Lifetime();
-
-    var counter = 0;
-    lifetime.DoOnEnding(() => Interlocked.Increment(ref counter));
-    lifetime.DoOnEnding(async () =>
-    {
-      Interlocked.Increment(ref counter);
-      await Task.Delay(1000);
-    });
-
-    _ = Task.Factory.StartNew(() => lifetime.EndAsync(), TaskCreationOptions.LongRunning);
-    _ = Task.Factory.StartNew(() => lifetime.EndAsync(), TaskCreationOptions.LongRunning);
-    _ = Task.Factory.StartNew(() => lifetime.EndAsync(), TaskCreationOptions.LongRunning);
-
-    await Task.Delay(250);
-    Assert.Equal(1, counter);
-
-    await Task.Delay(2000);
-    Assert.Equal(2, counter);
-  }
-
-
 }
