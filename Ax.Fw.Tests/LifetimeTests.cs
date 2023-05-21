@@ -107,7 +107,7 @@ public class LifetimeTests
     lifetime.DoOnEnding(async () =>
     {
       Interlocked.Increment(ref counter);
-      await Task.Delay(500);
+      await Task.Delay(1000);
     });
 
     _ = Task.Factory.StartNew(() => lifetime.EndAsync(), TaskCreationOptions.LongRunning);
@@ -117,7 +117,7 @@ public class LifetimeTests
     await Task.Delay(250);
     Assert.Equal(1, counter);
 
-    await Task.Delay(1000);
+    await Task.Delay(2000);
     Assert.Equal(2, counter);
   }
 
