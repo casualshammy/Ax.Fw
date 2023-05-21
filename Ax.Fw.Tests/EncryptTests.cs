@@ -53,7 +53,7 @@ public class EncryptTests
     }
     finally
     {
-      lifetime.Complete();
+      lifetime.End();
     }
   }
 
@@ -82,7 +82,7 @@ public class EncryptTests
     }
     finally
     {
-      lifetime.Complete();
+      lifetime.End();
     }
   }
 
@@ -138,7 +138,7 @@ public class EncryptTests
     }
     finally
     {
-      lifetime.Complete();
+      lifetime.End();
     }
   }
 

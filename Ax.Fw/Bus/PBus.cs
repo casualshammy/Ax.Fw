@@ -31,7 +31,7 @@ namespace Ax.Fw.Bus
         {
             p_lifetime = _lifetime;
             p_scheduler = _scheduler;
-            _lifetime.DisposeOnCompleted(p_msgFlow);
+            _lifetime.ToDisposeOnEnding(p_msgFlow);
         }
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace Ax.Fw.Bus
 
         private void PostMsg(BusMsgSerial _msg)
         {
-            if (!p_lifetime.CancellationRequested)
+            if (!p_lifetime.IsCancellationRequested)
             {
                 p_lastMsg.AddOrUpdate(_msg.Data.GetType(), _msg.Data, (_, _) => _msg.Data);
                 p_msgFlow.OnNext(_msg);

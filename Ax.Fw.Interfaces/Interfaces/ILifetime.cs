@@ -5,6 +5,5 @@ namespace Ax.Fw.SharedTypes.Interfaces;
 
 public interface ILifetime : IReadOnlyLifetime, IDisposable
 {
-    void Complete();
-    Task CompleteAsync();
+    void End();
 }

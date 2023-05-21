@@ -4,6 +4,7 @@ using Ax.Fw.DependencyInjection;
 using Grace.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Xunit;
 using Xunit.Abstractions;
 using static System.Formats.Asn1.AsnWriter;
@@ -30,8 +31,9 @@ public class ExportClassMgrTests
             { typeof(IServiceExample), _scope => new ServiceExample(_scope.Locate<IDependancyExample>())}
         };
 
+    var assembly = Assembly.GetExecutingAssembly();
     var exportClassMgr = DependencyManagerBuilder
-      .Create(lifetime)
+      .Create(lifetime, assembly)
       .AddSingleton<IServiceExample>(_scope => new ServiceExample(_scope.Locate<IDependancyExample>()))
       .Build();
 
@@ -54,8 +56,9 @@ public class ExportClassMgrTests
   {
     var lifetime = new Lifetime();
 
+    var assembly = Assembly.GetExecutingAssembly();
     var exportClassMgr = DependencyManagerBuilder
-      .Create(lifetime)
+      .Create(lifetime, assembly)
       .Build();
 
     var instance0 = exportClassMgr.Locate<ITransientServiceExample>();

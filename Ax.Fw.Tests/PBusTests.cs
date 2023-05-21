@@ -27,7 +27,7 @@ namespace Ax.Fw.Tests
             try
             {
                 var bus = new PBus(lifetime);
-                lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(msg =>
+                lifetime.ToDisposeOnEnding(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(msg =>
                 {
                     if (msg.Code == 1)
                         return new SimpleMsgRes(2);
@@ -40,7 +40,7 @@ namespace Ax.Fw.Tests
             }
             finally
             {
-                lifetime.Complete();
+                lifetime.End();
                 p_output.WriteLine($"Test {nameof(TestClientServer)} is completed");
             }
         }
@@ -57,7 +57,7 @@ namespace Ax.Fw.Tests
             try
             {
                 var bus = new PBus(lifetime);
-                lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(msg =>
+                lifetime.ToDisposeOnEnding(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(msg =>
                 {
                     return new SimpleMsgRes(msg.Code + 1);
                 }));
@@ -75,7 +75,7 @@ namespace Ax.Fw.Tests
             }
             finally
             {
-                lifetime.Complete();
+                lifetime.End();
                 p_output.WriteLine($"Test {nameof(StressTest)}-{_num} is completed");
             }
         }
@@ -88,7 +88,7 @@ namespace Ax.Fw.Tests
             try
             {
                 var bus = new PBus(lifetime);
-                lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async msg =>
+                lifetime.ToDisposeOnEnding(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async msg =>
                 {
                     p_output.WriteLine($"{sw.Elapsed} OfReqRes, Code {msg.Code}, Start");
                     if (msg.Code == 0)
@@ -106,7 +106,7 @@ namespace Ax.Fw.Tests
             }
             finally
             {
-                lifetime.Complete();
+                lifetime.End();
             }
         }
 
@@ -117,7 +117,7 @@ namespace Ax.Fw.Tests
             try
             {
                 var bus = new PBus(lifetime);
-                lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async _msg =>
+                lifetime.ToDisposeOnEnding(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async _msg =>
                 {
                     await Task.Delay(500);
                     if (_msg.Code == 1)
@@ -139,7 +139,7 @@ namespace Ax.Fw.Tests
             }
             finally
             {
-                lifetime.Complete();
+                lifetime.End();
             }
         }
 
@@ -149,8 +149,8 @@ namespace Ax.Fw.Tests
             var lifetime = new Lifetime();
             try
             {
-                var bus = new PBus(lifetime, lifetime.DisposeOnCompleted(new EventLoopScheduler()));
-                lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async _msg =>
+                var bus = new PBus(lifetime, lifetime.ToDisposeOnEnding(new EventLoopScheduler()));
+                lifetime.ToDisposeOnEnding(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async _msg =>
                 {
                     await Task.Delay(500);
                     if (_msg.Code == 1)
@@ -172,7 +172,7 @@ namespace Ax.Fw.Tests
             }
             finally
             {
-                lifetime.Complete();
+                lifetime.End();
             }
         }
 
@@ -184,7 +184,7 @@ namespace Ax.Fw.Tests
             try
             {
                 var bus = new PBus(lifetime);
-                lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async msg =>
+                lifetime.ToDisposeOnEnding(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async msg =>
                 {
                     p_output.WriteLine($"{sw.Elapsed} OfReqRes, Code {msg.Code}, Start");
                     if (msg.Code == 0)
@@ -202,7 +202,7 @@ namespace Ax.Fw.Tests
             }
             finally
             {
-                lifetime.Complete();
+                lifetime.End();
             }
         }
 
@@ -213,7 +213,7 @@ namespace Ax.Fw.Tests
             try
             {
                 var bus = new PBus(lifetime);
-                lifetime.DisposeOnCompleted(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async _msg =>
+                lifetime.ToDisposeOnEnding(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async _msg =>
                 {
                     var internet = await Utilities.IsInternetAvailable();
                     return new SimpleMsgRes(_msg.Code + (internet ? 1 : 1));
@@ -225,7 +225,7 @@ namespace Ax.Fw.Tests
             }
             finally
             {
-                lifetime.Complete();
+                lifetime.End();
             }
         }
 

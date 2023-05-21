@@ -34,8 +34,8 @@ public class FileCache
     p_ttl = _filesTtl;
     p_maxFolderSize = _maxFolderSize;
 
-    var scheduler = _lifetime.DisposeOnCompleted(new EventLoopScheduler());
-    p_cleanReqFlow = _lifetime.DisposeOnCompleted(new Subject<Unit>());
+    var scheduler = _lifetime.ToDisposeOnEnding(new EventLoopScheduler());
+    p_cleanReqFlow = _lifetime.ToDisposeOnEnding(new Subject<Unit>());
 
     IObservable<Unit> cleanFlow;
     if (_cleanUpInterval != null)

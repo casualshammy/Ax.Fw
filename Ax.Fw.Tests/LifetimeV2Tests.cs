@@ -1,17 +1,22 @@
-﻿#nullable enable
+﻿using Ax.Fw.Extensions;
 using Ax.Fw.Tests.Tools;
+using System;
+using System.Reactive;
+using System.Reactive.Concurrency;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
 namespace Ax.Fw.Tests;
 
-public class LifetimeTests
+public class LifetimeV2Tests
 {
   [Fact(Timeout = 30000)]
-  public async Task FlowTest()
+  public void FlowTest()
   {
-    var lifetime = new Lifetime();
+    using var scheduler = new EventLoopScheduler();
+    var lifetime = new LifetimeV2(scheduler);
 
     var counter = 0;
     lifetime.DoOnEnding(() => Interlocked.Increment(ref counter));
@@ -21,16 +26,16 @@ public class LifetimeTests
       await Task.Delay(100);
     });
 
-    await lifetime.EndAsync();
+    lifetime.End();
 
     Assert.Equal(2, counter);
-
   }
 
   [Fact(Timeout = 30000)]
   public void SyncCompleteTest()
   {
-    var lifetime = new Lifetime();
+    using var scheduler = new EventLoopScheduler();
+    var lifetime = new LifetimeV2(scheduler);
 
     var counter = 0;
     lifetime.DoOnEnding(() => Interlocked.Increment(ref counter));
@@ -43,13 +48,13 @@ public class LifetimeTests
     lifetime.End();
 
     Assert.Equal(2, counter);
-
   }
 
   [Fact(Timeout = 30000)]
   public void MultipleCompleteTest()
   {
-    var lifetime = new Lifetime();
+    using var scheduler = new EventLoopScheduler();
+    var lifetime = new LifetimeV2(scheduler);
 
     var counter = 0;
     lifetime.DoOnEnding(() => Interlocked.Increment(ref counter));
@@ -67,40 +72,17 @@ public class LifetimeTests
     Thread.Sleep(500);
     lifetime.End();
     lifetime.End();
-  }
-
-  [Fact(Timeout = 30000)]
-  public void ParallelCompleteTest()
-  {
-    var lifetime = new Lifetime();
-
-    var counter = 0;
-    lifetime.DoOnEnding(() => Interlocked.Increment(ref counter));
-    lifetime.DoOnEnding(async () =>
-    {
-      Interlocked.Increment(ref counter);
-      await Task.Delay(500);
-    });
-
-    Parallel.For(0, 100, _ =>
-    {
-      lifetime.End();
-    });
-    Thread.Sleep(500);
-    Parallel.For(0, 100, _ =>
-    {
-      lifetime.End();
-    });
 
     Assert.Equal(2, counter);
   }
 
   [Theory(Timeout = 30000)]
   [Repeat(10)]
-  public async Task ParallelCompleteAsyncTest(int _iteration)
+  public void ParallelCompleteTest(int _iteration)
   {
     _ = _iteration;
-    var lifetime = new Lifetime();
+    using var scheduler = new EventLoopScheduler();
+    var lifetime = new LifetimeV2(scheduler);
 
     var counter = 0;
     lifetime.DoOnEnding(() => Interlocked.Increment(ref counter));
@@ -110,16 +92,46 @@ public class LifetimeTests
       await Task.Delay(500);
     });
 
-    _ = Task.Factory.StartNew(() => lifetime.EndAsync(), TaskCreationOptions.LongRunning);
-    _ = Task.Factory.StartNew(() => lifetime.EndAsync(), TaskCreationOptions.LongRunning);
-    _ = Task.Factory.StartNew(() => lifetime.EndAsync(), TaskCreationOptions.LongRunning);
+    Parallel.For(0, 100, _ => lifetime.End());
+    Thread.Sleep(500);
+    Parallel.For(0, 100, _ => lifetime.End());
 
-    await Task.Delay(250);
-    Assert.Equal(1, counter);
-
-    await Task.Delay(1000);
     Assert.Equal(2, counter);
   }
 
+  [Fact(Timeout =10000)]
+  public void RxTest()
+  {
+    using var scheduler = new EventLoopScheduler();
+    var lifetime = new LifetimeV2(scheduler);
+
+    var counter = 0L;
+    lifetime.DoOnEnding(() => Interlocked.Increment(ref counter));
+    lifetime.DoOnEnding(async () =>
+    {
+      await Task.Delay(100);
+      Interlocked.Increment(ref counter);
+    });
+
+    lifetime.DoNotEndingUntilCompleted(Observable
+      .Timer(TimeSpan.FromSeconds(0.5))
+      .Select(_ =>
+      {
+        Interlocked.Increment(ref counter);
+        return Unit.Default;
+      }));
+
+    lifetime.DoNotEndUntilCompleted(Observable
+      .Timer(TimeSpan.FromSeconds(0.5))
+      .Select(_ =>
+      {
+        Interlocked.Increment(ref counter);
+        return Unit.Default;
+      }));
+
+    lifetime.End();
+
+    Assert.Equal(4, Interlocked.Read(ref counter));
+  }
 
 }

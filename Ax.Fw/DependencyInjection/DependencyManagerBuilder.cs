@@ -1,8 +1,9 @@
-﻿using Ax.Fw.SharedTypes.Interfaces;
+﻿using Ax.Fw.Attributes;
+using Ax.Fw.SharedTypes.Interfaces;
 using Grace.DependencyInjection;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 
 namespace Ax.Fw.DependencyInjection;
@@ -10,51 +11,85 @@ namespace Ax.Fw.DependencyInjection;
 public class DependencyManagerBuilder
 {
   private readonly IReadOnlyLifetime p_lifetime;
-  private readonly Assembly? p_scanOnlyThisAssembly;
-  private readonly ConcurrentDictionary<Type, Func<IExportLocatorScope, object>> p_singletons = new();
-  private readonly List<Assembly> p_assemlies = new();
+  private readonly Assembly p_mainAssembly;
+  private readonly DependencyInjectionContainer p_container = new();
 
-  private DependencyManagerBuilder(IReadOnlyLifetime _lifetime, Assembly? _scanOnlyThisAssembly)
+  private DependencyManagerBuilder(IReadOnlyLifetime _lifetime, Assembly _mainAssembly)
   {
     p_lifetime = _lifetime;
-    p_scanOnlyThisAssembly = _scanOnlyThisAssembly;
+    p_mainAssembly = _mainAssembly;
   }
 
-  public static DependencyManagerBuilder Create(IReadOnlyLifetime _lifetime, Assembly? _scanOnlyThisAssembly = null)
+  public static DependencyManagerBuilder Create(IReadOnlyLifetime _lifetime, Assembly _mainAssembly)
   {
-    return new DependencyManagerBuilder(_lifetime, _scanOnlyThisAssembly);
+    return new DependencyManagerBuilder(_lifetime, _mainAssembly);
   }
 
   public DependencyManagerBuilder AddSingleton<T>(T _instance) where T : notnull
   {
-    p_singletons[typeof(T)] = _ => _instance;
+    p_container.Configure(_ => _.ExportInstance(_instance));
     return this;
   }
 
-  public DependencyManagerBuilder AddSingleton<T>(Func<IExportLocatorScope, object> _factory) where T : notnull
+  public DependencyManagerBuilder AddSingleton<T>(Func<IExportLocatorScope, T> _factory) where T : notnull
   {
-    p_singletons[typeof(T)] = _factory;
+    p_container.Configure(_ => _.ExportFactory(() => _factory(_.OwningScope)).Lifestyle.Singleton());
     return this;
   }
 
   public DependencyManagerBuilder AddSingleton(Type _type, Func<IExportLocatorScope, object> _factory)
   {
-    p_singletons[_type] = _factory;
+    p_container.Configure(_ => _.ExportFactory(() => _factory(_.OwningScope)).As(_type).Lifestyle.Singleton());
     return this;
   }
 
-  public DependencyManagerBuilder AddAssemblyReference(Assembly _assembly)
+  public DependencyManagerBuilder AddTransient<T>(Func<IExportLocatorScope, T> _factory)
   {
-    p_assemlies.Add(_assembly);
+    p_container.Configure(_ => _.ExportFactory(() => _factory(_.OwningScope)));
     return this;
   }
 
-  public DependencyManagerBuilder AddAssembliesReference(IEnumerable<Assembly> _assemblies)
+  public DependencyManagerBuilder AddTransient(Type _type, Func<IExportLocatorScope, object> _factory)
   {
-    p_assemlies.AddRange(_assemblies);
+    p_container.Configure(_ => _.ExportFactory(() => _factory(_.OwningScope)).As(_type));
     return this;
   }
 
-  public DependencyManager Build() => new(p_lifetime, p_singletons, p_assemlies, p_scanOnlyThisAssembly);
+  public DependencyManager Build()
+  {
+    var exportClassAttrType = typeof(ExportClassAttribute);
+    var exportTypes = p_mainAssembly
+      .GetTypes()
+      .Where(_t => _t.IsDefined(exportClassAttrType, false))
+      .ToList();
+
+    foreach (var type in exportTypes)
+    {
+      if (Attribute.GetCustomAttribute(type, exportClassAttrType) is not ExportClassAttribute exportInfo)
+        continue;
+
+      if (exportInfo.Singleton)
+        p_container.Configure(_x => _x.Export(type).As(exportInfo.InterfaceType).Lifestyle.Singleton());
+      else
+        p_container.Configure(_x => _x.Export(type).As(exportInfo.InterfaceType));
+    }
+
+    var instances = new List<object>();
+    foreach (var type in exportTypes)
+    {
+      if (Attribute.GetCustomAttribute(type, exportClassAttrType) is not ExportClassAttribute exportInfo)
+        continue;
+
+      if (exportInfo.ActivateOnStart && exportInfo.Singleton)
+      {
+        var instance = p_container.Locate(exportInfo.InterfaceType);
+        instances.Add(instance);
+        if (instance is IDisposable disposable)
+          p_lifetime.ToDisposeOnEnding(disposable);
+      }
+    }
+
+    return new(p_container, instances);
+  }
 
 }

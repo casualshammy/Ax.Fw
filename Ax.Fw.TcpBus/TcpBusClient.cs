@@ -34,7 +34,7 @@ public static class TcpBusClientFactory
 
     _serverInstance = new TcpBusClient(lifetime, _port);
 
-    return Disposable.Create(lifetime.Complete);
+    return Disposable.Create(lifetime.End);
   }
 
   public static IDisposable Create(
@@ -46,7 +46,7 @@ public static class TcpBusClientFactory
 
     _serverInstance = new TcpBusClient(lifetime, _port, _host);
 
-    return Disposable.Create(lifetime.Complete);
+    return Disposable.Create(lifetime.End);
   }
 
   public static IDisposable Create(
@@ -58,7 +58,7 @@ public static class TcpBusClientFactory
 
     _serverInstance = new TcpBusClient(lifetime, _scheduler, _port);
 
-    return Disposable.Create(lifetime.Complete);
+    return Disposable.Create(lifetime.End);
   }
 
   public static IDisposable Create(
@@ -71,7 +71,7 @@ public static class TcpBusClientFactory
 
     _serverInstance = new TcpBusClient(lifetime, _scheduler, _port, _host);
 
-    return Disposable.Create(lifetime.Complete);
+    return Disposable.Create(lifetime.End);
   }
 
 }
@@ -97,12 +97,12 @@ public class TcpBusClient : ITcpBusClient
     p_lifetime = _lifetime;
     p_scheduler = _scheduler;
     p_password = _password != null ? Encoding.UTF8.GetBytes(_password) : null;
-    _lifetime.DisposeOnCompleted(p_msgFlow);
-    _lifetime.DisposeOnCompleted(p_incomingMsgFlow);
+    _lifetime.ToDisposeOnEnding(p_msgFlow);
+    _lifetime.ToDisposeOnEnding(p_incomingMsgFlow);
 
-    p_client = _lifetime.DisposeOnCompleted(new WatsonTcpClient(_host, _port))!;
+    p_client = _lifetime.ToDisposeOnEnding(new WatsonTcpClient(_host, _port))!;
     p_client.Events.MessageReceived += MessageReceivedRaw;
-    _lifetime.DoOnCompleted(() => p_client.Events.MessageReceived -= MessageReceivedRaw);
+    _lifetime.DoOnEnding(() => p_client.Events.MessageReceived -= MessageReceivedRaw);
 
     async Task<bool> sendTcpMsgJob(JobContext<TcpMessage, Unit> _ctx)
     {

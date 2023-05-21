@@ -39,7 +39,7 @@ public class TcpBusTests
       var lifetime = new Lifetime();
       try
       {
-        var scheduler = lifetime.DisposeOnCompleted(new EventLoopScheduler());
+        var scheduler = lifetime.ToDisposeOnEnding(new EventLoopScheduler());
         var server = new TcpBusServer(lifetime, 9600);
         var client0 = new TcpBusClient(lifetime, scheduler, 9600);
         var client1 = new TcpBusClient(lifetime, scheduler, 9600);
@@ -47,7 +47,7 @@ public class TcpBusTests
         Thread.Sleep(TimeSpan.FromSeconds(1));
         Assert.Equal(2, server.ClientsCount);
 
-        lifetime.DisposeOnCompleted(
+        lifetime.ToDisposeOnEnding(
             client0
                 .OfReqRes<SimpleMsgReq, SimpleMsgRes>(_msg =>
                 {
@@ -82,7 +82,7 @@ public class TcpBusTests
       }
       finally
       {
-        lifetime.Complete();
+        lifetime.End();
       }
     }
     finally
@@ -119,7 +119,7 @@ public class TcpBusTests
 
         receiverClientSubs.Dispose();
 
-        lifetime.DisposeOnCompleted(
+        lifetime.ToDisposeOnEnding(
             brokenClient
                 .OfReqRes<SimpleMsgReq, SimpleMsgRes>(_msg =>
                 {
@@ -131,7 +131,7 @@ public class TcpBusTests
       }
       finally
       {
-        lifetime.Complete();
+        lifetime.End();
       }
     }
     finally
@@ -151,7 +151,7 @@ public class TcpBusTests
       var lifetime = new Lifetime();
       try
       {
-        var scheduler = lifetime.DisposeOnCompleted(new EventLoopScheduler());
+        var scheduler = lifetime.ToDisposeOnEnding(new EventLoopScheduler());
         var server = new TcpBusServer(lifetime, 9600);
         var client0 = new TcpBusClient(lifetime, scheduler, 9600, _password: "test-password");
         var client1 = new TcpBusClient(lifetime, scheduler, 9600, _password: "test-password");
@@ -159,7 +159,7 @@ public class TcpBusTests
         Thread.Sleep(TimeSpan.FromSeconds(1));
         Assert.Equal(2, server.ClientsCount);
 
-        lifetime.DisposeOnCompleted(
+        lifetime.ToDisposeOnEnding(
             client0
                 .OfReqRes<SimpleMsgReq, SimpleMsgRes>(_msg =>
                 {
@@ -194,7 +194,7 @@ public class TcpBusTests
       }
       finally
       {
-        lifetime.Complete();
+        lifetime.End();
       }
     }
     finally

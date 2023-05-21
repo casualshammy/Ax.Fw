@@ -310,7 +310,7 @@ public class MetroComboBox : ComboBox
   protected override void Dispose(bool disposing)
   {
     base.Dispose(disposing);
-    p_lifetime.Complete();
+    p_lifetime.End();
   }
 
 }

@@ -41,7 +41,7 @@ public class ObservableExtensionsTests
       {
         var oldLife = Interlocked.Exchange(ref life, _life);
         Assert.NotEqual(oldLife, _life);
-        _life.DoOnCompleted(() => Interlocked.Increment(ref lifeCompleteCounter));
+        _life.DoOnEnding(() => Interlocked.Increment(ref lifeCompleteCounter));
         Interlocked.Increment(ref counter);
       });
 

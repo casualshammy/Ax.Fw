@@ -59,7 +59,7 @@ public class CompressTests
         }
         finally
         {
-            lifetime.Complete();
+            lifetime.End();
             try
             {
                 File.Delete(tempFile);
@@ -112,7 +112,7 @@ public class CompressTests
         }
         finally
         {
-            lifetime.Complete();
+            lifetime.End();
             try
             {
                 File.Delete(tempFile);
@@ -140,7 +140,7 @@ public class CompressTests
             {
                 resultPercent = (double)_progress.Current / _progress.Total;
                 if (resultPercent > 0.30)
-                    lifetime.Complete();
+                    lifetime.End();
             }
 
             await Assert.ThrowsAsync<OperationCanceledException>(async () => await Compress.CompressDirectoryToZipFileAsync(dir.FullName, tempFile, onProgress, lifetime.Token));
@@ -151,7 +151,7 @@ public class CompressTests
         {
             try
             {
-                lifetime.Complete();
+                lifetime.End();
             }
             catch { }
             try
@@ -201,7 +201,7 @@ public class CompressTests
         }
         finally
         {
-            lifetime.Complete();
+            lifetime.End();
             try
             {
                 File.Delete(tempFile);
@@ -253,7 +253,7 @@ public class CompressTests
     //    }
     //    finally
     //    {
-    //        lifetime.Complete();
+    //        lifetime.End();
     //    }
     //}
 

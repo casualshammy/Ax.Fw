@@ -107,7 +107,7 @@ namespace Ax.Fw.Workers
         Func<JobContext<TJob, TJobResult>, Task<TJobResult?>> _jobRoutineAsync,
         Func<JobFailContext<TJob>, Task<PenaltyInfo>> _penaltyForFailedJobsAsync,
         IReadOnlyLifetime _lifetime,
-        int _workers) : this(_jobsFlow, _jobRoutineAsync, _penaltyForFailedJobsAsync, _lifetime, Enumerable.Repeat(_lifetime.DisposeOnCompleted(new EventLoopScheduler()), _workers).ToArray())
+        int _workers) : this(_jobsFlow, _jobRoutineAsync, _penaltyForFailedJobsAsync, _lifetime, Enumerable.Repeat(_lifetime.ToDisposeOnEnding(new EventLoopScheduler()), _workers).ToArray())
     { }
 
     internal WorkerTeam(
@@ -123,12 +123,12 @@ namespace Ax.Fw.Workers
       p_penaltyForFailedJobs = _penaltyForFailedJobsAsync;
       p_lifetime = _lifetime;
 
-      p_successfullyCompletedFlow = _lifetime.DisposeOnCompleted(new Subject<JobResultCtx<TJobResult?>>());
-      p_allCompletedFlow = _lifetime.DisposeOnCompleted(new Subject<JobResultCtx<TJobResult?>>());
+      p_successfullyCompletedFlow = _lifetime.ToDisposeOnEnding(new Subject<JobResultCtx<TJobResult?>>());
+      p_allCompletedFlow = _lifetime.ToDisposeOnEnding(new Subject<JobResultCtx<TJobResult?>>());
 
       for (int i = 0; i < _schedulers.Count; i++)
       {
-        var workerFlow = _lifetime.DisposeOnCompleted(new Subject<Unit>());
+        var workerFlow = _lifetime.ToDisposeOnEnding(new Subject<Unit>());
         p_workerFlows.Add(workerFlow);
 
         var index = i;
@@ -163,7 +163,7 @@ namespace Ax.Fw.Workers
             .Subscribe(_lifetime);
       }
 
-      var addScheduler = _lifetime.DisposeOnCompleted(new EventLoopScheduler())!;
+      var addScheduler = _lifetime.ToDisposeOnEnding(new EventLoopScheduler())!;
       _jobsFlow
           .ObserveOn(addScheduler)
           .Subscribe(_x => AddNewJobToQueue(new JobInfo<TJob, TJobResult>(Interlocked.Increment(ref p_taskIdCounter), _x, 0)), _lifetime);
@@ -182,7 +182,7 @@ namespace Ax.Fw.Workers
     /// <exception cref="InvalidOperationException">Throws if this instance of <see cref="WorkerTeam"/> is already completed</exception>
     public async Task<TJobResult?> DoWork(TJob _job)
     {
-      if (!p_lifetime.CancellationRequested)
+      if (!p_lifetime.IsCancellationRequested)
       {
         var taskId = Interlocked.Increment(ref p_taskIdCounter);
         using var completion = new ReplaySubject<JobResultCtx<TJobResult?>>(1);
@@ -196,7 +196,7 @@ namespace Ax.Fw.Workers
 
     public void PostWork(TJob _job)
     {
-      if (!p_lifetime.CancellationRequested)
+      if (!p_lifetime.IsCancellationRequested)
         AddNewJobToQueue(new JobInfo<TJob, TJobResult>(Interlocked.Increment(ref p_taskIdCounter), _job, 0));
     }
 
@@ -204,7 +204,7 @@ namespace Ax.Fw.Workers
     {
       p_jobQueue.Enqueue(_jobInfo);
       foreach (var flow in p_workerFlows)
-        if (!p_lifetime.CancellationRequested)
+        if (!p_lifetime.IsCancellationRequested)
           flow.OnNext();
     }
 

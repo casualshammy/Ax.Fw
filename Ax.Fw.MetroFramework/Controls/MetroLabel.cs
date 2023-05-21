@@ -161,7 +161,7 @@ namespace Ax.Fw.MetroFramework.Controls
         protected override void Dispose(bool _disposing)
         {
             base.Dispose(_disposing);
-            p_lifetime.Complete();
+            p_lifetime.End();
         }
 
         private void CreateBaseTextBox()

@@ -25,7 +25,7 @@ public class CompareDbTests
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.DisposeOnCompleted(new SqliteDocumentStorage(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
 
       var enumerable = Enumerable.Range(0, PROBLEM_SIZE);
 
@@ -68,7 +68,7 @@ public class CompareDbTests
     }
     finally
     {
-      await lifetime.CompleteAsync();
+      await lifetime.EndAsync();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }
@@ -81,7 +81,7 @@ public class CompareDbTests
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.DisposeOnCompleted(new LiteDatabase(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new LiteDatabase(dbFile));
       var col = storage.GetCollection<LiteDbEntry>("default");
 
       var enumerable = Enumerable.Range(0, PROBLEM_SIZE);
@@ -127,7 +127,7 @@ public class CompareDbTests
     }
     finally
     {
-      await lifetime.CompleteAsync();
+      await lifetime.EndAsync();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }

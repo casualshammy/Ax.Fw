@@ -189,7 +189,7 @@ public class MetroProgressBar : ProgressBar
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
-        p_lifetime?.Complete();
+        p_lifetime?.End();
     }
 
     private void DrawProgressContinuous(Graphics _graphics)

@@ -34,7 +34,7 @@ public class StreamWithProgressTests
     }
     finally
     {
-      lifetime.Complete();
+      lifetime.End();
     }
   }
 
@@ -58,7 +58,7 @@ public class StreamWithProgressTests
     }
     finally
     {
-      lifetime.Complete();
+      lifetime.End();
     }
   }
 

@@ -27,7 +27,7 @@ public class ImprovedDocumentStorageTests
     try
     {
       var entries = Enumerable.Range(0, 1000).ToArray();
-      var storage = lifetime.DisposeOnCompleted(new SqliteDocumentStorage(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
 
       // warm-up
       foreach (var entry in entries)
@@ -76,7 +76,7 @@ public class ImprovedDocumentStorageTests
     }
     finally
     {
-      await lifetime.CompleteAsync();
+      await lifetime.EndAsync();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }
@@ -95,7 +95,7 @@ public class ImprovedDocumentStorageTests
       var storage = new SqliteDocumentStorage(dbFile)
         .WithRetentionRules(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(100),
           _deletedDocsMeta => counter += _deletedDocsMeta.Count);
-      lifetime.DisposeOnCompleted(storage);
+      lifetime.ToDisposeOnEnding(storage);
 
       await storage.WriteSimpleDocumentAsync(100, new DataRecord(100, "entry-100"), lifetime.Token);
       var doc0 = await storage.ReadSimpleDocumentAsync<DataRecord>(100, lifetime.Token);
@@ -108,7 +108,7 @@ public class ImprovedDocumentStorageTests
     }
     finally
     {
-      await lifetime.CompleteAsync();
+      await lifetime.EndAsync();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }

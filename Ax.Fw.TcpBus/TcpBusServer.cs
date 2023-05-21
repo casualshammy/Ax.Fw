@@ -27,7 +27,7 @@ public static class TcpBusServerFactory
         else
             _serverInstance = new TcpBusServer(lifetime, _port, _host);
 
-        return Disposable.Create(lifetime.Complete);
+        return Disposable.Create(lifetime.End);
     }
 }
 
@@ -39,7 +39,7 @@ public class TcpBusServer : ITcpBusServer
 
     public TcpBusServer(IReadOnlyLifetime _lifetime, int _port, string _host = "127.0.0.1")
     {
-        p_server = _lifetime.DisposeOnCompleted(new WatsonTcpServer(_host, _port))!;
+        p_server = _lifetime.ToDisposeOnEnding(new WatsonTcpServer(_host, _port))!;
         p_server.Events.ClientConnected += ClientConnected;
         p_server.Events.ClientDisconnected += ClientDisconnected;
         p_server.Events.MessageReceived += MessageReceived;

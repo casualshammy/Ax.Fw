@@ -33,7 +33,7 @@ namespace Ax.Fw.Tests
             }
             finally
             {
-                lifetime.Complete();
+                lifetime.End();
             }
         }
 
@@ -52,7 +52,7 @@ namespace Ax.Fw.Tests
             }
             finally
             {
-                lifetime.Complete();
+                lifetime.End();
             }
         }
 

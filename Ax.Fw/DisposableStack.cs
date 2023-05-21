@@ -10,12 +10,12 @@ public abstract class DisposableStack : IDisposable
 
   protected T ToDispose<T>(T _value) where T : IDisposable
   {
-    return p_lifetime.DisposeOnCompleted(_value);
+    return p_lifetime.ToDisposeOnEnding(_value);
   }
 
   protected T ToDisposeAsync<T>(T _value) where T : IAsyncDisposable
   {
-    return p_lifetime.DisposeAsyncOnCompleted(_value);
+    return p_lifetime.ToDisposeAsyncOnEnding(_value);
   }
 
   protected virtual void Dispose(bool _disposing)
@@ -23,7 +23,7 @@ public abstract class DisposableStack : IDisposable
     if (!p_disposedValue)
     {
       if (_disposing)
-        p_lifetime.Complete();
+        p_lifetime.End();
 
       p_disposedValue = true;
     }

@@ -51,7 +51,7 @@ namespace Ax.Fw.Tests
 
         var list = new List<int>();
         worker.SuccessfullyCompletedJobs
-            .ObserveOn(lifetime.DisposeOnCompleted(new EventLoopScheduler())!)
+            .ObserveOn(lifetime.ToDisposeOnEnding(new EventLoopScheduler())!)
             .Subscribe(_ => list.Add(0), lifetime.Token);
 
         await Task.Delay(1000);
@@ -60,7 +60,7 @@ namespace Ax.Fw.Tests
       }
       finally
       {
-        lifetime.Complete();
+        lifetime.End();
       }
     }
 
@@ -91,7 +91,7 @@ namespace Ax.Fw.Tests
 
         var list = new List<int>();
         worker.SuccessfullyCompletedJobs
-            .ObserveOn(lifetime.DisposeOnCompleted(new EventLoopScheduler())!)
+            .ObserveOn(lifetime.ToDisposeOnEnding(new EventLoopScheduler())!)
             .Subscribe(_ => list.Add(0), lifetime.Token);
 
         var timeout = TimeSpan.FromMilliseconds(3000);
@@ -106,7 +106,7 @@ namespace Ax.Fw.Tests
       }
       finally
       {
-        lifetime.Complete();
+        lifetime.End();
       }
     }
 
@@ -136,7 +136,7 @@ namespace Ax.Fw.Tests
 
         var list = new List<int>();
         worker.SuccessfullyCompletedJobs
-            .ObserveOn(lifetime.DisposeOnCompleted(new EventLoopScheduler())!)
+            .ObserveOn(lifetime.ToDisposeOnEnding(new EventLoopScheduler())!)
             .Subscribe(_ => list.Add(0), lifetime.Token);
 
         await Task.Delay(TimeSpan.FromMilliseconds(1500));
@@ -151,7 +151,7 @@ namespace Ax.Fw.Tests
       }
       finally
       {
-        lifetime.Complete();
+        lifetime.End();
       }
     }
 
@@ -181,7 +181,7 @@ namespace Ax.Fw.Tests
 
         var list = new List<int>();
         team.SuccessfullyCompletedJobs
-            .ObserveOn(lifetime.DisposeOnCompleted(new EventLoopScheduler())!)
+            .ObserveOn(lifetime.ToDisposeOnEnding(new EventLoopScheduler())!)
             .Subscribe(_ => list.Add(0), lifetime.Token);
 
         await Task.Delay(TimeSpan.FromMilliseconds(1500));
@@ -196,7 +196,7 @@ namespace Ax.Fw.Tests
       finally
       {
         if (!lifetime.Token.IsCancellationRequested)
-          lifetime.Complete();
+          lifetime.End();
       }
     }
 
@@ -226,7 +226,7 @@ namespace Ax.Fw.Tests
 
         var list = new List<int>();
         team.SuccessfullyCompletedJobs
-            .ObserveOn(lifetime.DisposeOnCompleted(new EventLoopScheduler())!)
+            .ObserveOn(lifetime.ToDisposeOnEnding(new EventLoopScheduler())!)
             .Subscribe(_ => list.Add(0), lifetime.Token);
 
         await Task.Delay(TimeSpan.FromMilliseconds(1500 * 2));
@@ -241,7 +241,7 @@ namespace Ax.Fw.Tests
       finally
       {
         if (!lifetime.Token.IsCancellationRequested)
-          lifetime.Complete();
+          lifetime.End();
       }
     }
 
@@ -281,7 +281,7 @@ namespace Ax.Fw.Tests
 
         var sw = Stopwatch.StartNew();
         await team.SuccessfullyCompletedJobs
-            .ObserveOn(lifetime.DisposeOnCompleted(new EventLoopScheduler())!)
+            .ObserveOn(lifetime.ToDisposeOnEnding(new EventLoopScheduler())!)
             .Take(size);
 
         //Assert.InRange(sw.ElapsedMilliseconds, 0, 4 * 1000 + 250);
@@ -295,7 +295,7 @@ namespace Ax.Fw.Tests
       finally
       {
         if (!lifetime.Token.IsCancellationRequested)
-          lifetime.Complete();
+          lifetime.End();
       }
     }
 
@@ -334,7 +334,7 @@ namespace Ax.Fw.Tests
       }
       finally
       {
-        lifetime.Complete();
+        lifetime.End();
       }
     }
 
@@ -362,14 +362,14 @@ namespace Ax.Fw.Tests
             5);
 
         await Task.Delay(TimeSpan.FromMilliseconds(500));
-        Assert.False(lifetime.CancellationRequested);
-        lifetime.Complete();
-        Assert.True(lifetime.CancellationRequested);
+        Assert.False(lifetime.IsCancellationRequested);
+        lifetime.End();
+        Assert.True(lifetime.IsCancellationRequested);
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await team.DoWork(Unit.Default));
       }
       finally
       {
-        lifetime.Complete();
+        lifetime.End();
       }
     }
 

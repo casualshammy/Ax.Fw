@@ -49,12 +49,12 @@ public class Lifetime : ILifetime
 
   public CancellationToken Token => p_cts.Token;
 
-  public bool CancellationRequested => p_cts.Token.IsCancellationRequested;
+  public bool IsCancellationRequested => p_cts.Token.IsCancellationRequested;
 
-  public IObservable<bool> OnCompleteStarted => p_flow.Take(1).ObserveOnThreadPool().Select(_ => true);
+  public IObservable<bool> OnEnding => p_flow.Take(1).ObserveOnThreadPool().Select(_ => true);
 
   [return: NotNullIfNotNull(parameterName: "_instance")]
-  public T? DisposeOnCompleted<T>(T? _instance) where T : IDisposable
+  public T? ToDisposeOnEnding<T>(T? _instance) where T : IDisposable
   {
     if (p_cts.Token.IsCancellationRequested)
       throw new InvalidOperationException($"This instance of {nameof(Lifetime)} is already completed!");
@@ -68,7 +68,7 @@ public class Lifetime : ILifetime
   }
 
   [return: NotNullIfNotNull(parameterName: "_instance")]
-  public T? DisposeAsyncOnCompleted<T>(T? _instance) where T : IAsyncDisposable
+  public T? ToDisposeAsyncOnEnding<T>(T? _instance) where T : IAsyncDisposable
   {
     if (p_cts.Token.IsCancellationRequested)
       throw new InvalidOperationException($"This instance of {nameof(Lifetime)} is already completed!");
@@ -81,7 +81,7 @@ public class Lifetime : ILifetime
     return _instance;
   }
 
-  public void DoOnCompleted(Func<Task> _action)
+  public void DoOnEnding(Func<Task> _action)
   {
     if (p_cts.Token.IsCancellationRequested)
       throw new InvalidOperationException($"This instance of {nameof(Lifetime)} is already completed!");
@@ -89,7 +89,7 @@ public class Lifetime : ILifetime
     p_doOnCompleted.Push(_action);
   }
 
-  public void DoOnCompleted(Action _action)
+  public void DoOnEnding(Action _action)
   {
     if (p_cts.Token.IsCancellationRequested)
       throw new InvalidOperationException($"This instance of {nameof(Lifetime)} is already completed!");
@@ -101,7 +101,7 @@ public class Lifetime : ILifetime
     });
   }
 
-  public async Task CompleteAsync()
+  public async Task EndAsync()
   {
     if (p_cts.Token.IsCancellationRequested)
       return;
@@ -111,7 +111,7 @@ public class Lifetime : ILifetime
     p_flow?.Dispose();
   }
 
-  public void Complete()
+  public void End()
   {
     if (p_cts.Token.IsCancellationRequested)
       return;
@@ -128,7 +128,7 @@ public class Lifetime : ILifetime
       return null;
 
     var lifetime = new Lifetime();
-    DoOnCompleted(lifetime.CompleteAsync);
+    DoOnEnding(lifetime.EndAsync);
     return lifetime;
   }
 
@@ -137,7 +137,7 @@ public class Lifetime : ILifetime
     if (!p_disposedValue)
     {
       if (_disposing)
-        Complete();
+        End();
 
       p_disposedValue = true;
     }

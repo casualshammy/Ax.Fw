@@ -130,12 +130,12 @@ public static class IObservableExtensions
 
   public static void Subscribe<T>(this IObservable<T> _observable, Action<T> _handler, IReadOnlyLifetime _lifetime)
   {
-    _lifetime.DisposeOnCompleted(_observable.Subscribe(_handler));
+    _lifetime.ToDisposeOnEnding(_observable.Subscribe(_handler));
   }
 
   public static void Subscribe<T>(this IObservable<T> _observable, IReadOnlyLifetime _lifetime)
   {
-    _lifetime.DisposeOnCompleted(_observable.Subscribe());
+    _lifetime.ToDisposeOnEnding(_observable.Subscribe());
   }
 
   public static IRxProperty<T?> ToProperty<T>(this IObservable<T?> _observable, IReadOnlyLifetime _lifetime, T? _defaultValue = default)
@@ -167,7 +167,7 @@ public static class IObservableExtensions
     _this
       .Scan((ILifetime?)null, (_acc, _entry) =>
       {
-        _acc?.Complete();
+        _acc?.End();
         var life = _lifetime.GetChildLifetime();
         if (life == null)
           return null;

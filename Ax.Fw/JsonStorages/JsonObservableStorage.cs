@@ -24,8 +24,8 @@ public class JsonObservableStorage<T> : JsonStorage<T>, IJsonObservable<T?>
   /// <param name="_jsonFilePath">Path to JSON file. Can't be null or empty.</param>
   public JsonObservableStorage(ILifetime _lifetime, string _jsonFilePath) : base(_jsonFilePath)
   {
-    _lifetime.DisposeOnCompleted(p_changesFlow);
-    _lifetime.DisposeOnCompleted(Pool<EventLoopScheduler>.Get(out var scheduler));
+    _lifetime.ToDisposeOnEnding(p_changesFlow);
+    _lifetime.ToDisposeOnEnding(Pool<EventLoopScheduler>.Get(out var scheduler));
 
     Observable
       .Interval(TimeSpan.FromSeconds(1), scheduler)
