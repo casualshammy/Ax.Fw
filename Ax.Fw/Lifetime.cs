@@ -4,7 +4,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Reactive;
-using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
@@ -14,54 +13,35 @@ namespace Ax.Fw;
 
 public class Lifetime : ILifetime
 {
-  private readonly ConcurrentStack<Func<Task>> p_doOnCompleted = new();
+  private readonly ConcurrentStack<Func<Task>> p_doOnEnding = new();
+  private readonly ConcurrentStack<Func<Task>> p_doOnEnded = new();
+  private readonly ConcurrentStack<IObservable<Unit>> p_doNotEndingUntilCompleted = new();
+  private readonly ConcurrentStack<IObservable<Unit>> p_doNotEndUntilCompleted = new();
   private readonly CancellationTokenSource p_cts = new();
-  private readonly Subject<Unit> p_flow;
-  private readonly ManualResetEvent p_done;
-  private bool p_disposedValue;
+  private readonly ReplaySubject<Unit> p_onEnding = new(1);
+  private long p_ending = 0;
 
   public Lifetime()
   {
-    p_done = new ManualResetEvent(false);
-    p_flow = new Subject<Unit>();
-    p_flow
-        .Take(1)
-        .ObserveOnThreadPool()
-        .SelectAsync(async _ =>
-        {
-          if (p_cts.Token.IsCancellationRequested)
-            return;
-
-          p_cts.Cancel();
-          while (p_doOnCompleted.TryPop(out var item))
-          {
-            try
-            {
-              await item();
-            }
-            catch { }
-          }
-          p_flow.OnCompleted();
-          p_done.Set();
-        }, ThreadPoolScheduler.Instance)
-        .Subscribe(Token);
+    OnEnding = p_onEnding;
   }
 
   public CancellationToken Token => p_cts.Token;
-
   public bool IsCancellationRequested => p_cts.Token.IsCancellationRequested;
-
-  public IObservable<bool> OnEnding => p_flow.Take(1).ObserveOnThreadPool().Select(_ => true);
+  public IObservable<Unit> OnEnding { get; }
 
   [return: NotNullIfNotNull(parameterName: "_instance")]
   public T? ToDisposeOnEnding<T>(T? _instance) where T : IDisposable
   {
-    if (p_cts.Token.IsCancellationRequested)
-      throw new InvalidOperationException($"This instance of {nameof(Lifetime)} is already completed!");
-
-    p_doOnCompleted.Push(() =>
+    if (Interlocked.Read(ref p_ending) == 1L)
     {
-      _instance?.Dispose();
+      Lifetime.SafeDispose(_instance);
+      return _instance;
+    }
+
+    p_doOnEnding.Push(() =>
+    {
+      Lifetime.SafeDispose(_instance);
       return Task.CompletedTask;
     });
     return _instance;
@@ -70,83 +50,210 @@ public class Lifetime : ILifetime
   [return: NotNullIfNotNull(parameterName: "_instance")]
   public T? ToDisposeAsyncOnEnding<T>(T? _instance) where T : IAsyncDisposable
   {
-    if (p_cts.Token.IsCancellationRequested)
-      throw new InvalidOperationException($"This instance of {nameof(Lifetime)} is already completed!");
-
-    p_doOnCompleted.Push(async () =>
+    if (Interlocked.Read(ref p_ending) == 1L)
     {
-      if (_instance != null)
-        await _instance.DisposeAsync().AsTask();
+      var task = Task.Run(async () => await Lifetime.SafeDisposeAsync(_instance));
+      task.Wait();
+      return _instance;
+    }
+
+    p_doOnEnding.Push(async () => await Lifetime.SafeDisposeAsync(_instance));
+    return _instance;
+  }
+
+  [return: NotNullIfNotNull(parameterName: "_instance")]
+  public T? ToDisposeOnEnded<T>(T? _instance) where T : IDisposable
+  {
+    if (Interlocked.Read(ref p_ending) == 1L)
+    {
+      Lifetime.SafeDispose(_instance);
+      return _instance;
+    }
+
+    p_doOnEnded.Push(() =>
+    {
+      Lifetime.SafeDispose(_instance);
+      return Task.CompletedTask;
     });
+    return _instance;
+  }
+
+  [return: NotNullIfNotNull(parameterName: "_instance")]
+  public T? ToDisposeAsyncOnEnded<T>(T? _instance) where T : IAsyncDisposable
+  {
+    if (Interlocked.Read(ref p_ending) == 1L)
+    {
+      var task = Task.Run(async () => await Lifetime.SafeDisposeAsync(_instance));
+      task.Wait();
+      return _instance;
+    }
+
+    p_doOnEnded.Push(async () => await Lifetime.SafeDisposeAsync(_instance));
     return _instance;
   }
 
   public void DoOnEnding(Func<Task> _action)
   {
-    if (p_cts.Token.IsCancellationRequested)
-      throw new InvalidOperationException($"This instance of {nameof(Lifetime)} is already completed!");
+    if (Interlocked.Read(ref p_ending) == 1L)
+    {
+      var task = Task.Run(async () => await Lifetime.SafeActionAsync(_action));
+      task.Wait();
+      return;
+    }
 
-    p_doOnCompleted.Push(_action);
+    p_doOnEnding.Push(() => Lifetime.SafeActionAsync(_action));
   }
 
   public void DoOnEnding(Action _action)
   {
-    if (p_cts.Token.IsCancellationRequested)
-      throw new InvalidOperationException($"This instance of {nameof(Lifetime)} is already completed!");
-
-    p_doOnCompleted.Push(() =>
+    if (Interlocked.Read(ref p_ending) == 1L)
     {
-      _action();
+      Lifetime.SafeAction(_action);
+      return;
+    }
+
+    p_doOnEnding.Push(() =>
+    {
+      Lifetime.SafeAction(_action);
       return Task.CompletedTask;
     });
   }
 
-  public async Task EndAsync()
+  public void DoOnEnded(Action _action)
   {
-    if (p_cts.Token.IsCancellationRequested)
+    if (Interlocked.Read(ref p_ending) == 1L)
+    {
+      Lifetime.SafeAction(_action);
       return;
+    }
 
-    p_flow.OnNext();
-    await p_flow.DefaultIfEmpty();
-    p_flow?.Dispose();
+    p_doOnEnded.Push(() =>
+    {
+      Lifetime.SafeAction(_action);
+      return Task.CompletedTask;
+    });
   }
 
-  public void End()
+  public void DoOnEnded(Func<Task> _action)
   {
-    if (p_cts.Token.IsCancellationRequested)
+    if (Interlocked.Read(ref p_ending) == 1L)
+    {
+      var task = Task.Run(async () => await Lifetime.SafeActionAsync(_action));
+      task.Wait();
+      return;
+    }
+
+    p_doOnEnded.Push(() => Lifetime.SafeActionAsync(_action));
+  }
+
+  public void DoNotEndingUntilCompleted(IObservable<Unit> _observable)
+  {
+    if (Interlocked.Read(ref p_ending) == 1L)
       return;
 
-    p_flow.OnNext();
-    p_done.WaitOne();
-    p_done?.Dispose();
-    p_flow?.Dispose();
+    p_doNotEndingUntilCompleted.Push(_observable);
+  }
+
+  public void DoNotEndUntilCompleted(IObservable<Unit> _observable)
+  {
+    if (Interlocked.Read(ref p_ending) == 1L)
+      return;
+
+    p_doNotEndUntilCompleted.Push(_observable);
   }
 
   public ILifetime? GetChildLifetime()
   {
-    if (p_cts.Token.IsCancellationRequested)
+    if (Interlocked.Read(ref p_ending) == 1L)
       return null;
 
     var lifetime = new Lifetime();
-    DoOnEnding(lifetime.EndAsync);
+    DoOnEnding(lifetime.End);
     return lifetime;
+  }
+
+  public void End()
+  {
+    if (Interlocked.Exchange(ref p_ending, 1L) == 1L)
+      return;
+
+    using var mre = new ManualResetEvent(false);
+
+    _ = Task.Run(async () =>
+    {
+      while (p_doNotEndingUntilCompleted.TryPop(out var observable))
+        await observable
+          .Catch(Observable.Return(Unit.Default))
+          .IgnoreElements()
+          .LastOrDefaultAsync();
+
+      p_cts.Cancel();
+      p_onEnding.OnNext();
+
+      while (p_doOnEnding.TryPop(out var task))
+        await task();
+      while (p_doOnEnded.TryPop(out var task))
+        await task();
+
+      while (p_doNotEndUntilCompleted.TryPop(out var observable))
+        await observable
+          .Catch(Observable.Return(Unit.Default))
+          .IgnoreElements()
+          .LastOrDefaultAsync();
+
+      mre.Set();
+    });
+
+    mre.WaitOne();
   }
 
   protected virtual void Dispose(bool _disposing)
   {
-    if (!p_disposedValue)
-    {
-      if (_disposing)
-        End();
-
-      p_disposedValue = true;
-    }
+    if (_disposing)
+      End();
   }
 
   public void Dispose()
   {
     Dispose(_disposing: true);
     GC.SuppressFinalize(this);
+  }
+
+  private static void SafeDispose(IDisposable? _disposable)
+  {
+    try
+    {
+      _disposable?.Dispose();
+    }
+    catch { }
+  }
+
+  private static async Task SafeDisposeAsync(IAsyncDisposable? _disposable)
+  {
+    try
+    {
+      if (_disposable != null)
+        await _disposable.DisposeAsync();
+    }
+    catch { }
+  }
+
+  private static void SafeAction(Action _action)
+  {
+    try
+    {
+      _action();
+    }
+    catch { }
+  }
+
+  private static async Task SafeActionAsync(Func<Task> _action)
+  {
+    try
+    {
+      await _action();
+    }
+    catch { }
   }
 
 }

@@ -27,7 +27,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Ax.Fw.Interfaces\Ax.Fw.SharedTypes.csproj" />
+	  <ProjectReference Include="..\Ax.Fw.Interfaces\Ax.Fw.SharedTypes.csproj" />
 	</ItemGroup>
 </Project>
 

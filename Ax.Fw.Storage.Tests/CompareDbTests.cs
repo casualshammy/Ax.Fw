@@ -68,14 +68,14 @@ public class CompareDbTests
     }
     finally
     {
-      await lifetime.EndAsync();
+      lifetime.End();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
   [Fact]
-  public async Task StressTestLiteDbAsync()
+  public void StressTestLiteDbAsync()
   {
     var lifetime = new Lifetime();
     var dbFile = GetDbTmpPath();
@@ -127,7 +127,7 @@ public class CompareDbTests
     }
     finally
     {
-      await lifetime.EndAsync();
+      lifetime.End();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }

@@ -16,9 +16,9 @@ namespace Ax.Fw.MetroFramework.Sandbox
       using var lifetime = new Lifetime();
 
       var sw = Stopwatch.StartNew();
-      var assembly = Assembly.GetCallingAssembly();
+      var assembly = Assembly.GetExecutingAssembly();
       var containerBuilderFull = DependencyManagerBuilder
-        .Create(lifetime, null)
+        .Create(lifetime, assembly)
         .Build();
 
       var elapsed = sw.Elapsed;

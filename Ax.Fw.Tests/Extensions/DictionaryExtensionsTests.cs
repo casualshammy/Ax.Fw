@@ -17,7 +17,7 @@ namespace Ax.Fw.Tests.Extensions
         [Fact(Timeout = 10000)]
         public void GetDictionaryHashCodeTest()
         {
-            var dictionary = new Dictionary<string, string>
+            var dictionary = new Dictionary<string, string?>
             {
                 ["1"] = "0-1",
                 ["2"] = null,
@@ -25,7 +25,7 @@ namespace Ax.Fw.Tests.Extensions
                 ["4"] = "0-4"
             };
 
-            var anotherDictionary = new Dictionary<string, string>();
+            var anotherDictionary = new Dictionary<string, string?>();
             Assert.NotEqual(dictionary.GetDictionaryHashCode(), anotherDictionary.GetDictionaryHashCode());
 
             anotherDictionary["1"] = "0-1";
@@ -50,7 +50,7 @@ namespace Ax.Fw.Tests.Extensions
         [Fact(Timeout = 10000)]
         public void DictionaryEqualsTest()
         {
-            var dictionary = new Dictionary<string, string>
+            var dictionary = new Dictionary<string, string?>
             {
                 ["1"] = "0-1",
                 ["2"] = null,
@@ -58,7 +58,7 @@ namespace Ax.Fw.Tests.Extensions
                 ["4"] = "0-4"
             };
 
-            var anotherDictionary = new Dictionary<string, string>();
+            var anotherDictionary = new Dictionary<string, string?>();
             Assert.False(dictionary.DictionaryEquals(anotherDictionary));
 
             anotherDictionary["1"] = "0-1";

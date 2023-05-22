@@ -50,7 +50,7 @@ public class SqliteDocumentStorageTests
     }
     finally
     {
-      await lifetime.EndAsync();
+      lifetime.End();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }
@@ -85,7 +85,7 @@ public class SqliteDocumentStorageTests
     }
     finally
     {
-      await lifetime.EndAsync();
+      lifetime.End();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }
@@ -115,7 +115,7 @@ public class SqliteDocumentStorageTests
     }
     finally
     {
-      await lifetime.EndAsync();
+      lifetime.End();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }
@@ -150,7 +150,7 @@ public class SqliteDocumentStorageTests
     }
     finally
     {
-      await lifetime.EndAsync();
+      lifetime.End();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }
@@ -180,7 +180,7 @@ public class SqliteDocumentStorageTests
     }
     finally
     {
-      await lifetime.EndAsync();
+      lifetime.End();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }
@@ -213,7 +213,7 @@ public class SqliteDocumentStorageTests
         lastDocId = Math.Max(lastDocId, document2.DocId);
       });
 
-      await lifetime0.EndAsync();
+      lifetime0.End();
 
       Assert.Equal(entriesCount * 3, lastDocId + 1);
 
@@ -224,8 +224,8 @@ public class SqliteDocumentStorageTests
     }
     finally
     {
-      await lifetime0.EndAsync();
-      await lifetime1.EndAsync();
+      lifetime0.End();
+      lifetime1.End();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }
@@ -250,7 +250,7 @@ public class SqliteDocumentStorageTests
     }
     finally
     {
-      await lifetime.EndAsync();
+      lifetime.End();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }
@@ -284,7 +284,7 @@ public class SqliteDocumentStorageTests
     }
     finally
     {
-      await lifetime.EndAsync();
+      lifetime.End();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }
@@ -377,7 +377,7 @@ public class SqliteDocumentStorageTests
     }
     finally
     {
-      await lifetime.EndAsync();
+      lifetime.End();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }
@@ -411,7 +411,7 @@ public class SqliteDocumentStorageTests
     }
     finally
     {
-      await lifetime.EndAsync();
+      lifetime.End();
       if (!new FileInfo(dbFile).TryDelete())
         Assert.Fail($"Can't delete file '{dbFile}'");
     }
