@@ -73,7 +73,7 @@ public static class IObservableExtensions
         .Concat();
   }
 
-  public static IObservable<Unit> SelectAsync<TIn>(this IObservable<TIn?> _this, Func<TIn?, CancellationToken, Task> _selector)
+  public static IObservable<Unit> SelectAsync<TIn>(this IObservable<TIn> _this, Func<TIn, CancellationToken, Task> _selector)
   {
     return _this
         .Select(_x =>
@@ -83,7 +83,7 @@ public static class IObservableExtensions
         .Concat();
   }
 
-  public static IObservable<Unit> SelectAsync<TIn>(this IObservable<TIn?> _this, Func<TIn?, CancellationToken, Task> _selector, IScheduler _scheduler)
+  public static IObservable<Unit> SelectAsync<TIn>(this IObservable<TIn> _this, Func<TIn, CancellationToken, Task> _selector, IScheduler _scheduler)
   {
     return _this
         .Select(_x =>
