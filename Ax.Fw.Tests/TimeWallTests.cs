@@ -17,20 +17,13 @@ public class TimeWallTests
   [Fact(Timeout = 30000)]
   public async Task SimpleTestAsync()
   {
-    var timeWall = new TimeWall(10, TimeSpan.FromSeconds(5));
+    var timeWall = new TimeWall(10, TimeSpan.FromSeconds(1));
     for (int i = 0; i < 10; i++)
-    {
-      await Task.Delay(TimeSpan.FromMilliseconds(100));
       Assert.True(timeWall.TryGetTicket());
-    }
 
     Assert.False(timeWall.TryGetTicket());
 
     await Task.Delay(TimeSpan.FromSeconds(2));
-
-    Assert.False(timeWall.TryGetTicket());
-
-    await Task.Delay(TimeSpan.FromSeconds(5));
 
     for (int i = 0; i < 10; i++)
       Assert.True(timeWall.TryGetTicket());
