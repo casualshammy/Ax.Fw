@@ -7,24 +7,24 @@ namespace Ax.Fw;
 
 [TypeConverter(typeof(TypeConverter))]
 [JsonConverter(typeof(JsonConverter))]
-public class SerializableVersion : IEquatable<SerializableVersion>
+public class SerializableVersion : IEquatable<SerializableVersion>, IComparable<SerializableVersion>
 {
-  public SerializableVersion(Version version)
+  public SerializableVersion(Version _version)
   {
-    Major = version.Major;
-    Minor = version.Minor;
-    Build = version.Build;
+    Major = _version.Major;
+    Minor = _version.Minor;
+    Build = _version.Build;
   }
 
   [JsonConstructor]
   public SerializableVersion(
-      [JsonProperty(nameof(Major))] int major,
-      [JsonProperty(nameof(Minor))] int minor,
-      [JsonProperty(nameof(Build))] int build)
+      [JsonProperty(nameof(Major))] int _major,
+      [JsonProperty(nameof(Minor))] int _minor,
+      [JsonProperty(nameof(Build))] int _build)
   {
-    Major = major;
-    Minor = minor;
-    Build = build;
+    Major = _major;
+    Minor = _minor;
+    Build = _build;
   }
 
   public SerializableVersion()
@@ -40,13 +40,13 @@ public class SerializableVersion : IEquatable<SerializableVersion>
 
   public int Build { get; }
 
-  public static bool operator ==(SerializableVersion a, SerializableVersion b)
+  public static bool operator ==(SerializableVersion? _a, SerializableVersion? _b)
   {
-    if (ReferenceEquals(a, b))
+    if (ReferenceEquals(_a, _b))
       return true;
-    if (a is null || b is null)
+    if (_a is null || _b is null)
       return false;
-    return a.Major == b.Major && a.Minor == b.Minor && a.Build == b.Build;
+    return _a.Major == _b.Major && _a.Minor == _b.Minor && _a.Build == _b.Build;
   }
 
   public static bool operator !=(SerializableVersion a, SerializableVersion b)
@@ -54,19 +54,19 @@ public class SerializableVersion : IEquatable<SerializableVersion>
     return !(a == b);
   }
 
-  public static bool operator >(SerializableVersion a, SerializableVersion b)
+  public static bool operator >(SerializableVersion _a, SerializableVersion _b)
   {
-    if (a.Major < b.Major)
+    if (_a.Major < _b.Major)
       return false;
-    if (a.Major > b.Major)
+    if (_a.Major > _b.Major)
       return true;
-    if (a.Minor < b.Minor)
+    if (_a.Minor < _b.Minor)
       return false;
-    if (a.Minor > b.Minor)
+    if (_a.Minor > _b.Minor)
       return true;
-    if (a.Build < b.Build)
+    if (_a.Build < _b.Build)
       return false;
-    if (a.Build > b.Build)
+    if (_a.Build > _b.Build)
       return true;
     return false;
   }
@@ -88,22 +88,22 @@ public class SerializableVersion : IEquatable<SerializableVersion>
     return false;
   }
 
-  public static bool operator <=(SerializableVersion a, SerializableVersion b)
+  public static bool operator <=(SerializableVersion _a, SerializableVersion _b)
   {
-    return a < b || a == b;
+    return _a < _b || _a == _b;
   }
 
-  public static bool operator >=(SerializableVersion a, SerializableVersion b)
+  public static bool operator >=(SerializableVersion _a, SerializableVersion _b)
   {
-    return a > b || a == b;
+    return _a > _b || _a == _b;
   }
 
   public bool Equals(SerializableVersion? _other)
   {
-    return 
-      _other is not null && 
-      Major == _other.Major && 
-      Minor == _other.Minor && 
+    return
+      _other is not null &&
+      Major == _other.Major &&
+      Minor == _other.Minor &&
       Build == _other.Build;
   }
 
@@ -124,6 +124,19 @@ public class SerializableVersion : IEquatable<SerializableVersion>
     return Major + "." + Minor + "." + Build;
   }
 
+  public int CompareTo(SerializableVersion? _other)
+  {
+    if (_other == null)
+      return -1;
+
+    if (this > _other)
+      return 1;
+
+    if (this < _other)
+      return -1;
+
+    return 0;
+  }
 
   class TypeConverter : System.ComponentModel.TypeConverter
   {

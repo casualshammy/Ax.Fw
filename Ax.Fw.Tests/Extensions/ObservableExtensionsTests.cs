@@ -51,4 +51,37 @@ public class ObservableExtensionsTests
     Assert.Equal(observableElementsCount - 1, lifeCompleteCounter);
   }
 
+  [Fact(Timeout = 10000)]
+  public async Task AliveTest()
+  {
+    using var lifetime = new Lifetime();
+
+    var observableElementsCount = 5;
+
+    var observable = Observable
+      .Return(Unit.Default)
+      .Repeat(observableElementsCount)
+      .Publish()
+      .RefCount();
+
+    var counter = 0L;
+    var lifeCompleteCounter = 0L;
+    var life = (IReadOnlyLifetime?)null;
+
+    observable
+      .Alive(lifetime, (_entry, _life) =>
+      {
+        var oldLife = Interlocked.Exchange(ref life, _life);
+        Assert.NotEqual(oldLife, _life);
+        _life.DoOnEnding(() => Interlocked.Increment(ref lifeCompleteCounter));
+        return 1;
+      })
+      .Subscribe(_ => Interlocked.Add(ref counter, _), lifetime);
+
+    await Task.Delay(1000);
+
+    Assert.Equal(observableElementsCount, counter);
+    Assert.Equal(observableElementsCount - 1, lifeCompleteCounter);
+  }
+
 }

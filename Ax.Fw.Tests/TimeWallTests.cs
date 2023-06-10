@@ -1,7 +1,4 @@
-﻿#nullable enable
-using System;
-using System.Diagnostics;
-using System.Reactive.Concurrency;
+﻿using System;
 using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
@@ -10,28 +7,36 @@ namespace Ax.Fw.Tests;
 
 public class TimeWallTests
 {
-    private readonly ITestOutputHelper p_output;
+  private readonly ITestOutputHelper p_output;
 
-    public TimeWallTests(ITestOutputHelper output)
+  public TimeWallTests(ITestOutputHelper _output)
+  {
+    p_output = _output;
+  }
+
+  [Fact(Timeout = 30000)]
+  public async Task SimpleTestAsync()
+  {
+    var timeWall = new TimeWall(10, TimeSpan.FromSeconds(5));
+    for (int i = 0; i < 10; i++)
     {
-        p_output = output;
+      await Task.Delay(TimeSpan.FromMilliseconds(100));
+      Assert.True(timeWall.TryGetTicket());
     }
 
-    [Fact(Timeout = 5000)]
-    public async Task SimpleTestAsync()
-    {
-        var timeWall = new TimeWall(10, TimeSpan.FromSeconds(0.25));
-        for (int i = 0; i < 10; i++)
-            Assert.True(timeWall.TryGetTicket());
+    Assert.False(timeWall.TryGetTicket());
 
-        Assert.False(timeWall.TryGetTicket());
+    await Task.Delay(TimeSpan.FromSeconds(2));
 
-        await Task.Delay(500);
-        for (int i = 0; i < 10; i++)
-            Assert.True(timeWall.TryGetTicket());
+    Assert.False(timeWall.TryGetTicket());
 
-        Assert.False(timeWall.TryGetTicket());
+    await Task.Delay(TimeSpan.FromSeconds(5));
 
-    }
+    for (int i = 0; i < 10; i++)
+      Assert.True(timeWall.TryGetTicket());
+
+    Assert.False(timeWall.TryGetTicket());
+
+  }
 
 }

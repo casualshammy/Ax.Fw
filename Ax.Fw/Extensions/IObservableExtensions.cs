@@ -13,6 +13,10 @@ namespace Ax.Fw.Extensions;
 
 public static class IObservableExtensions
 {
+#if NET6_0_OR_GREATER
+  record AliveCtx<T>(ILifetime? Lifetime, T? Value);
+#endif
+
   public static IObservable<TOut> SelectAsync<TIn, TOut>(this IObservable<TIn> _this, Func<TIn, Task<TOut>> _selector)
   {
     return _this
@@ -178,15 +182,36 @@ public static class IObservableExtensions
       .Subscribe(_lifetime);
   }
 
+#if NET6_0_OR_GREATER
+  public static IObservable<TOut?> Alive<TIn, TOut>(
+    this IObservable<TIn> _this,
+    IReadOnlyLifetime _lifetime,
+    Func<TIn, IReadOnlyLifetime, TOut> _functor)
+  {
+    return _this
+      .Scan(new AliveCtx<TOut>(null, default), (_acc, _entry) =>
+      {
+        _acc.Lifetime?.End();
+        var life = _lifetime.GetChildLifetime();
+        if (life == null)
+          return _acc with { Lifetime = null };
+
+        var result = _functor.Invoke(_entry, life);
+        return new AliveCtx<TOut>(life, result);
+      })
+      .Select(_ => _.Value);
+  }
+#endif
+
   static class ImmutableHashSetComparer<T>
   {
     private class Comparer : IEqualityComparer<ImmutableHashSet<T>>
     {
       public bool Equals(ImmutableHashSet<T>? _a, ImmutableHashSet<T>? _b)
       {
-        return 
-          _a != null && 
-          _b != null && 
+        return
+          _a != null &&
+          _b != null &&
           _a.SetEquals(_b);
       }
 
