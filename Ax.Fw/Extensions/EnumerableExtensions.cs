@@ -96,6 +96,7 @@ public static class EnumerableExtensions
         yield return entry;
   }
 
+#if !NET6_0_OR_GREATER
   public static async Task<List<TSource>> ToListAsync<TSource>(this IAsyncEnumerable<TSource> _source, CancellationToken _ct = default)
   {
     if (_source == null)
@@ -108,6 +109,7 @@ public static class EnumerableExtensions
 
     return list;
   }
+#endif
 
   public static T Mean<T>(this IEnumerable<T> _enumerable, Comparer<T>? _comparer = null)
   {

@@ -19,9 +19,11 @@ namespace Ax.Fw.Cache;
 public class FileCache
 {
   private readonly Subject<Unit> p_cleanReqFlow;
+  private readonly IReadOnlyLifetime p_lifetime;
   private readonly string p_folder;
   private readonly TimeSpan p_ttl;
   private readonly long p_maxFolderSize;
+  private readonly EventLoopScheduler p_cleanScheduler;
 
   public FileCache(
     IReadOnlyLifetime _lifetime,
@@ -30,18 +32,19 @@ public class FileCache
     long _maxFolderSize,
     TimeSpan? _cleanUpInterval)
   {
+    p_lifetime = _lifetime;
     p_folder = _folder;
     p_ttl = _filesTtl;
     p_maxFolderSize = _maxFolderSize;
 
-    var scheduler = _lifetime.ToDisposeOnEnding(new EventLoopScheduler());
-    p_cleanReqFlow = _lifetime.ToDisposeOnEnding(new Subject<Unit>());
+    p_cleanScheduler = _lifetime.ToDisposeOnEnded(new EventLoopScheduler());
+    p_cleanReqFlow = _lifetime.ToDisposeOnEnded(new Subject<Unit>());
 
     IObservable<Unit> cleanFlow;
     if (_cleanUpInterval != null)
     {
       cleanFlow = Observable
-        .Interval(_cleanUpInterval.Value, scheduler)
+        .Interval(_cleanUpInterval.Value, p_cleanScheduler)
         .StartWithDefault()
         .ToUnit();
     }
@@ -52,10 +55,10 @@ public class FileCache
 
     cleanFlow
 #if !DEBUG
-      .Delay(TimeSpan.FromMinutes(1), scheduler)
+      .Delay(TimeSpan.FromMinutes(1), p_cleanScheduler)
 #endif
       .Merge(p_cleanReqFlow)
-      .ObserveOn(scheduler)
+      .ObserveOn(p_cleanScheduler)
       .Subscribe(_ =>
       {
         var now = DateTimeOffset.UtcNow;
@@ -70,6 +73,8 @@ public class FileCache
         var folderSize = 0L;
         foreach (var file in enumerable)
         {
+          if (file.Name.EndsWith(".tmp") && file.TryDelete())
+            continue;
           if (now - file.LastWriteTimeUtc > p_ttl && file.TryDelete())
             continue;
 
@@ -90,9 +95,18 @@ public class FileCache
       Directory.CreateDirectory(folder);
 
     var file = Path.Combine(folder, hash);
+    var tmpFile = Path.Combine(folder, $"{hash}.tmp");
+    try
+    {
+      using (var fileStream = File.Open(tmpFile, FileMode.Create, FileAccess.Write, FileShare.None))
+        await _stream.CopyToAsync(fileStream, _ct);
 
-    using (var fileStream = File.Open(file, FileMode.Create, FileAccess.Write, FileShare.None))
-      await _stream.CopyToAsync(fileStream, _ct);
+      File.Move(tmpFile, file);
+    }
+    finally
+    {
+      new FileInfo(tmpFile).TryDelete();
+    }
   }
 
   public void Store(string _key, Stream _stream)
@@ -105,9 +119,19 @@ public class FileCache
       Directory.CreateDirectory(folder);
 
     var file = Path.Combine(folder, hash);
+    var tmpFile = Path.Combine(folder, $"{hash}.tmp");
 
-    using (var fileStream = File.Open(file, FileMode.Create, FileAccess.Write, FileShare.None))
-      _stream.CopyTo(fileStream);
+    try
+    {
+      using (var fileStream = File.Open(tmpFile, FileMode.Create, FileAccess.Write, FileShare.None))
+        _stream.CopyTo(fileStream);
+
+      File.Move(tmpFile, file);
+    }
+    finally
+    {
+      new FileInfo(tmpFile).TryDelete();
+    }
   }
 
   public Stream? Get(string _key)
@@ -144,6 +168,28 @@ public class FileCache
   /// Clean-up files: removes files older than TTL and removes newer files if occupied space is bigger than MaxFolderSize
   /// </summary>
   public void CleanFiles() => p_cleanReqFlow.OnNext();
+
+  /// <summary>
+  /// Delete all files from cache directory
+  /// </summary>
+  public void WipeFiles()
+  {
+    if (!Directory.Exists(p_folder))
+      return;
+
+    if (p_lifetime.IsCancellationRequested)
+      return;
+
+    p_cleanScheduler.Schedule(() =>
+    {
+      var enumerable = Directory
+        .EnumerateFiles(p_folder, "*", SearchOption.AllDirectories)
+        .Select(_ => new FileInfo(_));
+
+      foreach (var file in enumerable)
+        file.TryDelete();
+    });
+  }
 
   private string GetFolderForKey(string _key, out string _hash)
   {
