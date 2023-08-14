@@ -17,7 +17,7 @@ public class ProcessManager : IProcessManager
     bool _returnAllProcessesOnStart = false,
     Action<Exception>? _onError = null)
   {
-    var newProcessSubj = _lifetime.ToDisposeOnEnded(new Subject<Process>());
+    var newProcessSubj = _lifetime.ToDisposeOnEnded(new Subject<int>());
     var processClosedSubj = _lifetime.ToDisposeOnEnded(new Subject<int>());
 
     _lifetime.ToDisposeOnEnded(Pool<EventLoopScheduler>.Get(out var scanScheduler));
@@ -25,7 +25,7 @@ public class ProcessManager : IProcessManager
     Observable
       .Interval(TimeSpan.FromSeconds(1), scanScheduler)
       .ObserveOn(scanScheduler)
-      .Scan(new Dictionary<int, Process>(), (_acc, _) =>
+      .Scan(new HashSet<int>(), (_acc, _) =>
       {
         try
         {
@@ -33,22 +33,30 @@ public class ProcessManager : IProcessManager
             .GetProcesses()
             .ToDictionary(_ => _.Id, _ => _);
 
-          if (_acc.Count == 0 && !_returnAllProcessesOnStart)
-            return snapshot;
+          var newAcc = snapshot
+            .Select(_ => _.Key)
+            .ToHashSet();
 
-          foreach (var (processId, process) in snapshot)
-            if (!_acc.ContainsKey(processId))
-              newProcessSubj.OnNext(process);
-
-          foreach (var (processId, process) in _acc)
+          try
           {
-            if (!snapshot.ContainsKey(processId))
-              processClosedSubj.OnNext(processId);
+            if (_acc.Count == 0 && !_returnAllProcessesOnStart)
+              return newAcc;
 
-            process.Dispose();
+            foreach (var (processId, _) in snapshot)
+              if (!_acc.Contains(processId))
+                newProcessSubj.OnNext(processId);
+
+            foreach (var processId in _acc)
+              if (!snapshot.ContainsKey(processId))
+                processClosedSubj.OnNext(processId);
+
+            return newAcc;
           }
-
-          return snapshot;
+          finally
+          {
+            foreach (var (_, process) in snapshot)
+              process.Dispose();
+          }
         }
         catch (Exception ex)
         {
@@ -64,7 +72,7 @@ public class ProcessManager : IProcessManager
     OnProcessClosed = processClosedSubj.ObserveOn(clientScheduler);
   }
 
-  public IObservable<Process> OnProcessStarted { get; }
+  public IObservable<int> OnProcessStarted { get; }
   public IObservable<int> OnProcessClosed { get; }
 
 }
