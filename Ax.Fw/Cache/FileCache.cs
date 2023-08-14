@@ -139,7 +139,14 @@ public class FileCache
     if (!IsKeyExists(_key, out var path))
       return null;
 
-    return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+    try
+    {
+      return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+    }
+    catch
+    {
+      return null;
+    }
   }
 
   public bool IsKeyExists(string _key, [NotNullWhen(true)] out string? _path)
