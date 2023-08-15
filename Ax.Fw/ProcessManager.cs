@@ -17,15 +17,15 @@ public class ProcessManager : IProcessManager
     bool _returnAllProcessesOnStart = false,
     Action<Exception>? _onError = null)
   {
-    var newProcessSubj = _lifetime.ToDisposeOnEnded(new Subject<int>());
-    var processClosedSubj = _lifetime.ToDisposeOnEnded(new Subject<int>());
+    var newProcessSubj = _lifetime.ToDisposeOnEnded(new Subject<ProcessEventData>());
+    var processClosedSubj = _lifetime.ToDisposeOnEnded(new Subject<ProcessEventData>());
 
     _lifetime.ToDisposeOnEnded(Pool<EventLoopScheduler>.Get(out var scanScheduler));
 
     Observable
       .Interval(TimeSpan.FromSeconds(1), scanScheduler)
       .ObserveOn(scanScheduler)
-      .Scan(new HashSet<int>(), (_acc, _) =>
+      .Scan(new Dictionary<int, string>(), (_acc, _) =>
       {
         try
         {
@@ -34,21 +34,20 @@ public class ProcessManager : IProcessManager
             .ToDictionary(_ => _.Id, _ => _);
 
           var newAcc = snapshot
-            .Select(_ => _.Key)
-            .ToHashSet();
+            .ToDictionary(_ => _.Key, _ => _.Value.ProcessName);
 
           try
           {
             if (_acc.Count == 0 && !_returnAllProcessesOnStart)
               return newAcc;
 
-            foreach (var (processId, _) in snapshot)
-              if (!_acc.Contains(processId))
-                newProcessSubj.OnNext(processId);
+            foreach (var (processId, process) in snapshot)
+              if (!_acc.ContainsKey(processId))
+                newProcessSubj.OnNext(new ProcessEventData(processId, process.ProcessName));
 
-            foreach (var processId in _acc)
+            foreach (var (processId, processName) in _acc)
               if (!snapshot.ContainsKey(processId))
-                processClosedSubj.OnNext(processId);
+                processClosedSubj.OnNext(new ProcessEventData(processId, processName));
 
             return newAcc;
           }
@@ -72,7 +71,7 @@ public class ProcessManager : IProcessManager
     OnProcessClosed = processClosedSubj.ObserveOn(clientScheduler);
   }
 
-  public IObservable<int> OnProcessStarted { get; }
-  public IObservable<int> OnProcessClosed { get; }
+  public IObservable<ProcessEventData> OnProcessStarted { get; }
+  public IObservable<ProcessEventData> OnProcessClosed { get; }
 
 }

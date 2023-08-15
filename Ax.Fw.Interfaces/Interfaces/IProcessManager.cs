@@ -4,6 +4,6 @@ namespace Ax.Fw.SharedTypes.Interfaces;
 
 public interface IProcessManager
 {
-  IObservable<int> OnProcessStarted { get; }
-  IObservable<int> OnProcessClosed { get; }
+  IObservable<ProcessEventData> OnProcessStarted { get; }
+  IObservable<ProcessEventData> OnProcessClosed { get; }
 }
