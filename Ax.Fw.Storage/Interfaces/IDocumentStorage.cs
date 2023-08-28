@@ -53,13 +53,15 @@ public interface IDocumentStorage : IDisposable
   /// <summary>
   /// List documents meta info (without data)
   /// </summary>
+  /// <param name="_namespaceLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with namespace starting with "tel:123-456-")</param>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
   IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
-    string? _namespace,
+    LikeExpr? _namespaceLikeExpression = null,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
     [EnumeratorCancellation] CancellationToken _ct = default);
+  IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(string? _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
 
   /// <summary>
   /// List documents
@@ -71,6 +73,7 @@ public interface IDocumentStorage : IDisposable
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
     [EnumeratorCancellation] CancellationToken _ct = default);
+  IAsyncEnumerable<DocumentTypedEntry<T>> ListTypedDocumentsAsync<T>(string _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
 
 #pragma warning restore CS8424 // The EnumeratorCancellationAttribute will have no effect. The attribute is only effective on a parameter of type CancellationToken in an async-iterator method returning IAsyncEnumerable
   Task<DocumentEntry?> ReadDocumentAsync(string _namespace, string _key, CancellationToken _ct);

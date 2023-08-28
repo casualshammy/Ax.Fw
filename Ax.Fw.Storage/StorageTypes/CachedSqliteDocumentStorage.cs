@@ -67,6 +67,7 @@ public class CachedSqliteDocumentStorage : DisposableStack, IDocumentStorage
   }
 
 #pragma warning disable CS8424
+
   public IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
     string _namespace,
     LikeExpr? _keyLikeExpression = null,
@@ -78,23 +79,36 @@ public class CachedSqliteDocumentStorage : DisposableStack, IDocumentStorage
   }
 
   public IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
+    LikeExpr? _namespaceLikeExpression = null,
+    LikeExpr? _keyLikeExpression = null,
+    DateTimeOffset? _from = null,
+    DateTimeOffset? _to = null,
+    [EnumeratorCancellation] CancellationToken _ct = default) 
+    => p_documentStorage.ListDocumentsMetaAsync(_namespaceLikeExpression, _keyLikeExpression, _from, _to, _ct);
+
+  public IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
     string? _namespace,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
+    [EnumeratorCancellation] CancellationToken _ct = default) 
+    => p_documentStorage.ListDocumentsMetaAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
+
+  public IAsyncEnumerable<DocumentTypedEntry<T>> ListTypedDocumentsAsync<T>(
+    string _namespace,
+    LikeExpr? _keyLikeExpression = null,
+    DateTimeOffset? _from = null,
+    DateTimeOffset? _to = null,
     [EnumeratorCancellation] CancellationToken _ct = default)
-  {
-    return p_documentStorage.ListDocumentsMetaAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
-  }
+    => p_documentStorage.ListTypedDocumentsAsync<T>(_namespace, _keyLikeExpression, _from, _to, _ct);
 
   public IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
     [EnumeratorCancellation] CancellationToken _ct = default)
-  {
-    return p_documentStorage.ListSimpleDocumentsAsync<T>(_keyLikeExpression, _from, _to, _ct);
-  }
+    => p_documentStorage.ListSimpleDocumentsAsync<T>(_keyLikeExpression, _from, _to, _ct);
+
 #pragma warning restore CS8424
 
   public Task<DocumentEntry?> ReadDocumentAsync(string _namespace, string _key, CancellationToken _ct)

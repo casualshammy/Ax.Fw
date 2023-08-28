@@ -221,10 +221,52 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   }
 
   /// <summary>
+  /// List documents meta info (without data)
+  /// </summary>
+  /// <param name="_namespaceLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with namespace starting with "tel:123-456-")</param>
+  /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
+  public async IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
+    LikeExpr? _namespaceLikeExpression = null,
+    LikeExpr? _keyLikeExpression = null,
+    DateTimeOffset? _from = null,
+    DateTimeOffset? _to = null,
+    [EnumeratorCancellation] CancellationToken _ct = default)
+  {
+    var listSql =
+        $"SELECT doc_id, namespace, key, last_modified, created, version " +
+        $"FROM document_data " +
+        $"WHERE " +
+        $"  (@namespace_like IS NULL OR namespace LIKE @namespace_like) AND " +
+        $"  (@key_like IS NULL OR key LIKE @key_like) AND " +
+        $"  (@from IS NULL OR last_modified>=@from) AND " +
+        $"  (@to IS NULL OR last_modified<=@to); ";
+
+    await using var cmd = new SQLiteCommand(p_connection);
+    cmd.CommandText = listSql;
+    cmd.Parameters.AddWithValue("@namespace_like", _namespaceLikeExpression?.Pattern);
+    cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression?.Pattern);
+    cmd.Parameters.AddWithValue("@from", _from?.UtcTicks);
+    cmd.Parameters.AddWithValue("@to", _to?.UtcTicks);
+
+    await using var reader = await cmd.ExecuteReaderAsync(_ct);
+    while (await reader.ReadAsync(_ct))
+    {
+      var docId = reader.GetInt32(0);
+      var ns = reader.GetString(1);
+      var optionalKey = reader.GetString(2);
+      var lastModified = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
+      var created = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
+      var version = reader.GetInt64(5);
+
+      yield return new DocumentEntryMeta(docId, ns, optionalKey, lastModified, created, version);
+    }
+  }
+
+  /// <summary>
   /// List documents
   /// </summary>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  public  async IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
+  public async IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
     string _namespace,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
@@ -264,19 +306,18 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   }
 
   /// <summary>
-  /// List documents
-  /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
+  /// List typed documents
   /// </summary>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  public  async IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
+  /// <returns></returns>
+  public async IAsyncEnumerable<DocumentTypedEntry<T>> ListTypedDocumentsAsync<T>(
+    string _namespace,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
     [EnumeratorCancellation] CancellationToken _ct = default)
   {
-    var ns = typeof(T).GetNamespaceFromType();
-
-    await foreach (var document in ListDocumentsAsync(ns, _keyLikeExpression, _from, _to, _ct))
+    await foreach (var document in ListDocumentsAsync(_namespace, _keyLikeExpression, _from, _to, _ct))
     {
       var data = document.Data.ToObject<T>();
       if (data == null)
@@ -295,10 +336,29 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     }
   }
 
+#pragma warning disable CS8424 // The EnumeratorCancellationAttribute will have no effect. The attribute is only effective on a parameter of type CancellationToken in an async-iterator method returning IAsyncEnumerable
+
+  /// <summary>
+  /// List documents
+  /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
+  /// </summary>
+  /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
+  public IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
+    LikeExpr? _keyLikeExpression = null,
+    DateTimeOffset? _from = null,
+    DateTimeOffset? _to = null,
+    [EnumeratorCancellation] CancellationToken _ct = default)
+  {
+    var ns = typeof(T).GetNamespaceFromType();
+    return ListTypedDocumentsAsync<T>(ns, _keyLikeExpression, _from, _to, _ct);
+  }
+
+#pragma warning restore CS8424 // The EnumeratorCancellationAttribute will have no effect. The attribute is only effective on a parameter of type CancellationToken in an async-iterator method returning IAsyncEnumerable
+
   /// <summary>
   /// Read document from the database
   /// </summary>
-  public  async Task<DocumentEntry?> ReadDocumentAsync(
+  public async Task<DocumentEntry?> ReadDocumentAsync(
       string _namespace,
       string _key,
       CancellationToken _ct)
@@ -336,7 +396,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// <summary>
   /// Read document from the database
   /// </summary>
-  public  async Task<DocumentEntry?> ReadDocumentAsync(
+  public async Task<DocumentEntry?> ReadDocumentAsync(
       string _namespace,
       int _key,
       CancellationToken _ct)
@@ -344,10 +404,12 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     return await ReadDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), _ct);
   }
 
+
+
   /// <summary>
   /// Read document from the database and deserialize data
   /// </summary>
-  public  async Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(
+  public async Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(
       string _namespace,
       string _key,
       CancellationToken _ct)
@@ -387,7 +449,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// Read document from the database and deserialize data
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public  async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
+  public async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
 
@@ -413,7 +475,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// Read document from the database and deserialize data
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public  async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
+  public async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
   {
     return await ReadSimpleDocumentAsync<T>(_entryId.ToString(), _ct);
   }
@@ -433,7 +495,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// </summary>
   /// <param name="_force">If true, forcefully performs full flush and then truncates temporary file to zero bytes</param>
   /// <returns></returns>
-  public  async Task FlushAsync(bool _force, CancellationToken _ct)
+  public async Task FlushAsync(bool _force, CancellationToken _ct)
   {
     await using var command = new SQLiteCommand(p_connection);
     command.CommandText = $"PRAGMA wal_checkpoint({(_force ? "TRUNCATE" : "PASSIVE")});";

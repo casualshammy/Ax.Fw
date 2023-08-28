@@ -36,7 +36,7 @@ public class DocumentStorageWithRetentionRules : DisposableStack, IDocumentStora
         var now = DateTimeOffset.UtcNow;
         var docsToDeleteBuilder = ImmutableHashSet.CreateBuilder<DocumentEntryMeta>();
 
-        await foreach (var doc in _documentStorage.ListDocumentsMetaAsync(null, _ct: _ct).ConfigureAwait(false))
+        await foreach (var doc in _documentStorage.ListDocumentsMetaAsync((string?)null, _ct: _ct).ConfigureAwait(false))
         {
           var docAge = now - doc.Created;
           var docLastModifiedAge = now - doc.LastModified;
@@ -95,12 +95,28 @@ public class DocumentStorageWithRetentionRules : DisposableStack, IDocumentStora
     => p_documentStorage.ListDocumentsAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
 
   public IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
-    string? _namespace,
+    LikeExpr? _namespaceLikeExpression = null,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
     [EnumeratorCancellation] CancellationToken _ct = default)
+    => p_documentStorage.ListDocumentsMetaAsync(_namespaceLikeExpression, _keyLikeExpression, _from, _to, _ct);
+
+  public IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
+    string? _namespace,
+    LikeExpr? _keyLikeExpression = null,
+    DateTimeOffset? _from = null,
+    DateTimeOffset? _to = null,
+    [EnumeratorCancellation] CancellationToken _ct = default) 
     => p_documentStorage.ListDocumentsMetaAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
+
+  public IAsyncEnumerable<DocumentTypedEntry<T>> ListTypedDocumentsAsync<T>(
+    string _namespace,
+    LikeExpr? _keyLikeExpression = null,
+    DateTimeOffset? _from = null,
+    DateTimeOffset? _to = null,
+    [EnumeratorCancellation] CancellationToken _ct = default) 
+    => p_documentStorage.ListTypedDocumentsAsync<T>(_namespace, _keyLikeExpression, _from, _to, _ct);
 
   public IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
     LikeExpr? _keyLikeExpression = null,
