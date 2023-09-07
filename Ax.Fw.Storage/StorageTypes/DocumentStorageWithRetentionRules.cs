@@ -1,4 +1,5 @@
 ﻿using Ax.Fw.Extensions;
+using Ax.Fw.Pools;
 using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Interfaces;
 using Newtonsoft.Json.Linq;
@@ -25,7 +26,7 @@ public class DocumentStorageWithRetentionRules : DisposableStack, IDocumentStora
     p_documentStorage = ToDispose(_documentStorage);
     p_deletedDocsFlow = ToDispose(new Subject<ImmutableHashSet<DocumentEntryMeta>>());
 
-    ToDispose(Pool<EventLoopScheduler>.Get(out var scheduler));
+    ToDispose(SharedPool<EventLoopScheduler>.Get(out var scheduler));
 
     var subscription = Observable
       .Interval(_scanInterval ?? TimeSpan.FromMinutes(10), scheduler)

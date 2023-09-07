@@ -1,5 +1,6 @@
 ﻿using Ax.Fw.Extensions;
 using Ax.Fw.JsonStorages.Parts;
+using Ax.Fw.Pools;
 using Ax.Fw.SharedTypes.Interfaces;
 using Newtonsoft.Json;
 using System;
@@ -25,7 +26,7 @@ public class JsonObservableStorage<T> : JsonStorage<T>, IJsonObservable<T?>
   public JsonObservableStorage(ILifetime _lifetime, string _jsonFilePath) : base(_jsonFilePath)
   {
     _lifetime.ToDisposeOnEnding(p_changesFlow);
-    _lifetime.ToDisposeOnEnding(Pool<EventLoopScheduler>.Get(out var scheduler));
+    _lifetime.ToDisposeOnEnding(SharedPool<EventLoopScheduler>.Get(out var scheduler));
 
     Observable
       .Interval(TimeSpan.FromSeconds(1), scheduler)

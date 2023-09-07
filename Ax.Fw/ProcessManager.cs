@@ -1,4 +1,5 @@
 ﻿using Ax.Fw.Extensions;
+using Ax.Fw.Pools;
 using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -20,7 +21,7 @@ public class ProcessManager : IProcessManager
     var newProcessSubj = _lifetime.ToDisposeOnEnded(new Subject<ProcessEventData>());
     var processClosedSubj = _lifetime.ToDisposeOnEnded(new Subject<ProcessEventData>());
 
-    _lifetime.ToDisposeOnEnded(Pool<EventLoopScheduler>.Get(out var scanScheduler));
+    _lifetime.ToDisposeOnEnded(SharedPool<EventLoopScheduler>.Get(out var scanScheduler));
 
     Observable
       .Interval(TimeSpan.FromSeconds(1), scanScheduler)
@@ -65,7 +66,7 @@ public class ProcessManager : IProcessManager
       })
       .Subscribe(_lifetime);
 
-    _lifetime.ToDisposeOnEnded(Pool<EventLoopScheduler>.Get(out var clientScheduler));
+    _lifetime.ToDisposeOnEnded(SharedPool<EventLoopScheduler>.Get(out var clientScheduler));
 
     OnProcessStarted = newProcessSubj.ObserveOn(clientScheduler);
     OnProcessClosed = processClosedSubj.ObserveOn(clientScheduler);
