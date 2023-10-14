@@ -1,4 +1,8 @@
-﻿using System.IO;
+﻿using Ax.Fw.Crypto;
+using Microsoft.VisualStudio.TestPlatform.Utilities;
+using System;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -58,9 +62,13 @@ public class EncryptTests
   }
 
   [Theory(Timeout = 30000)]
-  [InlineData(true)]
-  [InlineData(false)]
-  public async Task EncryptDecryptArrayAsync(bool _useFastHashing)
+  [InlineData(true, 10 * 1024)]
+  [InlineData(true, 1024 * 1024)]
+  [InlineData(true, 1165217)]
+  [InlineData(false, 10 * 1024)]
+  [InlineData(false, 1024 * 1024)]
+  [InlineData(false, 1165217)]
+  public async Task EncryptDecryptArrayAsync(bool _useFastHashing, int _size)
   {
     var lifetime = new Lifetime();
     try
@@ -135,6 +143,35 @@ public class EncryptTests
           Assert.NotEqual(data, decryptedData);
         }
       }
+    }
+    finally
+    {
+      lifetime.End();
+    }
+  }
+
+  [Theory(Timeout = 30000)]
+  [InlineData(10 * 1024)]
+  [InlineData(1024 * 1024)]
+  [InlineData(1165217)]
+  public async Task Chacha20Poly1305SimpleTestAsync(int _size)
+  {
+    var lifetime = new Lifetime();
+    try
+    {
+      var key = Utilities.GetRandomString(8, false);
+      var data = new byte[_size];
+      Random.Shared.NextBytes(data);
+
+      var chacha = new ChaCha20WithPoly1305(lifetime, key);
+
+      var encryptedData = await chacha.EncryptAsync(data, lifetime.Token);
+      Assert.NotEmpty(encryptedData);
+      Assert.NotEqual(data, encryptedData);
+
+      var decryptedData = await chacha.DecryptAsync(encryptedData, lifetime.Token);
+      Assert.NotEmpty(decryptedData);
+      Assert.Equal(data, decryptedData);
     }
     finally
     {

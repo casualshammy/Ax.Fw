@@ -1,11 +1,14 @@
 ﻿using Ax.Fw.SharedTypes.Data;
+using Ax.Fw.SharedTypes.Interfaces;
 using System;
+using System.Buffers;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Ax.Fw;
 
@@ -18,11 +21,8 @@ public static class Cryptography
     if (!_inStream.CanRead)
       throw new NotSupportedException($"Can't read from '{nameof(_inStream)}'!");
 
-    using (var rijCrypto = Aes.Create("AES"))
+    using (var rijCrypto = Aes.Create())
     {
-      if (rijCrypto == null)
-        throw new NotSupportedException("Can't initialize AES engine!");
-
       rijCrypto.KeySize = 256;
       rijCrypto.BlockSize = 128;
 
@@ -50,11 +50,8 @@ public static class Cryptography
 
   public static async Task<byte[]> EncryptAes(byte[] _data, byte[] _password, bool _useFastHashing = false, CancellationToken _ct = default)
   {
-    using (var rijCrypto = Aes.Create("AES"))
+    using (var rijCrypto = Aes.Create())
     {
-      if (rijCrypto == null)
-        throw new NotSupportedException("Can't initialize AES engine!");
-
       rijCrypto.KeySize = 256;
       rijCrypto.BlockSize = 128;
 
@@ -93,11 +90,8 @@ public static class Cryptography
     if (!_inEncryptedStream.CanRead)
       throw new NotSupportedException($"Can't read from '{nameof(_inEncryptedStream)}'!");
 
-    using (var rijCrypto = Aes.Create("AES"))
+    using (var rijCrypto = Aes.Create())
     {
-      if (rijCrypto == null)
-        throw new NotSupportedException("Can't initialize AES engine!");
-
       rijCrypto.KeySize = 256;
       rijCrypto.BlockSize = 128;
 
@@ -125,11 +119,8 @@ public static class Cryptography
 
   public static async Task<byte[]> DecryptAes(byte[] _encryptedData, byte[] _password, bool _useFastHashing = false, CancellationToken _ct = default)
   {
-    using (var rijCrypto = Aes.Create("AES"))
+    using (var rijCrypto = Aes.Create())
     {
-      if (rijCrypto == null)
-        throw new NotSupportedException("Can't initialize AES engine!");
-
       rijCrypto.KeySize = 256;
       rijCrypto.BlockSize = 128;
 
