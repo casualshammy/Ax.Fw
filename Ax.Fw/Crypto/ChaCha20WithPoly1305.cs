@@ -12,7 +12,7 @@ namespace Ax.Fw.Crypto;
 #if NET6_0_OR_GREATER
 public class ChaCha20WithPoly1305 : ICryptoAlgorithm
 {
-  private readonly System.Security.Cryptography.ChaCha20Poly1305 p_chacha;
+  private readonly ChaCha20Poly1305 p_chacha;
   private long p_nonce = long.MinValue;
 
   public ChaCha20WithPoly1305(IReadOnlyLifetime _lifetime, string _key)

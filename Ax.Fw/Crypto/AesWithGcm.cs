@@ -60,4 +60,5 @@ public class AesWithGcm : ICryptoAlgorithm
     p_aesGcm.Decrypt(nonce, cipherBytes, tag, result);
     return result.ToArray();
   }
+
 }
