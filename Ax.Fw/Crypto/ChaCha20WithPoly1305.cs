@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Ax.Fw.SharedTypes.Interfaces;
+using System;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Linq;
@@ -8,17 +9,18 @@ using System.Threading;
 
 namespace Ax.Fw.Crypto;
 
-public class ChaCha20WithPoly1305
+#if NET6_0_OR_GREATER
+public class ChaCha20WithPoly1305 : ICryptoAlgorithm
 {
-  private readonly NaCl.Core.ChaCha20Poly1305 p_chacha;
+  private readonly System.Security.Cryptography.ChaCha20Poly1305 p_chacha;
   private long p_nonce = long.MinValue;
 
-  public ChaCha20WithPoly1305(string _key)
+  public ChaCha20WithPoly1305(IReadOnlyLifetime _lifetime, string _key)
   {
     var key = Encoding.UTF8.GetBytes(_key);
     using var sha = SHA512.Create();
     var hashSource = sha.ComputeHash(key);
-    p_chacha = new(hashSource.Take(32).ToArray());
+    p_chacha = _lifetime.ToDisposeOnEnding(new ChaCha20Poly1305(hashSource.Take(32).ToArray()));
   }
 
   public byte[] Encrypt(byte[] _data)
@@ -59,3 +61,4 @@ public class ChaCha20WithPoly1305
   }
 
 }
+#endif

@@ -21,7 +21,6 @@
 	<ItemGroup>
 		<PackageReference Include="Grace.DependencyInjection.Extensions" Version="7.1.0" />
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="7.0.0" />
-		<PackageReference Include="NaCl.Core" Version="2.0.5" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 		<PackageReference Include="System.Collections.Immutable" Version="7.0.0" />
 		<PackageReference Include="System.Reactive" Version="6.0.0" />

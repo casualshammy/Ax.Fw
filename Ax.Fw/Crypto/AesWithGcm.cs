@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Ax.Fw.SharedTypes.Interfaces;
+using System;
 using System.Buffers.Binary;
 using System.Linq;
 using System.Security.Cryptography;
@@ -7,12 +8,12 @@ using System.Threading;
 
 namespace Ax.Fw.Crypto;
 
-public class AesWithGcm
+public class AesWithGcm : ICryptoAlgorithm
 {
   private readonly AesGcm p_aesGcm;
   private long p_nonce = long.MinValue;
 
-  public AesWithGcm(string _key, int _keyLengthBits = 256)
+  public AesWithGcm(IReadOnlyLifetime _lifetime, string _key, int _keyLengthBits = 256)
   {
     if (_keyLengthBits != 128 && _keyLengthBits != 192 && _keyLengthBits != 256)
       throw new ArgumentOutOfRangeException(nameof(_keyLengthBits), $"Key length must be 16, 24, or 32 bytes (128, 192, or 256 bits)");
@@ -20,7 +21,7 @@ public class AesWithGcm
     var key = Encoding.UTF8.GetBytes(_key);
     using var sha = SHA512.Create();
     var hashSource = sha.ComputeHash(key);
-    p_aesGcm = new(hashSource.Take(_keyLengthBits/8).ToArray());
+    p_aesGcm = _lifetime.ToDisposeOnEnding(new AesGcm(hashSource.Take(_keyLengthBits / 8).ToArray()));
   }
 
   public byte[] Encrypt(byte[] _data)
