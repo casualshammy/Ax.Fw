@@ -1,7 +1,5 @@
 ﻿using Ax.Fw.Crypto;
-using Microsoft.VisualStudio.TestPlatform.Utilities;
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -155,13 +153,17 @@ public class EncryptTests
   [InlineData(10 * 1024)]
   [InlineData(1024 * 1024)]
   [InlineData(1165217)]
-  public void Chacha20Poly1305SimpleTestAsync(int _size)
+  public void Chacha20Poly1305SimpleTest(int _size)
   {
+    if (Environment.OSVersion.Platform == PlatformID.Win32NT && Environment.OSVersion.Version.Build < 20142)
+      return;
+
+    using var lifetime = new Lifetime();
     var key = Utilities.GetRandomString(8, false);
     var data = new byte[_size];
     Random.Shared.NextBytes(data);
 
-    var chacha = new ChaCha20WithPoly1305(key);
+    var chacha = new ChaCha20WithPoly1305(lifetime, key);
 
     var encryptedData = chacha.Encrypt(data);
     Assert.NotEmpty(encryptedData);
@@ -179,19 +181,45 @@ public class EncryptTests
   [InlineData(256, 512)]
   [InlineData(256, 1024 * 1024)]
   [InlineData(256, 1165217)]
-  public void AesGcm128SimpleTestAsync(int _keySize, int _taskSize)
+  public void AesGcmSimpleTest(int _keySize, int _taskSize)
   {
+    using var lifetime = new Lifetime();
     var key = Utilities.GetRandomString(8, false);
     var data = new byte[_taskSize];
     Random.Shared.NextBytes(data);
 
-    var chacha = new AesWithGcm(key, _keySize);
+    var aesGcm = new AesWithGcm(lifetime, key, _keySize);
 
-    var encryptedData = chacha.Encrypt(data);
+    var encryptedData = aesGcm.Encrypt(data);
     Assert.NotEmpty(encryptedData);
     Assert.NotEqual(data, encryptedData);
 
-    var decryptedData = chacha.Decrypt(encryptedData);
+    var decryptedData = aesGcm.Decrypt(encryptedData);
+    Assert.NotEmpty(decryptedData);
+    Assert.Equal(data, decryptedData);
+  }
+
+  [Theory(Timeout = 30000)]
+  [InlineData(128, 512)]
+  [InlineData(128, 1024 * 1024)]
+  [InlineData(128, 1165217)]
+  [InlineData(256, 512)]
+  [InlineData(256, 1024 * 1024)]
+  [InlineData(256, 1165217)]
+  public void AesCbcTest(int _keySize, int _taskSize)
+  {
+    using var lifetime = new Lifetime();
+    var key = Utilities.GetRandomString(8, false);
+    var data = new byte[_taskSize];
+    Random.Shared.NextBytes(data);
+
+    var aes = new AesCbc(lifetime, key, _keySize);
+
+    var encryptedData = aes.Encrypt(data);
+    Assert.NotEmpty(encryptedData);
+    Assert.NotEqual(data, encryptedData);
+
+    var decryptedData = aes.Decrypt(encryptedData);
     Assert.NotEmpty(decryptedData);
     Assert.Equal(data, decryptedData);
   }
