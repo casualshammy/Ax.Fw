@@ -1,7 +1,9 @@
-﻿namespace Ax.Fw.SharedTypes.Interfaces;
+﻿using System;
+
+namespace Ax.Fw.SharedTypes.Interfaces;
 
 public interface ICryptoAlgorithm
 {
-  byte[] Decrypt(byte[] _data);
-  byte[] Encrypt(byte[] _data);
+  Span<byte> Decrypt(ReadOnlySpan<byte> _data);
+  Span<byte> Encrypt(ReadOnlySpan<byte> _data);
 }

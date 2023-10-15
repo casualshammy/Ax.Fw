@@ -166,12 +166,14 @@ public class EncryptTests
     var chacha = new ChaCha20WithPoly1305(lifetime, key);
 
     var encryptedData = chacha.Encrypt(data);
-    Assert.NotEmpty(encryptedData);
-    Assert.NotEqual(data, encryptedData);
+    var encryptedDataBytes = encryptedData.ToArray();
+    Assert.NotEmpty(encryptedData.ToArray());
+    Assert.NotEqual(data, encryptedDataBytes);
 
     var decryptedData = chacha.Decrypt(encryptedData);
-    Assert.NotEmpty(decryptedData);
-    Assert.Equal(data, decryptedData);
+    var decryptedDataBytes = decryptedData.ToArray();
+    Assert.NotEmpty(decryptedDataBytes);
+    Assert.Equal(data, decryptedDataBytes);
   }
 
   [Theory(Timeout = 30000)]
@@ -191,12 +193,14 @@ public class EncryptTests
     var aesGcm = new AesWithGcm(lifetime, key, _keySize);
 
     var encryptedData = aesGcm.Encrypt(data);
-    Assert.NotEmpty(encryptedData);
-    Assert.NotEqual(data, encryptedData);
+    var encryptedDataBytes = encryptedData.ToArray();
+    Assert.NotEmpty(encryptedData.ToArray());
+    Assert.NotEqual(data, encryptedDataBytes);
 
     var decryptedData = aesGcm.Decrypt(encryptedData);
-    Assert.NotEmpty(decryptedData);
-    Assert.Equal(data, decryptedData);
+    var decryptedDataBytes = decryptedData.ToArray();
+    Assert.NotEmpty(decryptedDataBytes);
+    Assert.Equal(data, decryptedDataBytes);
   }
 
   [Theory(Timeout = 30000)]
@@ -216,12 +220,14 @@ public class EncryptTests
     var aes = new AesCbc(lifetime, key, _keySize);
 
     var encryptedData = aes.Encrypt(data);
-    Assert.NotEmpty(encryptedData);
-    Assert.NotEqual(data, encryptedData);
+    var encryptedDataBytes = encryptedData.ToArray();
+    Assert.NotEmpty(encryptedData.ToArray());
+    Assert.NotEqual(data, encryptedDataBytes);
 
     var decryptedData = aes.Decrypt(encryptedData);
-    Assert.NotEmpty(decryptedData);
-    Assert.Equal(data, decryptedData);
+    var decryptedDataBytes = decryptedData.ToArray();
+    Assert.NotEmpty(decryptedDataBytes);
+    Assert.Equal(data, decryptedDataBytes);
   }
 
 }
