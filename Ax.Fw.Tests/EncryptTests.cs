@@ -151,32 +151,49 @@ public class EncryptTests
   }
 
   [Theory(Timeout = 30000)]
+  [InlineData(512)]
   [InlineData(10 * 1024)]
   [InlineData(1024 * 1024)]
   [InlineData(1165217)]
-  public async Task Chacha20Poly1305SimpleTestAsync(int _size)
+  public void Chacha20Poly1305SimpleTestAsync(int _size)
   {
-    var lifetime = new Lifetime();
-    try
-    {
-      var key = Utilities.GetRandomString(8, false);
-      var data = new byte[_size];
-      Random.Shared.NextBytes(data);
+    var key = Utilities.GetRandomString(8, false);
+    var data = new byte[_size];
+    Random.Shared.NextBytes(data);
 
-      var chacha = new ChaCha20WithPoly1305(lifetime, key);
+    var chacha = new ChaCha20WithPoly1305(key);
 
-      var encryptedData = await chacha.EncryptAsync(data, lifetime.Token);
-      Assert.NotEmpty(encryptedData);
-      Assert.NotEqual(data, encryptedData);
+    var encryptedData = chacha.Encrypt(data);
+    Assert.NotEmpty(encryptedData);
+    Assert.NotEqual(data, encryptedData);
 
-      var decryptedData = await chacha.DecryptAsync(encryptedData, lifetime.Token);
-      Assert.NotEmpty(decryptedData);
-      Assert.Equal(data, decryptedData);
-    }
-    finally
-    {
-      lifetime.End();
-    }
+    var decryptedData = chacha.Decrypt(encryptedData);
+    Assert.NotEmpty(decryptedData);
+    Assert.Equal(data, decryptedData);
+  }
+
+  [Theory(Timeout = 30000)]
+  [InlineData(128, 512)]
+  [InlineData(128, 1024 * 1024)]
+  [InlineData(128, 1165217)]
+  [InlineData(256, 512)]
+  [InlineData(256, 1024 * 1024)]
+  [InlineData(256, 1165217)]
+  public void AesGcm128SimpleTestAsync(int _keySize, int _taskSize)
+  {
+    var key = Utilities.GetRandomString(8, false);
+    var data = new byte[_taskSize];
+    Random.Shared.NextBytes(data);
+
+    var chacha = new AesWithGcm(key, _keySize);
+
+    var encryptedData = chacha.Encrypt(data);
+    Assert.NotEmpty(encryptedData);
+    Assert.NotEqual(data, encryptedData);
+
+    var decryptedData = chacha.Decrypt(encryptedData);
+    Assert.NotEmpty(decryptedData);
+    Assert.Equal(data, decryptedData);
   }
 
 }
