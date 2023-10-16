@@ -1,5 +1,6 @@
 ﻿using Ax.Fw.Crypto;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -228,6 +229,86 @@ public class EncryptTests
     var decryptedDataBytes = decryptedData.ToArray();
     Assert.NotEmpty(decryptedDataBytes);
     Assert.Equal(data, decryptedDataBytes);
+  }
+
+  [Fact(Timeout = 30000)]
+  public void AesGcmStreamTest()
+  {
+    var key = Encoding.UTF8.GetBytes("fsdg54v26h4v35h4v2f68yb426");
+    var data = new byte[10 * 1024 * 1024 - 6547];
+    var sw = Stopwatch.StartNew();
+
+    using var msRaw = new MemoryStream(data);
+    using var msEnc = new MemoryStream();
+
+    sw.Restart();
+    AesWithGcm.EncryptStream(msRaw, msEnc, key);
+    p_output.WriteLine($"AesGcm: encoding took {sw.ElapsedMilliseconds} ms");
+    Assert.True(msEnc.Length > msRaw.Length);
+
+    msEnc.Position = 0;
+    using var msDec = new MemoryStream();
+    sw.Restart();
+    AesWithGcm.DecryptStream(msEnc, msDec, key);
+    p_output.WriteLine($"AesGcm: decoding took {sw.ElapsedMilliseconds} ms");
+
+    Assert.Equal(msDec.Length, data.Length);
+    Assert.Equal(msDec.ToArray(), data);
+  }
+
+  [Fact(Timeout = 30000)]
+  public void ChaCha20WithPoly1305StreamTest()
+  {
+    if (Environment.OSVersion.Platform == PlatformID.Win32NT && Environment.OSVersion.Version.Build < 20142)
+      return;
+
+    var key = Encoding.UTF8.GetBytes("fsdg54v26h4v35h4v2f68yb426");
+    var data = new byte[10 * 1024 * 1024 - 6547];
+    var sw = Stopwatch.StartNew();
+
+    using var msRaw = new MemoryStream(data);
+    using var msEnc = new MemoryStream();
+
+    sw.Restart();
+    ChaCha20WithPoly1305.EncryptStream(msRaw, msEnc, key);
+    p_output.WriteLine($"ChaChaPoly1305: encoding took {sw.ElapsedMilliseconds} ms");
+    Assert.True(msEnc.Length > msRaw.Length);
+
+    msEnc.Position = 0;
+    using var msDec = new MemoryStream();
+    sw.Restart();
+    ChaCha20WithPoly1305.DecryptStream(msEnc, msDec, key);
+    p_output.WriteLine($"ChaChaPoly1305: decoding took {sw.ElapsedMilliseconds} ms");
+
+    Assert.Equal(msDec.Length, data.Length);
+    Assert.Equal(msDec.ToArray(), data);
+  }
+
+  [Theory(Timeout = 30000)]
+  [InlineData(true)]
+  [InlineData(false)]
+  public async Task AesStreamTestAsync(bool _fastHashing)
+  {
+    var key = Encoding.UTF8.GetBytes("fsdg54v26h4v35h4v2f68yb426");
+    var data = new byte[10 * 1024 * 1024 - 6547];
+    var sw = Stopwatch.StartNew();
+
+    using var msRaw = new MemoryStream(data);
+    using var msEnc = new MemoryStream();
+
+    sw.Restart();
+    await AesCbc.EncryptAsync(msRaw, msEnc, key, _fastHashing);
+    p_output.WriteLine($"AesCbc: encoding (fast hashing: {_fastHashing}) took {sw.ElapsedMilliseconds} ms");
+    Assert.True(msEnc.Length > msRaw.Length);
+
+    msEnc.Position = 0;
+    using var msDec = new MemoryStream();
+    sw.Restart();
+    await AesCbc.DecryptAsync(msEnc, msDec, key, _fastHashing);
+    p_output.WriteLine($"AesCbc: decoding (fast hashing: {_fastHashing}) took {sw.ElapsedMilliseconds} ms");
+
+    Assert.Equal(msDec.Length, data.Length);
+    Assert.Equal(msDec.ToArray(), data);
   }
 
 }
