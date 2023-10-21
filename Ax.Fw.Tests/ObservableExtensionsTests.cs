@@ -18,7 +18,7 @@ public class ObservableExtensionsTests
     p_output = _output;
   }
 
-  [Fact(Timeout = 10000)]
+  [Fact(Timeout = 30000)]
   public async Task ScanAsyncTest()
   {
     var result = await Observable

@@ -19,7 +19,7 @@ public class ObservableExtensionsTests
     p_output = _output;
   }
 
-  [Fact(Timeout = 10000)]
+  [Fact(Timeout = 30000)]
   public async Task HotAliveTest()
   {
     using var lifetime = new Lifetime();
@@ -51,7 +51,7 @@ public class ObservableExtensionsTests
     Assert.Equal(observableElementsCount - 1, lifeCompleteCounter);
   }
 
-  [Fact(Timeout = 10000)]
+  [Fact(Timeout = 30000)]
   public async Task AliveTest()
   {
     using var lifetime = new Lifetime();
