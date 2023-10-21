@@ -181,9 +181,11 @@ public class EncryptTests
   [InlineData(128, 512)]
   [InlineData(128, 1024 * 1024)]
   [InlineData(128, 1165217)]
+  [InlineData(128, 11652170)]
   [InlineData(256, 512)]
   [InlineData(256, 1024 * 1024)]
   [InlineData(256, 1165217)]
+  [InlineData(256, 11652170)]
   public void AesGcmSimpleTest(int _keySize, int _taskSize)
   {
     using var lifetime = new Lifetime();
@@ -192,13 +194,18 @@ public class EncryptTests
     Random.Shared.NextBytes(data);
 
     var aesGcm = new AesWithGcm(lifetime, key, _keySize);
+    var sw = Stopwatch.StartNew();
 
+    sw.Restart();
     var encryptedData = aesGcm.Encrypt(data);
+    p_output.WriteLine($"Encrypt: {sw.ElapsedMilliseconds}ms");
     var encryptedDataBytes = encryptedData.ToArray();
     Assert.NotEmpty(encryptedData.ToArray());
     Assert.NotEqual(data, encryptedDataBytes);
 
+    sw.Restart();
     var decryptedData = aesGcm.Decrypt(encryptedData);
+    p_output.WriteLine($"Decrypt: {sw.ElapsedMilliseconds}ms");
     var decryptedDataBytes = decryptedData.ToArray();
     Assert.NotEmpty(decryptedDataBytes);
     Assert.Equal(data, decryptedDataBytes);
@@ -309,6 +316,36 @@ public class EncryptTests
 
     Assert.Equal(msDec.Length, data.Length);
     Assert.Equal(msDec.ToArray(), data);
+  }
+
+  [Theory(Timeout = 30000)]
+  [InlineData(512)]
+  [InlineData(1024 * 1024)]
+  [InlineData(1165217)]
+  [InlineData(11652170)]
+  public void XorSimpleTest(int _taskSize)
+  {
+    using var lifetime = new Lifetime();
+    var key = Encoding.UTF8.GetBytes(Utilities.GetRandomString(8, false));
+    var data = new byte[_taskSize];
+    Random.Shared.NextBytes(data);
+
+    var xor = new Xor(key);
+    var sw = Stopwatch.StartNew();
+
+    sw.Restart();
+    var encryptedData = xor.Encrypt(data);
+    p_output.WriteLine($"Encrypt: {sw.ElapsedMilliseconds}ms");
+    var encryptedDataBytes = encryptedData.ToArray();
+    Assert.NotEmpty(encryptedData.ToArray());
+    Assert.NotEqual(data, encryptedDataBytes);
+
+    sw.Restart();
+    var decryptedData = xor.Decrypt(encryptedData);
+    p_output.WriteLine($"Decrypt: {sw.ElapsedMilliseconds}ms");
+    var decryptedDataBytes = decryptedData.ToArray();
+    Assert.NotEmpty(decryptedDataBytes);
+    Assert.Equal(data, decryptedDataBytes);
   }
 
 }

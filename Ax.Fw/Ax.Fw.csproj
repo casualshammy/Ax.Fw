@@ -12,6 +12,7 @@
 		<Copyright>Axio</Copyright>
 		<PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
 		<Nullable>enable</Nullable>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 
 	<ItemGroup>
