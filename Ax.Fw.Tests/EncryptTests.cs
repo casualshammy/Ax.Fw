@@ -1,5 +1,6 @@
 ﻿using Ax.Fw.Crypto;
 using System;
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -195,17 +196,24 @@ public class EncryptTests
 
     var aesGcm = new AesWithGcm(lifetime, key, _keySize);
     var sw = Stopwatch.StartNew();
+    var elapsed = 0L;
 
     sw.Restart();
     var encryptedData = aesGcm.Encrypt(data);
-    p_output.WriteLine($"Encrypt: {sw.ElapsedMilliseconds}ms");
+    elapsed = sw.ElapsedMilliseconds;
+    p_output.WriteLine($"Encrypt: {elapsed}ms");
+    Console.WriteLine($"Encrypt: {elapsed}ms");
+
     var encryptedDataBytes = encryptedData.ToArray();
     Assert.NotEmpty(encryptedData.ToArray());
     Assert.NotEqual(data, encryptedDataBytes);
 
     sw.Restart();
     var decryptedData = aesGcm.Decrypt(encryptedData);
-    p_output.WriteLine($"Decrypt: {sw.ElapsedMilliseconds}ms");
+    elapsed = sw.ElapsedMilliseconds;
+    p_output.WriteLine($"Decrypt: {elapsed}ms");
+    Console.WriteLine($"Decrypt: {elapsed}ms");
+
     var decryptedDataBytes = decryptedData.ToArray();
     Assert.NotEmpty(decryptedDataBytes);
     Assert.Equal(data, decryptedDataBytes);
@@ -226,13 +234,23 @@ public class EncryptTests
     Random.Shared.NextBytes(data);
 
     var aes = new AesCbc(lifetime, key, _keySize);
+    var sw = Stopwatch.StartNew();
+    var elapsed = 0L;
 
     var encryptedData = aes.Encrypt(data);
+    elapsed = sw.ElapsedMilliseconds;
+    p_output.WriteLine($"Encrypt: {elapsed}ms");
+    Console.WriteLine($"Encrypt: {elapsed}ms");
+
     var encryptedDataBytes = encryptedData.ToArray();
     Assert.NotEmpty(encryptedData.ToArray());
     Assert.NotEqual(data, encryptedDataBytes);
 
     var decryptedData = aes.Decrypt(encryptedData);
+    elapsed = sw.ElapsedMilliseconds;
+    p_output.WriteLine($"Decrypt: {elapsed}ms");
+    Console.WriteLine($"Decrypt: {elapsed}ms");
+
     var decryptedDataBytes = decryptedData.ToArray();
     Assert.NotEmpty(decryptedDataBytes);
     Assert.Equal(data, decryptedDataBytes);
@@ -325,27 +343,49 @@ public class EncryptTests
   [InlineData(11652170)]
   public void XorSimpleTest(int _taskSize)
   {
-    using var lifetime = new Lifetime();
     var key = Encoding.UTF8.GetBytes(Utilities.GetRandomString(8, false));
     var data = new byte[_taskSize];
     Random.Shared.NextBytes(data);
 
     var xor = new Xor(key);
     var sw = Stopwatch.StartNew();
+    var elapsed = 0L;
 
     sw.Restart();
     var encryptedData = xor.Encrypt(data);
-    p_output.WriteLine($"Encrypt: {sw.ElapsedMilliseconds}ms");
+    elapsed = sw.ElapsedMilliseconds;
+    p_output.WriteLine($"Encrypt: {elapsed}ms");
+    Console.WriteLine($"Encrypt: {elapsed}ms");
+
     var encryptedDataBytes = encryptedData.ToArray();
     Assert.NotEmpty(encryptedData.ToArray());
     Assert.NotEqual(data, encryptedDataBytes);
 
     sw.Restart();
     var decryptedData = xor.Decrypt(encryptedData);
-    p_output.WriteLine($"Decrypt: {sw.ElapsedMilliseconds}ms");
+    elapsed = sw.ElapsedMilliseconds;
+    p_output.WriteLine($"Decrypt: {elapsed}ms");
+    Console.WriteLine($"Decrypt: {elapsed}ms");
+
     var decryptedDataBytes = decryptedData.ToArray();
     Assert.NotEmpty(decryptedDataBytes);
     Assert.Equal(data, decryptedDataBytes);
+  }
+
+  [Fact]
+  public void XorInvalidHeaderTest()
+  {
+    var key = Encoding.UTF8.GetBytes(Utilities.GetRandomString(8, false));
+    var data = new byte[32 * 1024];
+    Random.Shared.NextBytes(data);
+
+    var xor = new Xor(key);
+    var encryptedData = xor.Encrypt(data);
+    BinaryPrimitives.WriteInt32LittleEndian(encryptedData.Slice(0, 4), Random.Shared.Next());
+    var encryptedDataBytes = encryptedData.ToArray();
+
+    var ex = Assert.Throws<CryptographicException>(() => xor.Decrypt(encryptedDataBytes));
+    Assert.Equal("Can't decrypt message - header is invalid", ex.Message);
   }
 
 }

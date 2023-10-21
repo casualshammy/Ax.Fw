@@ -1,5 +1,6 @@
 ﻿using Ax.Fw.SharedTypes.Interfaces;
 using System;
+using System.Buffers.Binary;
 using System.Linq;
 using System.Security.Cryptography;
 
@@ -9,6 +10,7 @@ public class Xor : ICryptoAlgorithm
 {
   private const int CHUNK_SIZE = 128 * 1024;
   private readonly byte[] p_mergeArray;
+  private readonly long p_magicWord;
 
   public Xor(byte[] _key)
   {
@@ -27,11 +29,28 @@ public class Xor : ICryptoAlgorithm
     }
 
     p_mergeArray = mergeArray.ToArray();
+    p_magicWord = BinaryPrimitives.ReadInt64LittleEndian(p_mergeArray.AsSpan().Slice(1024, 8));
   }
 
-  public Span<byte> Encrypt(ReadOnlySpan<byte> _data) => Transform2(_data);
+  public Span<byte> Encrypt(ReadOnlySpan<byte> _data)
+  {
+    Span<byte> result = new byte[_data.Length + 8];
+    BinaryPrimitives.WriteInt64LittleEndian(result.Slice(0, 8), p_magicWord);
+    Transform2(_data, result.Slice(8));
+    return result;
+  }
 
-  public Span<byte> Decrypt(ReadOnlySpan<byte> _data) => Transform2(_data);
+  public Span<byte> Decrypt(ReadOnlySpan<byte> _data)
+  {
+    var magicWord = BinaryPrimitives.ReadInt64LittleEndian(_data.Slice(0, 8));
+    if (magicWord != p_magicWord)
+      throw new CryptographicException($"Can't decrypt message - header is invalid");
+
+    Span<byte> result = new byte[_data.Length - 8];
+    Transform2(_data.Slice(8), result);
+
+    return result;
+  }
 
   private Span<byte> Transform(ReadOnlySpan<byte> _data)
   {
@@ -46,12 +65,11 @@ public class Xor : ICryptoAlgorithm
     }
   }
 
-  private unsafe Span<byte> Transform2(ReadOnlySpan<byte> _data)
+  private unsafe void Transform2(ReadOnlySpan<byte> _data, Span<byte> _result)
   {
-    Span<byte> result = new byte[_data.Length];
     var chunks = (int)Math.Floor(_data.Length / (double)8);
     fixed (byte* dataPtr = _data)
-    fixed (byte* resultPtr = result)
+    fixed (byte* resultPtr = _result)
     fixed (byte* keyPtr = p_mergeArray)
     {
       long* dataLongPtr = (long*)dataPtr;
@@ -77,9 +95,7 @@ public class Xor : ICryptoAlgorithm
 
     var lastCounter = 0;
     for (int index = chunks * 8; index < _data.Length; index++)
-      result[index] = (byte)(_data[index] ^ p_mergeArray[lastCounter++]);
-
-    return result;
+      _result[index] = (byte)(_data[index] ^ p_mergeArray[lastCounter++]);
   }
-  
+
 }
