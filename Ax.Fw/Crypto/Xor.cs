@@ -9,27 +9,27 @@ namespace Ax.Fw.Crypto;
 public class Xor : ICryptoAlgorithm
 {
   private const int CHUNK_SIZE = 128 * 1024;
-  private readonly byte[] p_mergeArray;
+  private readonly byte[] p_keyArray;
   private readonly long p_magicWord;
 
   public Xor(byte[] _key)
   {
     Span<byte> mergeArray = new byte[CHUNK_SIZE];
     using var sha = SHA512.Create();
-    var hashSource = sha.ComputeHash(_key);
-    var hashSourceReverse = hashSource.Reverse().ToArray();
-    var hashSourceLength = hashSource.Length;
+    var keyHash = sha.ComputeHash(_key);
+    var hashSourceLength = keyHash.Length;
     for (var i = 0; i < CHUNK_SIZE / hashSourceLength; i++)
     {
       var mergeSlice = mergeArray.Slice(i * hashSourceLength, hashSourceLength);
+      keyHash = sha.ComputeHash(keyHash);
       if (i % 2 == 0)
-        hashSource.CopyTo(mergeSlice);
+        keyHash.CopyTo(mergeSlice);
       else
-        hashSourceReverse.CopyTo(mergeSlice);
+        keyHash.Reverse().ToArray().CopyTo(mergeSlice);
     }
 
-    p_mergeArray = mergeArray.ToArray();
-    p_magicWord = BinaryPrimitives.ReadInt64LittleEndian(p_mergeArray.AsSpan().Slice(1024, 8));
+    p_keyArray = mergeArray.ToArray();
+    p_magicWord = BinaryPrimitives.ReadInt64LittleEndian(p_keyArray.AsSpan().Slice(1024, 8));
   }
 
   public Span<byte> Encrypt(ReadOnlySpan<byte> _data)
@@ -59,7 +59,7 @@ public class Xor : ICryptoAlgorithm
       var dataLength = _data.Length;
       Span<byte> result = new byte[dataLength];
       for (int i = 0; i < dataLength; i++)
-        result[i] = (byte)(_data[i] ^ p_mergeArray[i % CHUNK_SIZE]);
+        result[i] = (byte)(_data[i] ^ p_keyArray[i % CHUNK_SIZE]);
 
       return result;
     }
@@ -70,7 +70,7 @@ public class Xor : ICryptoAlgorithm
     var chunks = (int)Math.Floor(_data.Length / (double)8);
     fixed (byte* dataPtr = _data)
     fixed (byte* resultPtr = _result)
-    fixed (byte* keyPtr = p_mergeArray)
+    fixed (byte* keyPtr = p_keyArray)
     {
       long* dataLongPtr = (long*)dataPtr;
       long* resultLongPtr = (long*)resultPtr;
@@ -95,7 +95,7 @@ public class Xor : ICryptoAlgorithm
 
     var lastCounter = 0;
     for (int index = chunks * 8; index < _data.Length; index++)
-      _result[index] = (byte)(_data[index] ^ p_mergeArray[lastCounter++]);
+      _result[index] = (byte)(_data[index] ^ p_keyArray[lastCounter++]);
   }
 
 }

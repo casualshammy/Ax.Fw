@@ -30,7 +30,7 @@ public class Lifetime : ILifetime
   public bool IsCancellationRequested => p_cts.Token.IsCancellationRequested;
   public IObservable<Unit> OnEnding { get; }
 
-  [return: NotNullIfNotNull(parameterName: "_instance")]
+  [return: NotNullIfNotNull(parameterName: nameof(_instance))]
   public T? ToDisposeOnEnding<T>(T? _instance) where T : IDisposable
   {
     if (Interlocked.Read(ref p_ending) == 1L)
