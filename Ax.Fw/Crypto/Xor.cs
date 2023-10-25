@@ -1,35 +1,31 @@
 ﻿using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Buffers.Binary;
-using System.Linq;
 using System.Security.Cryptography;
 
 namespace Ax.Fw.Crypto;
 
 public class Xor : ICryptoAlgorithm
 {
-  private const int CHUNK_SIZE = 128 * 1024;
   private readonly byte[] p_keyArray;
   private readonly long p_magicWord;
 
-  public Xor(byte[] _key)
+  public Xor(byte[] _key, int _keySize = 1024)
   {
-    Span<byte> mergeArray = new byte[CHUNK_SIZE];
-    using var sha = SHA512.Create();
-    var keyHash = sha.ComputeHash(_key);
-    var hashSourceLength = keyHash.Length;
-    for (var i = 0; i < CHUNK_SIZE / hashSourceLength; i++)
-    {
-      var mergeSlice = mergeArray.Slice(i * hashSourceLength, hashSourceLength);
-      keyHash = sha.ComputeHash(keyHash);
-      if (i % 2 == 0)
-        keyHash.CopyTo(mergeSlice);
-      else
-        keyHash.Reverse().ToArray().CopyTo(mergeSlice);
-    }
+    if (_keySize % (512 / 8) != 0)
+      throw new ArgumentOutOfRangeException(nameof(_keySize), $"Key size must be divisible by 64!");
 
-    p_keyArray = mergeArray.ToArray();
-    p_magicWord = BinaryPrimitives.ReadInt64LittleEndian(p_keyArray.AsSpan().Slice(1024, 8));
+    Span<byte> buffer = new byte[_keySize];
+    using var sha = SHA512.Create();
+    var hash = sha.ComputeHash(_key);
+    for (var i = 0; i < buffer.Length / hash.Length; i++)
+    {
+      var mergeSlice = buffer.Slice(i * hash.Length, hash.Length);
+      hash = sha.ComputeHash(hash);
+      hash.CopyTo(mergeSlice);
+    }
+    p_keyArray = buffer.ToArray();
+    p_magicWord = BinaryPrimitives.ReadInt64LittleEndian(buffer.Slice(237, 8));
   }
 
   public Span<byte> Encrypt(ReadOnlySpan<byte> _data)
@@ -52,19 +48,6 @@ public class Xor : ICryptoAlgorithm
     return result;
   }
 
-  private Span<byte> Transform(ReadOnlySpan<byte> _data)
-  {
-    unchecked
-    {
-      var dataLength = _data.Length;
-      Span<byte> result = new byte[dataLength];
-      for (int i = 0; i < dataLength; i++)
-        result[i] = (byte)(_data[i] ^ p_keyArray[i % CHUNK_SIZE]);
-
-      return result;
-    }
-  }
-
   private unsafe void Transform2(ReadOnlySpan<byte> _data, Span<byte> _result)
   {
     var chunks = (int)Math.Floor(_data.Length / (double)8);
@@ -78,7 +61,7 @@ public class Xor : ICryptoAlgorithm
       long* keyLongStartPtr = (long*)keyPtr;
 
       var counter = 0;
-      var maxLength = CHUNK_SIZE / 8;
+      var maxLength = p_keyArray.Length / 8;
       for (int _ = 0; _ < chunks; _++)
       {
         *resultLongPtr = *dataLongPtr ^ *keyLongPtr;
