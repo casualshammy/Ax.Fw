@@ -5,7 +5,7 @@ using Xunit.Abstractions;
 
 namespace Ax.Fw.Storage.Tests;
 
-public class CompareDbTests
+public class CompareDbTestsV2
 {
   record LiteDbEntry(int Key, string Value);
 
@@ -13,7 +13,7 @@ public class CompareDbTests
 
   private readonly ITestOutputHelper p_output;
 
-  public CompareDbTests(ITestOutputHelper _output)
+  public CompareDbTestsV2(ITestOutputHelper _output)
   {
     p_output = _output;
   }
@@ -25,7 +25,7 @@ public class CompareDbTests
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
 
       var enumerable = Enumerable.Range(0, PROBLEM_SIZE);
 

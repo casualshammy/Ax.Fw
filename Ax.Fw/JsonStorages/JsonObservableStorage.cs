@@ -23,7 +23,7 @@ public class JsonObservableStorage<T> : JsonStorage<T>, IJsonObservable<T?>
   ///
   /// </summary>
   /// <param name="_jsonFilePath">Path to JSON file. Can't be null or empty.</param>
-  public JsonObservableStorage(ILifetime _lifetime, string _jsonFilePath) : base(_jsonFilePath)
+  public JsonObservableStorage(IReadOnlyLifetime _lifetime, string _jsonFilePath) : base(_jsonFilePath)
   {
     _lifetime.ToDisposeOnEnding(p_changesFlow);
     _lifetime.ToDisposeOnEnding(SharedPool<EventLoopScheduler>.Get(out var scheduler));

@@ -2,7 +2,6 @@
 using Ax.Fw.Pools;
 using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Interfaces;
-using Newtonsoft.Json.Linq;
 using System.Collections.Immutable;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
@@ -87,13 +86,13 @@ public class DocumentStorageWithRetentionRules : DisposableStack, IDocumentStora
     => p_documentStorage.DeleteSimpleDocumentAsync<T>(_entryId, _ct);
 
 #pragma warning disable CS8424
-  public IAsyncEnumerable<DocumentEntry> ListDocumentsAsync(
+  public IAsyncEnumerable<DocumentTypedEntry<T>> ListDocumentsAsync<T>(
     string _namespace,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
     [EnumeratorCancellation] CancellationToken _ct = default)
-    => p_documentStorage.ListDocumentsAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
+    => p_documentStorage.ListDocumentsAsync<T>(_namespace, _keyLikeExpression, _from, _to, _ct);
 
   public IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
     LikeExpr? _namespaceLikeExpression = null,
@@ -111,14 +110,6 @@ public class DocumentStorageWithRetentionRules : DisposableStack, IDocumentStora
     [EnumeratorCancellation] CancellationToken _ct = default) 
     => p_documentStorage.ListDocumentsMetaAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
 
-  public IAsyncEnumerable<DocumentTypedEntry<T>> ListTypedDocumentsAsync<T>(
-    string _namespace,
-    LikeExpr? _keyLikeExpression = null,
-    DateTimeOffset? _from = null,
-    DateTimeOffset? _to = null,
-    [EnumeratorCancellation] CancellationToken _ct = default) 
-    => p_documentStorage.ListTypedDocumentsAsync<T>(_namespace, _keyLikeExpression, _from, _to, _ct);
-
   public IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
@@ -127,11 +118,11 @@ public class DocumentStorageWithRetentionRules : DisposableStack, IDocumentStora
     => p_documentStorage.ListSimpleDocumentsAsync<T>(_keyLikeExpression, _from, _to, _ct);
 #pragma warning restore CS8424
 
-  public Task<DocumentEntry?> ReadDocumentAsync(string _namespace, string _key, CancellationToken _ct)
-    => p_documentStorage.ReadDocumentAsync(_namespace, _key, _ct);
+  public Task<DocumentTypedEntry<T>?> ReadDocumentAsync<T>(string _namespace, string _key, CancellationToken _ct)
+    => p_documentStorage.ReadDocumentAsync<T>(_namespace, _key, _ct);
 
-  public Task<DocumentEntry?> ReadDocumentAsync(string _namespace, int _key, CancellationToken _ct)
-    => p_documentStorage.ReadDocumentAsync(_namespace, _key, _ct);
+  public Task<DocumentTypedEntry<T>?> ReadDocumentAsync<T>(string _namespace, int _key, CancellationToken _ct)
+    => p_documentStorage.ReadDocumentAsync<T>(_namespace, _key, _ct);
 
   public Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
     => p_documentStorage.ReadSimpleDocumentAsync<T>(_entryId, _ct);
@@ -139,38 +130,28 @@ public class DocumentStorageWithRetentionRules : DisposableStack, IDocumentStora
   public Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
     => p_documentStorage.ReadSimpleDocumentAsync<T>(_entryId, _ct);
 
-  public Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(string _namespace, string _key, CancellationToken _ct)
-    => p_documentStorage.ReadTypedDocumentAsync<T>(_namespace, _key, _ct);
-
-  public Task<DocumentTypedEntry<T>?> ReadTypedDocumentAsync<T>(string _namespace, int _key, CancellationToken _ct)
-    => p_documentStorage.ReadTypedDocumentAsync<T>(_namespace, _key, _ct);
-
-  public Task<DocumentEntry> WriteDocumentAsync(string _namespace, string _key, JToken _data, CancellationToken _ct)
+  public Task<DocumentTypedEntry<T>> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull
     => p_documentStorage.WriteDocumentAsync(_namespace, _key, _data, _ct);
 
-  public Task<DocumentEntry> WriteDocumentAsync(string _namespace, int _key, JToken _data, CancellationToken _ct)
+  public Task<DocumentTypedEntry<T>> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull
     => p_documentStorage.WriteDocumentAsync(_namespace, _key, _data, _ct);
 
-  public Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull
-    => p_documentStorage.WriteDocumentAsync(_namespace, _key, _data, _ct);
-
-  public Task<DocumentEntry> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull
-    => p_documentStorage.WriteDocumentAsync(_namespace, _key, _data, _ct);
-
-  public Task<DocumentEntry> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull
+  public Task<DocumentTypedEntry<T>> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull
     => p_documentStorage.WriteSimpleDocumentAsync(_entryId, _data, _ct);
 
-  public Task<DocumentEntry> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull
+  public Task<DocumentTypedEntry<T>> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull
     => p_documentStorage.WriteSimpleDocumentAsync(_entryId, _data, _ct);
 
   /// <summary>
   /// Returns number of documents in database
   /// </summary>
-  public Task<int> Count(string? _namespace, CancellationToken _ct) => p_documentStorage.Count(_namespace, _ct);
+  /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
+  public Task<int> Count(string? _namespace, LikeExpr? _keyLikeExpression, CancellationToken _ct) => p_documentStorage.Count(_namespace, _keyLikeExpression, _ct);
 
   /// <summary>
   /// Returns number of simple documents in database
   /// </summary>
-  public Task<int> CountSimpleDocuments<T>(CancellationToken _ct) => p_documentStorage.CountSimpleDocuments<T>(_ct);
+  /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
+  public Task<int> CountSimpleDocuments<T>(LikeExpr? _keyLikeExpression, CancellationToken _ct) => p_documentStorage.CountSimpleDocuments<T>(_keyLikeExpression, _ct);
 
 }

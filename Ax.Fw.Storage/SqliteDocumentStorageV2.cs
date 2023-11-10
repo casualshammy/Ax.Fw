@@ -2,15 +2,15 @@
 using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Extensions;
 using Ax.Fw.Storage.Interfaces;
-using Newtonsoft.Json.Linq;
 using System.Data.SQLite;
 using System.Globalization;
 using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 namespace Ax.Fw.Storage;
 
-public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
+public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
 {
   private readonly SQLiteConnection p_connection;
   private long p_documentsCounter = 0;
@@ -19,7 +19,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// Opens existing database or creates new
   /// </summary>
   /// <param name="_dbFilePath">Path to database file</param>
-  public SqliteDocumentStorage(string _dbFilePath)
+  public SqliteDocumentStorageV2(string _dbFilePath)
   {
     p_connection = ToDispose(new SQLiteConnection($"Data Source={_dbFilePath};Version=3;").OpenAndReturn());
 
@@ -53,7 +53,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// </summary>
   public async Task<DocumentTypedEntry<T>> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull
   {
-    var data = JToken.FromObject(_data);
+    var json = JsonSerializer.Serialize(_data);
     var now = DateTimeOffset.UtcNow;
 
     var insertSql =
@@ -74,7 +74,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     command.Parameters.AddWithValue("@last_modified", now.UtcTicks);
     command.Parameters.AddWithValue("@created", now.UtcTicks);
     command.Parameters.AddWithValue("@version", 1);
-    command.Parameters.AddWithValue("@data", data.ToString(Newtonsoft.Json.Formatting.None));
+    command.Parameters.AddWithValue("@data", json);
 
     await using var reader = await command.ExecuteReaderAsync(_ct);
     if (await reader.ReadAsync(_ct))
@@ -258,15 +258,13 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     [EnumeratorCancellation] CancellationToken _ct = default)
   {
     var listSql =
-        $"SELECT doc_id, key, last_modified, created, version, data " +
-        $"FROM document_data " +
-        $"WHERE " +
-        $"  @namespace=namespace AND " +
-        $"  (@key_like IS NULL OR key LIKE @key_like) AND " +
-        $"  (@from IS NULL OR last_modified>=@from) AND " +
-        $"  (@to IS NULL OR last_modified<=@to); ";
-
-    //await CreateTableIfNeeded(normalizedTableName, _ct);
+      $"SELECT doc_id, key, last_modified, created, version, data " +
+      $"FROM document_data " +
+      $"WHERE " +
+      $"  @namespace=namespace AND " +
+      $"  (@key_like IS NULL OR key LIKE @key_like) AND " +
+      $"  (@from IS NULL OR last_modified>=@from) AND " +
+      $"  (@to IS NULL OR last_modified<=@to); ";
 
     await using var cmd = new SQLiteCommand(p_connection);
     cmd.CommandText = listSql;
@@ -279,15 +277,15 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     while (await reader.ReadAsync(_ct))
     {
       var docId = reader.GetInt32(0);
-      var optionalKey = reader.GetString(1);
+      var key = reader.GetString(1);
       var lastModified = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
       var created = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
       var version = reader.GetInt64(4);
-      var data = JToken.Parse(reader.GetString(5)).ToObject<T>();
+      var data = JsonSerializer.Deserialize<T>(reader.GetString(5));
       if (data == null)
         throw new FormatException($"Data of document '{docId}' is malformed!");
 
-      yield return new DocumentTypedEntry<T>(docId, _namespace, optionalKey, lastModified, created, version, data);
+      yield return new DocumentTypedEntry<T>(docId, _namespace, key, lastModified, created, version, data);
     }
   }
 
@@ -314,18 +312,16 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// Read document from the database
   /// </summary>
   public async Task<DocumentTypedEntry<T>?> ReadDocumentAsync<T>(
-      string _namespace,
-      string _key,
-      CancellationToken _ct)
+    string _namespace,
+    string _key,
+    CancellationToken _ct)
   {
     var readSql =
-        $"SELECT doc_id, key, last_modified, created, version, data " +
-        $"FROM document_data " +
-        $"WHERE " +
-        $"  @namespace=namespace AND " +
-        $"  key=@key; ";
-
-    //await CreateTableIfNeeded(normalizedTableName, _ct);
+      $"SELECT doc_id, key, last_modified, created, version, data " +
+      $"FROM document_data " +
+      $"WHERE " +
+      $"  @namespace=namespace AND " +
+      $"  key=@key; ";
 
     await using var cmd = new SQLiteCommand(p_connection);
     cmd.CommandText = readSql;
@@ -340,7 +336,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       var lastModified = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
       var created = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
       var version = reader.GetInt64(4);
-      var data = JToken.Parse(reader.GetString(5)).ToObject<T>();
+      var data = JsonSerializer.Deserialize<T>(reader.GetString(5));
       if (data == null)
         throw new FormatException($"Data of document '{docId}' is malformed!");
 
@@ -378,7 +374,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// </summary>
   public async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
   {
-    return await ReadSimpleDocumentAsync<T>(_entryId.ToString(CultureInfo.InvariantCulture), _ct);
+    return await ReadSimpleDocumentAsync<T>(_entryId.ToString(), _ct);
   }
 
   /// <summary>
