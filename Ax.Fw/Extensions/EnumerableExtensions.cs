@@ -14,16 +14,6 @@ public static class EnumerableExtensions
       _action(item);
   }
 
-#if !NET6_0_OR_GREATER
-  public static IEnumerable<TSource> DistinctBy<TSource, TKey>(this IEnumerable<TSource> _source, Func<TSource, TKey> _keySelector)
-  {
-    var knownKeys = new HashSet<TKey>();
-    foreach (TSource element in _source)
-      if (knownKeys.Add(_keySelector(element)))
-        yield return element;
-  }
-#endif
-
   public static async Task<T?> FirstOrDefaultAsync<T>(
     this IEnumerable<T> _enumerable,
     Func<T, CancellationToken, Task<bool>> _predicate,
@@ -95,21 +85,6 @@ public static class EnumerableExtensions
       if (await _selector(entry))
         yield return entry;
   }
-
-#if !NET6_0_OR_GREATER
-  public static async Task<List<TSource>> ToListAsync<TSource>(this IAsyncEnumerable<TSource> _source, CancellationToken _ct = default)
-  {
-    if (_source == null)
-      throw new ArgumentNullException(nameof(_source));
-
-    var list = new List<TSource>();
-
-    await foreach (var item in _source.WithCancellation(_ct).ConfigureAwait(false))
-      list.Add(item);
-
-    return list;
-  }
-#endif
 
   public static T Mean<T>(this IEnumerable<T> _enumerable, Comparer<T>? _comparer = null)
   {

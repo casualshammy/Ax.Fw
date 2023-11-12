@@ -1,19 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-      <TargetFrameworks>netstandard21;net6.0</TargetFrameworks>
-      <ImplicitUsings>disable</ImplicitUsings>
-      <Nullable>enable</Nullable>
-	  <LangVersion>latest</LangVersion>
-	  <Authors>Axio</Authors>
-	  <Copyright>Axio</Copyright>
-	  <Description>Shared types for Ax.Fw package</Description>
-	  <PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
-	  <PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
-  </PropertyGroup>
+		<PropertyGroup>
+				<TargetFramework>net6.0</TargetFramework>
+				<ImplicitUsings>disable</ImplicitUsings>
+				<Nullable>enable</Nullable>
+				<LangVersion>latest</LangVersion>
+				<Authors>Axio</Authors>
+				<Copyright>Axio</Copyright>
+				<Description>Shared types for Ax.Fw package</Description>
+				<PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
+				<PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
+		</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="System.Reactive" Version="6.0.0" />
-  </ItemGroup>
+		<ItemGroup>
+				<PackageReference Include="System.Reactive" Version="6.0.0" />
+		</ItemGroup>
 
 </Project>

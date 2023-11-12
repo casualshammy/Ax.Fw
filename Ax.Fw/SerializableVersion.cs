@@ -1,7 +1,8 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Ax.Fw;
 
@@ -18,13 +19,13 @@ public class SerializableVersion : IEquatable<SerializableVersion>, IComparable<
 
   [JsonConstructor]
   public SerializableVersion(
-      [JsonProperty(nameof(Major))] int _major,
-      [JsonProperty(nameof(Minor))] int _minor,
-      [JsonProperty(nameof(Build))] int _build)
+    int major,
+    int minor,
+    int build)
   {
-    Major = _major;
-    Minor = _minor;
-    Build = _build;
+    Major = major;
+    Minor = minor;
+    Build = build;
   }
 
   public SerializableVersion()
@@ -171,25 +172,23 @@ public class SerializableVersion : IEquatable<SerializableVersion>, IComparable<
 
   class JsonConverter : JsonConverter<SerializableVersion>
   {
-    public override void WriteJson(JsonWriter _writer, SerializableVersion? _value, JsonSerializer _serializer)
+    public override void Write(Utf8JsonWriter _writer, SerializableVersion? _value, JsonSerializerOptions _options)
     {
       if (_value is null)
-        _writer.WriteNull();
+        _writer.WriteNullValue();
       else
-        _writer.WriteValue(_value.ToString());
+        _writer.WriteStringValue(_value.ToString());
     }
 
-    public override SerializableVersion? ReadJson(
-        JsonReader _reader,
+    public override SerializableVersion? Read(
+        ref Utf8JsonReader _reader,
         Type _objectType,
-        SerializableVersion? _existingValue,
-        bool _hasExistingValue,
-        JsonSerializer _serializer)
+        JsonSerializerOptions _options)
     {
-      if (_reader.TokenType == JsonToken.Null)
+      if (_reader.TokenType == JsonTokenType.Null)
         return null;
 
-      if (_reader.TokenType == JsonToken.String && _reader.Value is string value)
+      if (_reader.TokenType == JsonTokenType.String && _reader.GetString() is string value)
       {
         var split = value.Split('.');
         return new SerializableVersion(int.Parse(split[0]), int.Parse(split[1]), int.Parse(split[2]));

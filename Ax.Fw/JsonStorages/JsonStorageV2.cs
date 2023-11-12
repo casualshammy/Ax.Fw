@@ -1,8 +1,8 @@
 ﻿using Ax.Fw.SharedTypes.Interfaces;
-using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Ax.Fw.JsonStorages;
@@ -10,13 +10,13 @@ namespace Ax.Fw.JsonStorages;
 /// <summary>
 /// Simple storage for data in JSON files
 /// </summary>
-public class JsonStorage<T> : IJsonStorage<T>
+public class JsonStorageV2<T> : IJsonStorage<T>
 {
   /// <summary>
   ///
   /// </summary>
   /// <param name="jsonFilePath">Path to JSON file. Can't be null or empty.</param>
-  public JsonStorage(string jsonFilePath)
+  public JsonStorageV2(string jsonFilePath)
   {
     if (string.IsNullOrWhiteSpace(jsonFilePath))
       throw new ArgumentNullException(nameof(jsonFilePath));
@@ -41,9 +41,14 @@ public class JsonStorage<T> : IJsonStorage<T>
   public async Task<T> LoadAsync(Func<Task<T>> _defaultFactory)
   {
     if (!File.Exists(JsonFilePath))
+    {
       return await _defaultFactory();
+    }
     else
-      return JsonConvert.DeserializeObject<T>(File.ReadAllText(JsonFilePath, Encoding.UTF8)) ?? await _defaultFactory();
+    {
+      using (var fileStream = File.OpenRead(JsonFilePath))
+        return await JsonSerializer.DeserializeAsync<T>(fileStream) ?? await _defaultFactory();
+    }
   }
 
   /// <summary>
@@ -60,7 +65,10 @@ public class JsonStorage<T> : IJsonStorage<T>
     if (!File.Exists(JsonFilePath))
       return _defaultFactory();
     else
-      return JsonConvert.DeserializeObject<T>(File.ReadAllText(JsonFilePath, Encoding.UTF8)) ?? _defaultFactory();
+    {
+      using (var fileStream = File.OpenRead(JsonFilePath))
+        return JsonSerializer.Deserialize<T>(fileStream) ?? _defaultFactory();
+    }
   }
 
   /// <summary>
@@ -69,7 +77,9 @@ public class JsonStorage<T> : IJsonStorage<T>
   /// <param name="_data">Data to save</param>
   public void Save(T _data, bool _humanReadable = false)
   {
-    var jsonData = JsonConvert.SerializeObject(_data, _humanReadable ? Formatting.Indented : Formatting.None);
+    var serializerOptions = new JsonSerializerOptions { WriteIndented = _humanReadable };
+
+    var jsonData = JsonSerializer.Serialize(_data, serializerOptions);
     File.WriteAllText(JsonFilePath, jsonData, Encoding.UTF8);
   }
 

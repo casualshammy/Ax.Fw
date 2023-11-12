@@ -9,13 +9,8 @@ using System.Threading.Tasks;
 
 namespace Ax.Fw.Crypto;
 
-#if NET6_0_OR_GREATER
 public class AesCbc : ICryptoAlgorithm
-#else
-public class AesCbc
-#endif
 {
-#if NET6_0_OR_GREATER
   private readonly byte[] p_iv;
   private readonly Aes p_aes;
 
@@ -40,13 +35,12 @@ public class AesCbc
   public Span<byte> Encrypt(ReadOnlySpan<byte> _data) => p_aes.EncryptCbc(_data, p_iv, PaddingMode.PKCS7);
 
   public Span<byte> Decrypt(ReadOnlySpan<byte> _data) => p_aes.DecryptCbc(_data, p_iv, PaddingMode.PKCS7);
-#endif
 
   public static async Task EncryptAsync(
-    Stream _inStream, 
-    Stream _outEncryptedStream, 
-    byte[] _password, 
-    bool _useFastHashing = false, 
+    Stream _inStream,
+    Stream _outEncryptedStream,
+    byte[] _password,
+    bool _useFastHashing = false,
     CancellationToken _ct = default)
   {
     if (!_outEncryptedStream.CanWrite)
@@ -82,9 +76,9 @@ public class AesCbc
   }
 
   public static async Task<byte[]> EncryptAsync(
-    byte[] _data, 
-    byte[] _password, 
-    bool _useFastHashing = false, 
+    byte[] _data,
+    byte[] _password,
+    bool _useFastHashing = false,
     CancellationToken _ct = default)
   {
     using (var rijCrypto = Aes.Create())
@@ -121,10 +115,10 @@ public class AesCbc
   }
 
   public static async Task DecryptAsync(
-    Stream _inEncryptedStream, 
-    Stream _outStream, 
-    byte[] _password, 
-    bool _useFastHashing = false, 
+    Stream _inEncryptedStream,
+    Stream _outStream,
+    byte[] _password,
+    bool _useFastHashing = false,
     CancellationToken _ct = default)
   {
     if (!_outStream.CanWrite)
@@ -160,9 +154,9 @@ public class AesCbc
   }
 
   public static async Task<byte[]> DecryptAsync(
-    byte[] _encryptedData, 
-    byte[] _password, 
-    bool _useFastHashing = false, 
+    byte[] _encryptedData,
+    byte[] _password,
+    bool _useFastHashing = false,
     CancellationToken _ct = default)
   {
     using (var rijCrypto = Aes.Create())

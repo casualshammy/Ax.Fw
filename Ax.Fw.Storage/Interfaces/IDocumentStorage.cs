@@ -39,7 +39,7 @@ public interface IDocumentStorage : IDisposable
   /// <param name="_force">If true, forcefully performs full flush and then truncates temporary file to zero bytes</param>
   /// <returns></returns>
   Task FlushAsync(bool _force, CancellationToken _ct);
-  IAsyncEnumerable<DocumentTypedEntry<T>> ListDocumentsAsync<T>(string _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
+  IAsyncEnumerable<DocumentEntry<T>> ListDocumentsAsync<T>(string _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
 
   /// <summary>
   /// List documents meta info (without data)
@@ -59,19 +59,19 @@ public interface IDocumentStorage : IDisposable
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
+  IAsyncEnumerable<DocumentEntry<T>> ListSimpleDocumentsAsync<T>(
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
     [EnumeratorCancellation] CancellationToken _ct = default);
 
 #pragma warning restore CS8424 // The EnumeratorCancellationAttribute will have no effect. The attribute is only effective on a parameter of type CancellationToken in an async-iterator method returning IAsyncEnumerable
-  Task<DocumentTypedEntry<T>?> ReadDocumentAsync<T>(string _namespace, string _key, CancellationToken _ct);
-  Task<DocumentTypedEntry<T>?> ReadDocumentAsync<T>(string _namespace, int _key, CancellationToken _ct);
-  Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull;
-  Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull;
-  Task<DocumentTypedEntry<T>> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull;
-  Task<DocumentTypedEntry<T>> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull;
-  Task<DocumentTypedEntry<T>> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull;
-  Task<DocumentTypedEntry<T>> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull;
+  Task<DocumentEntry<T>?> ReadDocumentAsync<T>(string _namespace, string _key, CancellationToken _ct);
+  Task<DocumentEntry<T>?> ReadDocumentAsync<T>(string _namespace, int _key, CancellationToken _ct);
+  Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull;
+  Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull;
+  Task<DocumentEntry<T>> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull;
+  Task<DocumentEntry<T>> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull;
+  Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull;
+  Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull;
 }

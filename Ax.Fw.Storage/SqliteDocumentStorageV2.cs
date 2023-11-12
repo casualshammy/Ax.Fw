@@ -51,7 +51,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
   /// <summary>
   /// Upsert document to database
   /// </summary>
-  public async Task<DocumentTypedEntry<T>> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull
+  public async Task<DocumentEntry<T>> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull
   {
     var json = JsonSerializer.Serialize(_data);
     var now = DateTimeOffset.UtcNow;
@@ -82,7 +82,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
       var docId = reader.GetInt32(0);
       var version = reader.GetInt64(1);
       var created = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
-      return new DocumentTypedEntry<T>(docId, _namespace, _key, now, created, version, _data);
+      return new DocumentEntry<T>(docId, _namespace, _key, now, created, version, _data);
     }
 
     throw new InvalidOperationException($"Can't create document - db reader returned no result");
@@ -91,7 +91,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
   /// <summary>
   /// Upsert document to database
   /// </summary>
-  public async Task<DocumentTypedEntry<T>> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull
+  public async Task<DocumentEntry<T>> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull
   {
     return await WriteDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), _data, _ct);
   }
@@ -100,7 +100,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
   /// Upsert document to database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public async Task<DocumentTypedEntry<T>> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull
+  public async Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
 
@@ -111,7 +111,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
   /// Upsert document to database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public async Task<DocumentTypedEntry<T>> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull
+  public async Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull
   {
     return await WriteSimpleDocumentAsync(_entryId.ToString(CultureInfo.InvariantCulture), _data, _ct);
   }
@@ -250,7 +250,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
   /// List documents
   /// </summary>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  public async IAsyncEnumerable<DocumentTypedEntry<T>> ListDocumentsAsync<T>(
+  public async IAsyncEnumerable<DocumentEntry<T>> ListDocumentsAsync<T>(
     string _namespace,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
@@ -285,7 +285,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
       if (data == null)
         throw new FormatException($"Data of document '{docId}' is malformed!");
 
-      yield return new DocumentTypedEntry<T>(docId, _namespace, key, lastModified, created, version, data);
+      yield return new DocumentEntry<T>(docId, _namespace, key, lastModified, created, version, data);
     }
   }
 
@@ -296,7 +296,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  public IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
+  public IAsyncEnumerable<DocumentEntry<T>> ListSimpleDocumentsAsync<T>(
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
@@ -311,7 +311,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
   /// <summary>
   /// Read document from the database
   /// </summary>
-  public async Task<DocumentTypedEntry<T>?> ReadDocumentAsync<T>(
+  public async Task<DocumentEntry<T>?> ReadDocumentAsync<T>(
     string _namespace,
     string _key,
     CancellationToken _ct)
@@ -340,7 +340,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
       if (data == null)
         throw new FormatException($"Data of document '{docId}' is malformed!");
 
-      return new DocumentTypedEntry<T>(docId, _namespace, optionalKey, lastModified, created, version, data);
+      return new DocumentEntry<T>(docId, _namespace, optionalKey, lastModified, created, version, data);
     }
 
     return null;
@@ -349,7 +349,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
   /// <summary>
   /// Read document from the database
   /// </summary>
-  public async Task<DocumentTypedEntry<T>?> ReadDocumentAsync<T>(
+  public async Task<DocumentEntry<T>?> ReadDocumentAsync<T>(
       string _namespace,
       int _key,
       CancellationToken _ct)
@@ -361,7 +361,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
   /// Read document from the database and deserialize data
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
+  public async Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
     var document = await ReadDocumentAsync<T>(ns, _entryId, _ct);
@@ -372,7 +372,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
   /// Read document from the database and deserialize data
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public async Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
+  public async Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
   {
     return await ReadSimpleDocumentAsync<T>(_entryId.ToString(), _ct);
   }

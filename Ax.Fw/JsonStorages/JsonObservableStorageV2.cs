@@ -2,20 +2,21 @@
 using Ax.Fw.JsonStorages.Parts;
 using Ax.Fw.Pools;
 using Ax.Fw.SharedTypes.Interfaces;
-using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Ax.Fw.JsonStorages;
 
 /// <summary>
 /// Simple storage for data in JSON files
 /// </summary>
-public class JsonObservableStorage<T> : JsonStorage<T>, IJsonObservable<T?>
+public class JsonObservableStorageV2<T> : JsonStorageV2<T>, IJsonObservable<T?>
 {
   private readonly ReplaySubject<T?> p_changesFlow = new(1);
 
@@ -23,7 +24,7 @@ public class JsonObservableStorage<T> : JsonStorage<T>, IJsonObservable<T?>
   ///
   /// </summary>
   /// <param name="_jsonFilePath">Path to JSON file. Can't be null or empty.</param>
-  public JsonObservableStorage(IReadOnlyLifetime _lifetime, string _jsonFilePath) : base(_jsonFilePath)
+  public JsonObservableStorageV2(IReadOnlyLifetime _lifetime, string _jsonFilePath) : base(_jsonFilePath)
   {
     _lifetime.ToDisposeOnEnding(p_changesFlow);
     _lifetime.ToDisposeOnEnding(SharedPool<EventLoopScheduler>.Get(out var scheduler));
@@ -53,7 +54,12 @@ public class JsonObservableStorage<T> : JsonStorage<T>, IJsonObservable<T?>
         return new(newFileInfo, false);
       })
       .Where(_x => _x.Changed)
-      .Subscribe(_ => p_changesFlow.OnNext(GetDataOrDefaultSafe()), _lifetime);
+      .SelectAsync(async (_, _ct) =>
+      {
+        var data = await GetDataOrDefaultSafeAsync(_ct);
+        p_changesFlow.OnNext(data);
+      }, scheduler)
+      .Subscribe(_lifetime);
   }
 
   /// <summary>
@@ -61,19 +67,17 @@ public class JsonObservableStorage<T> : JsonStorage<T>, IJsonObservable<T?>
   /// </summary>
   public IObservable<T?> Changes => p_changesFlow;
 
-  public IDisposable Subscribe(IObserver<T?> _observer)
-  {
-    return p_changesFlow.Subscribe(_observer);
-  }
+  public IDisposable Subscribe(IObserver<T?> _observer) => p_changesFlow.Subscribe(_observer);
 
-  private T? GetDataOrDefaultSafe()
+  private async Task<T?> GetDataOrDefaultSafeAsync(CancellationToken _ct)
   {
     try
     {
       if (!File.Exists(JsonFilePath))
         return default;
 
-      return JsonConvert.DeserializeObject<T>(File.ReadAllText(JsonFilePath, Encoding.UTF8)) ?? default;
+      using (var fileStream = File.OpenRead(JsonFilePath))
+        return await JsonSerializer.DeserializeAsync<T>(fileStream, cancellationToken: _ct) ?? default;
     }
     catch
     {
