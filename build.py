@@ -41,7 +41,7 @@ print(f"===========================================", flush=True)
 print(f"Merging with main branch...", flush=True)
 print(f"===========================================", flush=True)
 branchName = git.get_current_branch_name()
-git.merge("main", branchName)
+git.merge("main", branchName, True, "github-builder")
 
 print(f"===========================================", flush=True)
 print(f"Done!", flush=True)

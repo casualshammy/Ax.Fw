@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using Ax.Fw.Extensions;
+using Ax.Fw.SharedTypes.Attributes;
 using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.TcpBus.Tests.Attributes;
 using System;
@@ -205,22 +206,8 @@ public class TcpBusTests
 
 }
 
-class SimpleMsgReq : IBusMsg
-{
-  public SimpleMsgReq(int _code)
-  {
-    Code = _code;
-  }
+[TcpMsgType("test-simple-msg-req")]
+record SimpleMsgReq(int Code);
 
-  public int Code { get; set; }
-}
-
-class SimpleMsgRes : IBusMsg
-{
-  public SimpleMsgRes(int _code)
-  {
-    Code = _code;
-  }
-
-  public int Code { get; set; }
-}
+[TcpMsgType("test-simple-msg-res")]
+record SimpleMsgRes(int Code);

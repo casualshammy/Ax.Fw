@@ -86,7 +86,7 @@ public class DocumentStorageWithRetentionRules : DisposableStack, IDocumentStora
     => p_documentStorage.DeleteSimpleDocumentAsync<T>(_entryId, _ct);
 
 #pragma warning disable CS8424
-  public IAsyncEnumerable<DocumentTypedEntry<T>> ListDocumentsAsync<T>(
+  public IAsyncEnumerable<DocumentEntry<T>> ListDocumentsAsync<T>(
     string _namespace,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
@@ -110,7 +110,7 @@ public class DocumentStorageWithRetentionRules : DisposableStack, IDocumentStora
     [EnumeratorCancellation] CancellationToken _ct = default) 
     => p_documentStorage.ListDocumentsMetaAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
 
-  public IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
+  public IAsyncEnumerable<DocumentEntry<T>> ListSimpleDocumentsAsync<T>(
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
@@ -118,28 +118,28 @@ public class DocumentStorageWithRetentionRules : DisposableStack, IDocumentStora
     => p_documentStorage.ListSimpleDocumentsAsync<T>(_keyLikeExpression, _from, _to, _ct);
 #pragma warning restore CS8424
 
-  public Task<DocumentTypedEntry<T>?> ReadDocumentAsync<T>(string _namespace, string _key, CancellationToken _ct)
+  public Task<DocumentEntry<T>?> ReadDocumentAsync<T>(string _namespace, string _key, CancellationToken _ct)
     => p_documentStorage.ReadDocumentAsync<T>(_namespace, _key, _ct);
 
-  public Task<DocumentTypedEntry<T>?> ReadDocumentAsync<T>(string _namespace, int _key, CancellationToken _ct)
+  public Task<DocumentEntry<T>?> ReadDocumentAsync<T>(string _namespace, int _key, CancellationToken _ct)
     => p_documentStorage.ReadDocumentAsync<T>(_namespace, _key, _ct);
 
-  public Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
+  public Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
     => p_documentStorage.ReadSimpleDocumentAsync<T>(_entryId, _ct);
 
-  public Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
+  public Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
     => p_documentStorage.ReadSimpleDocumentAsync<T>(_entryId, _ct);
 
-  public Task<DocumentTypedEntry<T>> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull
+  public Task<DocumentEntry<T>> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull
     => p_documentStorage.WriteDocumentAsync(_namespace, _key, _data, _ct);
 
-  public Task<DocumentTypedEntry<T>> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull
+  public Task<DocumentEntry<T>> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull
     => p_documentStorage.WriteDocumentAsync(_namespace, _key, _data, _ct);
 
-  public Task<DocumentTypedEntry<T>> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull
+  public Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull
     => p_documentStorage.WriteSimpleDocumentAsync(_entryId, _data, _ct);
 
-  public Task<DocumentTypedEntry<T>> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull
+  public Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull
     => p_documentStorage.WriteSimpleDocumentAsync(_entryId, _data, _ct);
 
   /// <summary>

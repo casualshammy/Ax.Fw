@@ -3,29 +3,13 @@ using Ax.Fw.SharedTypes.Attributes;
 using Ax.Fw.Storage.Extensions;
 using Ax.Fw.Storage.Interfaces;
 using Ax.Fw.Tests.Tools;
+using System.Collections.Immutable;
 using System.Diagnostics;
 
 namespace Ax.Fw.Storage.Tests;
 
 public class SqliteDocumentStorageTestsV2
 {
-  [SimpleDocument("simple-record")]
-  record DataRecord(int Id, string Name)
-  {
-    public string GetStorageKey() => $"{Id}.{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
-    public static int? GetIdFromStorageKey(string _storageKey)
-    {
-      var split = _storageKey.Split('.', StringSplitOptions.RemoveEmptyEntries);
-      if (split.Length != 2)
-        return null;
-
-      if (!int.TryParse(split[0], out var projectId))
-        return null;
-
-      return projectId;
-    }
-  };
-
 #pragma warning disable xUnit1026 // Theory methods should use all of their parameters
   [Theory]
   [Repeat(100)]
@@ -417,5 +401,63 @@ public class SqliteDocumentStorageTestsV2
     }
   }
 
+  [Fact]
+  public async Task InterfacesSerializationAsync()
+  {
+    var lifetime = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    try
+    {
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
+
+      var list = new[] { 1, 2, 3 };
+      var dictionary = ImmutableDictionary.CreateBuilder<string, int>();
+      dictionary.Add("A", 1);
+      dictionary.Add("b", 2);
+      dictionary.Add("C", 3);
+      var data = new InterfacesRecord(list, dictionary.ToImmutable(), RecordEnum.Record);
+
+      await storage.WriteSimpleDocumentAsync(0, data, lifetime.Token);
+      var result = await storage.ReadSimpleDocumentAsync<InterfacesRecord>(0, lifetime.Token);
+      Assert.Equal(list, result?.Data.ListOfInt);
+      Assert.Equal(dictionary, result?.Data.Dictionary);
+      Assert.Equal(RecordEnum.Record, result?.Data.Enum);
+    }
+    finally
+    {
+      lifetime.End();
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
+    }
+  }
+
+
   private static string GetDbTmpPath() => $"{Path.GetTempFileName()}";
+
+  [SimpleDocument("simple-record")]
+  record DataRecord(int Id, string Name)
+  {
+    public string GetStorageKey() => $"{Id}.{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+    public static int? GetIdFromStorageKey(string _storageKey)
+    {
+      var split = _storageKey.Split('.', StringSplitOptions.RemoveEmptyEntries);
+      if (split.Length != 2)
+        return null;
+
+      if (!int.TryParse(split[0], out var projectId))
+        return null;
+
+      return projectId;
+    }
+  };
+
+  enum RecordEnum
+  {
+    None = 0,
+    Class = 1,
+    Record = 2
+  }
+
+  record InterfacesRecord(IReadOnlyList<int> ListOfInt, IReadOnlyDictionary<string, int> Dictionary, RecordEnum Enum);
+
 }

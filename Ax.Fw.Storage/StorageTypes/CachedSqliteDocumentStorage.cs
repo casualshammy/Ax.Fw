@@ -67,7 +67,7 @@ public class CachedSqliteDocumentStorage : DisposableStack, IDocumentStorage
 
 #pragma warning disable CS8424
 
-  public IAsyncEnumerable<DocumentTypedEntry<T>> ListDocumentsAsync<T>(
+  public IAsyncEnumerable<DocumentEntry<T>> ListDocumentsAsync<T>(
     string _namespace,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
@@ -93,7 +93,7 @@ public class CachedSqliteDocumentStorage : DisposableStack, IDocumentStorage
     [EnumeratorCancellation] CancellationToken _ct = default) 
     => p_documentStorage.ListDocumentsMetaAsync(_namespace, _keyLikeExpression, _from, _to, _ct);
 
-  public IAsyncEnumerable<DocumentTypedEntry<T>> ListSimpleDocumentsAsync<T>(
+  public IAsyncEnumerable<DocumentEntry<T>> ListSimpleDocumentsAsync<T>(
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
@@ -102,7 +102,7 @@ public class CachedSqliteDocumentStorage : DisposableStack, IDocumentStorage
 
 #pragma warning restore CS8424
 
-  public async Task<DocumentTypedEntry<T>?> ReadDocumentAsync<T>(string _namespace, string _key, CancellationToken _ct)
+  public async Task<DocumentEntry<T>?> ReadDocumentAsync<T>(string _namespace, string _key, CancellationToken _ct)
   {
     var cacheKey = new CacheKey(_namespace, _key);
     var result = await p_cache.GetOrPutAsync(cacheKey, async _ =>
@@ -110,44 +110,44 @@ public class CachedSqliteDocumentStorage : DisposableStack, IDocumentStorage
       object? doc = await p_documentStorage.ReadDocumentAsync<T>(_namespace, _key, _ct);
       return doc;
     });
-    return result as DocumentTypedEntry<T>;
+    return result as DocumentEntry<T>;
   }
 
-  public Task<DocumentTypedEntry<T>?> ReadDocumentAsync<T>(string _namespace, int _key, CancellationToken _ct)
+  public Task<DocumentEntry<T>?> ReadDocumentAsync<T>(string _namespace, int _key, CancellationToken _ct)
   {
     return ReadDocumentAsync<T>(_namespace, _key.ToString(CultureInfo.InvariantCulture), _ct);
   }
 
-  public Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
+  public Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
     return ReadDocumentAsync<T>(ns, _entryId, _ct);
   }
 
-  public Task<DocumentTypedEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
+  public Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
   {
     return ReadSimpleDocumentAsync<T>(_entryId.ToString(CultureInfo.InvariantCulture), _ct);
   }
 
-  public async Task<DocumentTypedEntry<T>> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull
+  public async Task<DocumentEntry<T>> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull
   {
     var document = await p_documentStorage.WriteDocumentAsync(_namespace, _key, _data, _ct);
     p_cache.Put(new CacheKey(_namespace, _key), document);
     return document;
   }
 
-  public Task<DocumentTypedEntry<T>> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull
+  public Task<DocumentEntry<T>> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull
   {
     return WriteDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), _data, _ct);
   }
 
-  public Task<DocumentTypedEntry<T>> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull
+  public Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
     return WriteDocumentAsync(ns, _entryId, _data, _ct);
   }
 
-  public Task<DocumentTypedEntry<T>> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull
+  public Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull
   {
     return WriteSimpleDocumentAsync(_entryId.ToString(CultureInfo.InvariantCulture), _data, _ct);
   }

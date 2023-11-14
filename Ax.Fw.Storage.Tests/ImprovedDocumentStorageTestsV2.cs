@@ -43,7 +43,7 @@ public class ImprovedDocumentStorageTestsV2
       {
         await storage.WriteSimpleDocumentAsync(entry, new DataRecord(entry, entry.ToString()), lifetime.Token);
 
-        DocumentTypedEntry<DataRecord>? document = null;
+        DocumentEntry<DataRecord>? document = null;
         for (int i = 0; i < 100; i++)
           document = await storage.ReadSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
         Assert.NotNull(document);
@@ -61,7 +61,7 @@ public class ImprovedDocumentStorageTestsV2
       {
         await cachedStorage.WriteSimpleDocumentAsync(entry, new DataRecord(entry, entry.ToString()), lifetime.Token);
 
-        DocumentTypedEntry<DataRecord>? document = null;
+        DocumentEntry<DataRecord>? document = null;
         for (int i = 0; i < 100; i++)
           document = await cachedStorage.ReadSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
         Assert.NotNull(document);
