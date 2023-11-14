@@ -21,8 +21,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="Grace.DependencyInjection.Extensions" Version="7.1.0" />
-		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="7.0.0" />
-		<PackageReference Include="System.Collections.Immutable" Version="7.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+		<PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>

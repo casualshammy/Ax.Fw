@@ -210,7 +210,6 @@ public static class Compress
   /// </summary>
   public static async Task<T?> DecompressGzippedJsonAsync<T>(Stream _compressedStream, CancellationToken _ct)
   {
-    T? result;
     using (var targetStream = new MemoryStream())
     {
       using (var decompression = new GZipStream(_compressedStream, CompressionMode.Decompress, true))
@@ -220,7 +219,6 @@ public static class Compress
 
       return await JsonSerializer.DeserializeAsync<T>(targetStream, cancellationToken: _ct);
     }
-    return result;
   }
 
 }
