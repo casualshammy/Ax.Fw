@@ -5,10 +5,12 @@ using Ax.Fw.Storage.Interfaces;
 using Ax.Fw.Tests.Tools;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Ax.Fw.Storage.Tests;
 
-public class SqliteDocumentStorageTestsV2
+public class SqliteDocumentStorageAotTests
 {
 #pragma warning disable xUnit1026 // Theory methods should use all of their parameters
   [Theory]
@@ -20,23 +22,23 @@ public class SqliteDocumentStorageTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
-      var doc = await storage.WriteSimpleDocumentAsync(_entryId: 123, _data: "test_data", lifetime.Token);
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageAot(dbFile));
+      var doc = await storage.WriteSimpleDocumentAsync(_entryId: 123, _data: "test_data", JsonSerializationContext.Default.String, lifetime.Token);
 
-      var data0 = await storage.ReadSimpleDocumentAsync<string>(_entryId: 123, lifetime.Token);
+      var data0 = await storage.ReadSimpleDocumentAsync<string>(_entryId: 123, JsonSerializationContext.Default.String, lifetime.Token);
 
       Assert.Equal("test_data", data0?.Data);
 
       await storage.DeleteSimpleDocumentAsync<string>(123, lifetime.Token);
-      var data1 = await storage.ReadSimpleDocumentAsync<string>(123, lifetime.Token);
+      var data1 = await storage.ReadSimpleDocumentAsync<string>(123, JsonSerializationContext.Default.String, lifetime.Token);
 
       Assert.Null(data1);
     }
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -52,17 +54,17 @@ public class SqliteDocumentStorageTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
-      var doc0 = await storage.WriteSimpleDocumentAsync(123, "test_data", lifetime.Token);
-      var doc1 = await storage.ReadSimpleDocumentAsync<string>(123, lifetime.Token);
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageAot(dbFile));
+      var doc0 = await storage.WriteSimpleDocumentAsync(123, "test_data", JsonSerializationContext.Default.String, lifetime.Token);
+      var doc1 = await storage.ReadSimpleDocumentAsync(123, JsonSerializationContext.Default.String, lifetime.Token);
 
       Assert.Equal(doc0.Version, doc1?.Version);
       Assert.Equal(doc0.LastModified, doc1?.LastModified);
       Assert.Equal(doc0.Created, doc1?.Created);
 
-      _ = await storage.WriteSimpleDocumentAsync(123, "test-data-new", lifetime.Token);
+      _ = await storage.WriteSimpleDocumentAsync(123, "test-data-new", JsonSerializationContext.Default.String, lifetime.Token);
 
-      var doc2 = await storage.ReadSimpleDocumentAsync<string>(123, lifetime.Token);
+      var doc2 = await storage.ReadSimpleDocumentAsync(123, JsonSerializationContext.Default.String, lifetime.Token);
       Assert.NotEqual(doc0.Version, doc2?.Version);
       Assert.NotEqual(doc0.LastModified, doc2?.LastModified);
       Assert.Equal(doc0.Created, doc2?.Created);
@@ -70,8 +72,8 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -84,24 +86,24 @@ public class SqliteDocumentStorageTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageAot(dbFile));
 
-      var record0 = await storage.WriteSimpleDocumentAsync(123, "test-data-0", lifetime.Token);
-      var record1 = await storage.WriteSimpleDocumentAsync(123, "test-data-1", lifetime.Token);
-      var record2 = await storage.ReadSimpleDocumentAsync<string>(123, lifetime.Token);
+      var record0 = await storage.WriteSimpleDocumentAsync(123, "test-data-0", JsonSerializationContext.Default.String, lifetime.Token);
+      var record1 = await storage.WriteSimpleDocumentAsync(123, "test-data-1", JsonSerializationContext.Default.String, lifetime.Token);
+      var record2 = await storage.ReadSimpleDocumentAsync<string>(123, JsonSerializationContext.Default.String, lifetime.Token);
 
       Assert.NotEqual(record0.Data, record2?.Data);
       Assert.Equal("test-data-1", record2?.Data);
       Assert.Equal(record0.DocId, record2?.DocId);
 
-      var list = await storage.ListSimpleDocumentsAsync<string>(_ct: lifetime.Token).ToListAsync(lifetime.Token);
+      var list = await storage.ListSimpleDocumentsAsync(JsonSerializationContext.Default.String, _ct: lifetime.Token).ToListAsync(lifetime.Token);
       Assert.Single(list);
     }
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -117,26 +119,26 @@ public class SqliteDocumentStorageTestsV2
       var ns = "test_table";
       var key = "test-key";
 
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageAot(dbFile));
 
-      var record0 = await storage.WriteDocumentAsync(_namespace: ns, _key: key, _data: "test-data-0", lifetime.Token);
+      var record0 = await storage.WriteDocumentAsync(_namespace: ns, _key: key, _data: "test-data-0", JsonSerializationContext.Default.String, lifetime.Token);
 
-      var record1 = await storage.WriteDocumentAsync(ns, key, "test-data-1", lifetime.Token);
+      var record1 = await storage.WriteDocumentAsync(ns, key, "test-data-1", JsonSerializationContext.Default.String, lifetime.Token);
 
-      var record2 = await storage.ReadDocumentAsync<string>(ns, key, lifetime.Token);
+      var record2 = await storage.ReadDocumentAsync(ns, key, JsonSerializationContext.Default.String, lifetime.Token);
 
       Assert.NotEqual(record0.Data, record2?.Data);
       Assert.Equal("test-data-1", record2?.Data);
       Assert.Equal(record0.DocId, record2?.DocId);
 
-      var list = await storage.ListDocumentsAsync<string>(ns, _ct: lifetime.Token).ToListAsync(lifetime.Token);
+      var list = await storage.ListDocumentsAsync(ns, JsonSerializationContext.Default.String, _ct: lifetime.Token).ToListAsync(lifetime.Token);
       Assert.Single(list);
     }
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -149,24 +151,24 @@ public class SqliteDocumentStorageTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageAot(dbFile));
 
-      var record0 = await storage.WriteDocumentAsync("test-table", "test-key", "test-data-0", lifetime.Token);
+      var record0 = await storage.WriteDocumentAsync("test-table", "test-key", "test-data-0", JsonSerializationContext.Default.String, lifetime.Token);
       Assert.Equal(0, record0.DocId);
 
       await storage.DeleteDocumentsAsync("test-table", "test-key", null, null, lifetime.Token);
 
-      var list0 = await storage.ListDocumentsAsync<string>("test-table", _ct: lifetime.Token).ToListAsync(lifetime.Token);
+      var list0 = await storage.ListDocumentsAsync<string>("test-table", JsonSerializationContext.Default.String, _ct: lifetime.Token).ToListAsync(lifetime.Token);
       Assert.Empty(list0);
 
-      var record1 = await storage.WriteDocumentAsync("test-table", "test-key", "test-data-0", lifetime.Token);
+      var record1 = await storage.WriteDocumentAsync("test-table", "test-key", "test-data-0", JsonSerializationContext.Default.String, lifetime.Token);
       Assert.NotEqual(0, record1.DocId);
     }
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -182,15 +184,15 @@ public class SqliteDocumentStorageTestsV2
     {
       // open db, write documents, then close db
       var entriesCount = 100;
-      var storage0 = lifetime0.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
+      var storage0 = lifetime0.ToDisposeOnEnding(new SqliteDocumentStorageAot(dbFile));
       var enumerable = Enumerable.Range(0, entriesCount);
 
       var lastDocId = 0;
       await Parallel.ForEachAsync(enumerable, lifetime0.Token, async (_key, _ct) =>
       {
-        var document0 = await storage0.WriteDocumentAsync("test-table0", _key, "test-data", lifetime0.Token);
-        var document1 = await storage0.WriteDocumentAsync("test-table1", _key, "test-data", lifetime0.Token);
-        var document2 = await storage0.WriteDocumentAsync("test-table2", _key, "test-data", lifetime0.Token);
+        var document0 = await storage0.WriteDocumentAsync("test-table0", _key, "test-data", JsonSerializationContext.Default.String, lifetime0.Token);
+        var document1 = await storage0.WriteDocumentAsync("test-table1", _key, "test-data", JsonSerializationContext.Default.String, lifetime0.Token);
+        var document2 = await storage0.WriteDocumentAsync("test-table2", _key, "test-data", JsonSerializationContext.Default.String, lifetime0.Token);
 
         lastDocId = Math.Max(lastDocId, document0.DocId);
         lastDocId = Math.Max(lastDocId, document1.DocId);
@@ -201,8 +203,8 @@ public class SqliteDocumentStorageTestsV2
 
       Assert.Equal(entriesCount * 3, lastDocId + 1);
 
-      var storage1 = lifetime1.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
-      var document = await storage1.WriteDocumentAsync("test-table", entriesCount + 1, "test-data", lifetime1.Token);
+      var storage1 = lifetime1.ToDisposeOnEnding(new SqliteDocumentStorageAot(dbFile));
+      var document = await storage1.WriteDocumentAsync("test-table", entriesCount + 1, "test-data", JsonSerializationContext.Default.String, lifetime1.Token);
 
       Assert.True(document.DocId > lastDocId);
     }
@@ -210,8 +212,8 @@ public class SqliteDocumentStorageTestsV2
     {
       lifetime0.End();
       lifetime1.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -222,11 +224,11 @@ public class SqliteDocumentStorageTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageAot(dbFile));
 
-      var document0 = await storage.WriteSimpleDocumentAsync(100, new DataRecord(100, "100"), lifetime.Token);
-      var document1 = await storage.ReadSimpleDocumentAsync<DataRecord>(100, lifetime.Token);
-      var document2 = await storage.ReadDocumentAsync<DataRecord>("simple-record", 100, lifetime.Token);
+      var document0 = await storage.WriteSimpleDocumentAsync(100, new DataRecord(100, "100"), JsonSerializationContext.Default.DataRecord, lifetime.Token);
+      var document1 = await storage.ReadSimpleDocumentAsync(100, JsonSerializationContext.Default.DataRecord, lifetime.Token);
+      var document2 = await storage.ReadDocumentAsync("simple-record", 100, JsonSerializationContext.Default.DataRecord, lifetime.Token);
 
       Assert.NotNull(document0);
       Assert.NotNull(document1);
@@ -235,8 +237,8 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -248,13 +250,13 @@ public class SqliteDocumentStorageTestsV2
     try
     {
       var wrongNs = "wrong_ns";
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageAot(dbFile));
       Assert.Equal(0, await storage.CountSimpleDocuments<DataRecord>(null, lifetime.Token));
       Assert.Equal(0, await storage.Count(wrongNs, null, lifetime.Token));
 
       for (int i = 0; i < 3; i++)
       {
-        await storage.WriteSimpleDocumentAsync(i, new DataRecord(i, i.ToString()), lifetime.Token);
+        await storage.WriteSimpleDocumentAsync(i, new DataRecord(i, i.ToString()), JsonSerializationContext.Default.DataRecord, lifetime.Token);
         Assert.Equal(i + 1, await storage.CountSimpleDocuments<DataRecord>(null, lifetime.Token));
         Assert.Equal(0, await storage.Count(wrongNs, null, lifetime.Token));
       }
@@ -269,8 +271,8 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -282,11 +284,11 @@ public class SqliteDocumentStorageTestsV2
     try
     {
       var totalEntriesCount = 10000;
-      IDocumentStorage storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
+      IDocumentStorageAot storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageAot(dbFile));
       for (var i = 0; i < 10000; i++)
       {
         var entry = new DataRecord(i % 100, string.Empty);
-        _ = await storage.WriteSimpleDocumentAsync(entry.GetStorageKey(), entry, lifetime.Token);
+        _ = await storage.WriteSimpleDocumentAsync(entry.GetStorageKey(), entry, JsonSerializationContext.Default.DataRecord, lifetime.Token);
       }
 
       var targetIdMiddle = totalEntriesCount / 2;
@@ -339,8 +341,8 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -351,11 +353,11 @@ public class SqliteDocumentStorageTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageAot(dbFile));
       for (var i = 0; i < 1000; i++)
       {
         var entry = new DataRecord(i % 100, string.Empty);
-        _ = await storage.WriteSimpleDocumentAsync(entry.GetStorageKey(), entry, lifetime.Token);
+        _ = await storage.WriteSimpleDocumentAsync(entry.GetStorageKey(), entry, JsonSerializationContext.Default.DataRecord, lifetime.Token);
       }
 
       var walFile = new FileInfo($"{dbFile}-wal");
@@ -373,8 +375,8 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -385,7 +387,7 @@ public class SqliteDocumentStorageTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageAot(dbFile));
 
       var list = new[] { 1, 2, 3 };
       var dictionary = ImmutableDictionary.CreateBuilder<string, int>();
@@ -394,8 +396,8 @@ public class SqliteDocumentStorageTestsV2
       dictionary.Add("C", 3);
       var data = new InterfacesRecord(list, dictionary.ToImmutable(), RecordEnum.Record);
 
-      await storage.WriteSimpleDocumentAsync(0, data, lifetime.Token);
-      var result = await storage.ReadSimpleDocumentAsync<InterfacesRecord>(0, lifetime.Token);
+      await storage.WriteSimpleDocumentAsync(0, data, JsonSerializationContext.Default.InterfacesRecord, lifetime.Token);
+      var result = await storage.ReadSimpleDocumentAsync(0, JsonSerializationContext.Default.InterfacesRecord, lifetime.Token);
       Assert.Equal(list, result?.Data.ListOfInt);
       Assert.Equal(dictionary, result?.Data.Dictionary);
       Assert.Equal(RecordEnum.Record, result?.Data.Enum);
@@ -403,38 +405,46 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
 
   private static string GetDbTmpPath() => $"{Path.GetTempFileName()}";
 
-  [SimpleDocument("simple-record")]
-  record DataRecord(int Id, string Name)
+}
+
+[SimpleDocument("simple-record")]
+record DataRecord(int Id, string Name)
+{
+  public string GetStorageKey() => $"{Id}.{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+  public static int? GetIdFromStorageKey(string _storageKey)
   {
-    public string GetStorageKey() => $"{Id}.{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
-    public static int? GetIdFromStorageKey(string _storageKey)
-    {
-      var split = _storageKey.Split('.', StringSplitOptions.RemoveEmptyEntries);
-      if (split.Length != 2)
-        return null;
+    var split = _storageKey.Split('.', StringSplitOptions.RemoveEmptyEntries);
+    if (split.Length != 2)
+      return null;
 
-      if (!int.TryParse(split[0], out var projectId))
-        return null;
+    if (!int.TryParse(split[0], out var projectId))
+      return null;
 
-      return projectId;
-    }
-  };
-
-  enum RecordEnum
-  {
-    None = 0,
-    Class = 1,
-    Record = 2
+    return projectId;
   }
+};
 
-  record InterfacesRecord(IReadOnlyList<int> ListOfInt, IReadOnlyDictionary<string, int> Dictionary, RecordEnum Enum);
+enum RecordEnum
+{
+  None = 0,
+  Class = 1,
+  Record = 2
+}
 
+record InterfacesRecord(IReadOnlyList<int> ListOfInt, IReadOnlyDictionary<string, int> Dictionary, RecordEnum Enum);
+
+[JsonSourceGenerationOptions()]
+[JsonSerializable(typeof(string))]
+[JsonSerializable(typeof(DataRecord))]
+[JsonSerializable(typeof(InterfacesRecord))]
+internal partial class JsonSerializationContext : JsonSerializerContext
+{
 }

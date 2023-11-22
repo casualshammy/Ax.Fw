@@ -18,6 +18,8 @@ public abstract class DisposableStack : IDisposable
     return p_lifetime.ToDisposeAsyncOnEnding(_value);
   }
 
+  protected void ToDoOnDisposing(Action _action) => p_lifetime.DoOnEnding(_action);
+
   protected virtual void Dispose(bool _disposing)
   {
     if (!p_disposedValue)
