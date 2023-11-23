@@ -220,6 +220,52 @@ public class EncryptTests
   }
 
   [Theory(Timeout = 30000)]
+  [InlineData(128, 512, 80)]
+  [InlineData(128, 512, 800)]
+  [InlineData(128, 1165217, 800)]
+  [InlineData(128, 1165217, 2165217)]
+  [InlineData(256, 512, 80)]
+  [InlineData(256, 512, 800)]
+  [InlineData(256, 1165217, 800)]
+  [InlineData(256, 1165217, 2165217)]
+  public void AesGcmObfsSimpleTest(int _keySize, int _taskSize, int _minChunkSize)
+  {
+    using var lifetime = new Lifetime();
+    var key = Utilities.GetRandomString(8, false);
+    var data = new byte[_taskSize];
+    Random.Shared.NextBytes(data);
+
+    var encryptedSize = data.Length + 4 + 4 + AesGcm.NonceByteSizes.MaxSize + 4 + AesGcm.TagByteSizes.MaxSize;
+
+    var aesGcm = new AesWithGcmObfs(lifetime, key, _minChunkSize, _keySize);
+    var sw = Stopwatch.StartNew();
+    var elapsed = 0L;
+
+    sw.Restart();
+    var encryptedData = aesGcm.Encrypt(data);
+    elapsed = sw.ElapsedTicks;
+    p_output.WriteLine($"Encrypt: {elapsed} ticks");
+    Console.WriteLine($"Encrypt: {elapsed} ticks");
+
+    var encryptedDataBytes = encryptedData.ToArray();
+    Assert.NotEmpty(encryptedData.ToArray());
+    Assert.NotEqual(data, encryptedDataBytes);
+    Assert.Equal(Math.Max(encryptedSize, _minChunkSize), encryptedDataBytes.Length);
+    Assert.NotEqual(encryptedSize - 4, BinaryPrimitives.ReadInt32LittleEndian(encryptedDataBytes));
+
+    sw.Restart();
+    var decryptedData = aesGcm.Decrypt(encryptedData);
+    elapsed = sw.ElapsedTicks;
+    p_output.WriteLine($"Decrypt: {elapsed} ticks");
+    Console.WriteLine($"Decrypt: {elapsed} ticks");
+
+    var decryptedDataBytes = decryptedData.ToArray();
+    Assert.NotEmpty(decryptedDataBytes);
+    Assert.Equal(data, decryptedDataBytes);
+    Assert.Equal(data.Length, decryptedDataBytes.Length);
+  }
+
+  [Theory(Timeout = 30000)]
   [InlineData(128, 512)]
   [InlineData(128, 1024 * 1024)]
   [InlineData(128, 1165217)]
