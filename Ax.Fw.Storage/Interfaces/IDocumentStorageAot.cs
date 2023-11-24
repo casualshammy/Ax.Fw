@@ -13,10 +13,10 @@ public interface IDocumentStorageAot
   Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull;
   Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull;
   Task FlushAsync(bool _force, CancellationToken _ct);
-  IAsyncEnumerable<DocumentEntry<T>> ListDocumentsAsync<T>(string _namespace, JsonTypeInfo<T> _jsonTypeInfo, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
-  IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(string? _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
-  IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(LikeExpr? _namespaceLikeExpression = null, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
-  IAsyncEnumerable<DocumentEntry<T>> ListSimpleDocumentsAsync<T>(JsonTypeInfo<T> _jsonTypeInfo, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
+  IAsyncEnumerable<DocumentEntry<T>> ListDocumentsAsync<T>(string _namespace, JsonTypeInfo<T> _jsonTypeInfo, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default);
+  IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(string? _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default);
+  IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(LikeExpr? _namespaceLikeExpression = null, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default);
+  IAsyncEnumerable<DocumentEntry<T>> ListSimpleDocumentsAsync<T>(JsonTypeInfo<T> _jsonTypeInfo, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default);
   Task<DocumentEntry<T>?> ReadDocumentAsync<T>(string _namespace, string _key, JsonTypeInfo<T> _jsonTypeInfo, CancellationToken _ct);
   Task<DocumentEntry<T>?> ReadDocumentAsync<T>(string _namespace, int _key, JsonTypeInfo<T> _jsonTypeInfo, CancellationToken _ct);
   Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, JsonTypeInfo<T> _jsonTypeInfo, CancellationToken _ct) where T : notnull;
