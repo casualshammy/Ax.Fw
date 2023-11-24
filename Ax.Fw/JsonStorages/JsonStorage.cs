@@ -50,8 +50,9 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
     _lifetime.ToDisposeOnEnded(SharedPool<EventLoopScheduler>.Get(out var scheduler));
 
     p_sharedObservable = Observable
-      .Interval(TimeSpan.FromSeconds(1), scheduler)
+      .Interval(TimeSpan.FromSeconds(1))
       .StartWithDefault()
+      .ObserveOn(scheduler)
       .Scan(new FileMetaInfo(false, false, DateTime.MinValue, 0L, false), (_acc, _) =>
       {
         var newFileInfo = new FileInfo(_jsonFilePath);
