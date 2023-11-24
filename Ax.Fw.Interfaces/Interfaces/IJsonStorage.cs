@@ -1,14 +1,15 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 
-namespace Ax.Fw.SharedTypes.Interfaces
-{
-    public interface IJsonStorage<T>
-    {
-        string JsonFilePath { get; }
+namespace Ax.Fw.SharedTypes.Interfaces;
 
-        T Load(Func<T> _defaultFactory);
-        Task<T> LoadAsync(Func<Task<T>> _defaultFactory);
-        void Save(T _data, bool _humanReadable = false);
-    }
+public interface IJsonStorage<T>
+{
+  string JsonFilePath { get; }
+
+  T Read(Func<T> _defaultFactory);
+  Task<T> ReadAsync(Func<CancellationToken, Task<T>> _defaultFactory, CancellationToken _ct);
+  Task WriteAsync(T? _data, CancellationToken _ct);
+  void Write(T? _data);
 }
