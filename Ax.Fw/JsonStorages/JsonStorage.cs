@@ -47,7 +47,7 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
     p_jsonTypeInfo = _jsonTypeInfo;
     JsonFilePath = _jsonFilePath;
 
-    _lifetime.ToDisposeOnEnded(SharedPool<EventLoopScheduler>.Get(out var scheduler));
+    var scheduler = _lifetime.ToDisposeOnEnded(new EventLoopScheduler());
 
     p_sharedObservable = Observable
       .Interval(TimeSpan.FromSeconds(1))
