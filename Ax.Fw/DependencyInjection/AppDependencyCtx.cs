@@ -1,9 +1,8 @@
-﻿using Ax.Fw.SharedTypes.Interfaces;
-using System;
+﻿using System;
 
 namespace Ax.Fw.DependencyInjection;
 
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
 
 public class AppDependencyCtx : IAppDependencyCtx
 {

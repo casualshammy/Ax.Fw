@@ -1,6 +1,6 @@
 ﻿namespace Ax.Fw.DependencyInjection;
 
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
 public interface IAppModule<T>
 {
   public static abstract T ExportInstance(IAppDependencyCtx _ctx);

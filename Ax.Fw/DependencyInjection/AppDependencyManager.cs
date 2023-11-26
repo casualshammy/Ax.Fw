@@ -6,7 +6,7 @@ using System.Threading;
 
 namespace Ax.Fw.DependencyInjection;
 
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
 
 public sealed class AppDependencyManager
 {
