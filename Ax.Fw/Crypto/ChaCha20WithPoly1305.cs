@@ -19,8 +19,7 @@ public class ChaCha20WithPoly1305 : ICryptoAlgorithm
   public ChaCha20WithPoly1305(IReadOnlyLifetime _lifetime, string _key)
   {
     var key = Encoding.UTF8.GetBytes(_key);
-    using var sha = SHA512.Create();
-    var hashSource = sha.ComputeHash(key);
+    var hashSource = SHA512.HashData(key);
     p_chacha = _lifetime.ToDisposeOnEnding(new ChaCha20Poly1305(hashSource.Take(32).ToArray()));
   }
 

@@ -25,7 +25,7 @@ public class AppDependencyManagerTests
       .AddSingleton<IReadOnlyLifetime>(new Lifetime())
       .AddModule<TestAppDependency, ITestAppDependency>()
       .ActivateOnStart<ITestAppDependency>()
-      .Run();
+      .Build();
 
     var lifetime0 = appDepMgr.LocateOrDefault<IReadOnlyLifetime>();
     var lifetime1 = appDepMgr.LocateOrDefault<IReadOnlyLifetime>();
@@ -57,8 +57,8 @@ public class AppDependencyManagerTests
       AppDependencyManager
         .Create()
         .AddSingleton<IReadOnlyLifetime>(new Lifetime())
-        .Run()
-        .Run());
+        .Build()
+        .Build());
   }
 
   [Fact(Timeout = 30000)]
@@ -67,7 +67,7 @@ public class AppDependencyManagerTests
     var appDepMgr = AppDependencyManager
         .Create()
         .AddSingleton<IReadOnlyLifetime>(new Lifetime())
-        .Run();
+        .Build();
 
     Assert.NotNull(appDepMgr.LocateOrDefault<IReadOnlyLifetime>());
     Assert.Null(appDepMgr.LocateOrDefault<ILifetime>());

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Text;
@@ -11,6 +12,22 @@ namespace Ax.Fw;
 
 public static class Utilities
 {
+  class CustomComparer<T>(Comparison<T?> _comparison) : Comparer<T>
+  {
+    private readonly Comparison<T?> p_comparison = _comparison;
+
+    public override int Compare(T? _x, T? _y) => p_comparison(_x, _y);
+  }
+
+  class CustomEqualityComparer<T>(Func<T?, T?, bool> _comparison) : IEqualityComparer<T>
+  {
+    private readonly Func<T?, T?, bool> p_comparison = _comparison;
+
+    public bool Equals(T? _x, T? _y) => p_comparison(_x, _y);
+
+    public int GetHashCode([DisallowNull] T _obj) => _obj.GetHashCode();
+  }
+
   private static int p_seed = Environment.TickCount;
   private static readonly ThreadLocal<Random> p_randomWrapper = new(() => new Random(Interlocked.Increment(ref p_seed)));
 
@@ -100,5 +117,9 @@ public static class Utilities
         .SelectMany(_x => _x.GetTypes())
         .Where(_x => typeof(T).IsAssignableFrom(_x));
   }
+
+  public static IComparer<T> CreateComparer<T>(Comparison<T?> _comparison) => new CustomComparer<T>(_comparison);
+
+  public static IEqualityComparer<T> CreateEqualityComparer<T>(Func<T?, T?, bool> _func) => new CustomEqualityComparer<T>(_func);
 
 }

@@ -1,4 +1,5 @@
 ﻿using Ax.Fw.Crypto;
+using Ax.Fw.SharedTypes.Data.Crypto;
 using System;
 using System.Buffers.Binary;
 using System.Diagnostics;
@@ -179,15 +180,15 @@ public class EncryptTests
   }
 
   [Theory(Timeout = 30000)]
-  [InlineData(128, 512)]
-  [InlineData(128, 1024 * 1024)]
-  [InlineData(128, 1165217)]
-  [InlineData(128, 11652170)]
-  [InlineData(256, 512)]
-  [InlineData(256, 1024 * 1024)]
-  [InlineData(256, 1165217)]
-  [InlineData(256, 11652170)]
-  public void AesGcmSimpleTest(int _keySize, int _taskSize)
+  [InlineData(EncryptionKeyLength.Bits128, 512)]
+  [InlineData(EncryptionKeyLength.Bits128, 1024 * 1024)]
+  [InlineData(EncryptionKeyLength.Bits128, 1165217)]
+  [InlineData(EncryptionKeyLength.Bits128, 11652170)]
+  [InlineData(EncryptionKeyLength.Bits256, 512)]
+  [InlineData(EncryptionKeyLength.Bits256, 1024 * 1024)]
+  [InlineData(EncryptionKeyLength.Bits256, 1165217)]
+  [InlineData(EncryptionKeyLength.Bits256, 11652170)]
+  public void AesGcmSimpleTest(EncryptionKeyLength _keySize, int _taskSize)
   {
     using var lifetime = new Lifetime();
     var key = Utilities.GetRandomString(8, false);
@@ -220,15 +221,15 @@ public class EncryptTests
   }
 
   [Theory(Timeout = 30000)]
-  [InlineData(128, 512, 80)]
-  [InlineData(128, 512, 800)]
-  [InlineData(128, 1165217, 800)]
-  [InlineData(128, 1165217, 2165217)]
-  [InlineData(256, 512, 80)]
-  [InlineData(256, 512, 800)]
-  [InlineData(256, 1165217, 800)]
-  [InlineData(256, 1165217, 2165217)]
-  public void AesGcmObfsSimpleTest(int _keySize, int _taskSize, int _minChunkSize)
+  [InlineData(EncryptionKeyLength.Bits128, 512, 80)]
+  [InlineData(EncryptionKeyLength.Bits128, 512, 800)]
+  [InlineData(EncryptionKeyLength.Bits128, 1165217, 800)]
+  [InlineData(EncryptionKeyLength.Bits128, 1165217, 2165217)]
+  [InlineData(EncryptionKeyLength.Bits256, 512, 80)]
+  [InlineData(EncryptionKeyLength.Bits256, 512, 800)]
+  [InlineData(EncryptionKeyLength.Bits256, 1165217, 800)]
+  [InlineData(EncryptionKeyLength.Bits256, 1165217, 2165217)]
+  public void AesGcmObfsSimpleTest(EncryptionKeyLength _keySize, int _taskSize, int _minChunkSize)
   {
     using var lifetime = new Lifetime();
     var key = Utilities.GetRandomString(8, false);
@@ -266,13 +267,13 @@ public class EncryptTests
   }
 
   [Theory(Timeout = 30000)]
-  [InlineData(128, 512)]
-  [InlineData(128, 1024 * 1024)]
-  [InlineData(128, 1165217)]
-  [InlineData(256, 512)]
-  [InlineData(256, 1024 * 1024)]
-  [InlineData(256, 1165217)]
-  public void AesCbcTest(int _keySize, int _taskSize)
+  [InlineData(EncryptionKeyLength.Bits128, 512)]
+  [InlineData(EncryptionKeyLength.Bits128, 1024 * 1024)]
+  [InlineData(EncryptionKeyLength.Bits128, 1165217)]
+  [InlineData(EncryptionKeyLength.Bits256, 512)]
+  [InlineData(EncryptionKeyLength.Bits256, 1024 * 1024)]
+  [InlineData(EncryptionKeyLength.Bits256, 1165217)]
+  public void AesCbcTest(EncryptionKeyLength _keySize, int _taskSize)
   {
     using var lifetime = new Lifetime();
     var key = Utilities.GetRandomString(8, false);

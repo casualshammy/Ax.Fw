@@ -1,4 +1,5 @@
-﻿using Ax.Fw.SharedTypes.Interfaces;
+﻿using Ax.Fw.SharedTypes.Data.Crypto;
+using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
@@ -18,20 +19,19 @@ public class AesWithGcmObfs : ICryptoAlgorithm
     IReadOnlyLifetime _lifetime,
     string _key,
     int _minChunkSize,
-    int _keyLengthBits = 256)
+    EncryptionKeyLength _keyLength = EncryptionKeyLength.Bits256)
   {
-    if (_keyLengthBits != 128 && _keyLengthBits != 192 && _keyLengthBits != 256)
-      throw new ArgumentOutOfRangeException(nameof(_keyLengthBits), $"Key length must be 128, 192, or 256 bits");
+    if (_keyLength != EncryptionKeyLength.Bits128 && _keyLength != EncryptionKeyLength.Bits192 && _keyLength != EncryptionKeyLength.Bits256)
+      throw new ArgumentOutOfRangeException(nameof(_keyLength), $"Key length must be 128, 192, or 256 bits");
 
     p_minChunkSize = _minChunkSize;
     p_nonce = GetRandomNegativeInt64();
 
     var key = Encoding.UTF8.GetBytes(_key);
-    using var sha = SHA512.Create();
-    var hashSource = sha.ComputeHash(key);
+    var hashSource = SHA512.HashData(key);
 
     p_xorSeed = BinaryPrimitives.ReadInt32LittleEndian(hashSource.AsSpan().Slice(16, 4));
-    p_aesGcm = _lifetime.ToDisposeOnEnding(new AesGcm(hashSource[..(_keyLengthBits / 8)]));
+    p_aesGcm = _lifetime.ToDisposeOnEnding(new AesGcm(hashSource[..((int)_keyLength / 8)]));
   }
 
   public Span<byte> Encrypt(ReadOnlySpan<byte> _data)
@@ -68,7 +68,7 @@ public class AesWithGcmObfs : ICryptoAlgorithm
     const int dataLengthHeaderSize = 4;
     var payloadSize = BinaryPrimitives.ReadInt32LittleEndian(_data[..dataLengthHeaderSize]) ^ p_xorSeed;
     var nonceSize = BinaryPrimitives.ReadInt32LittleEndian(_data.Slice(dataLengthHeaderSize, 4)) ^ p_xorSeed;
-    var tagSize = BinaryPrimitives.ReadInt32LittleEndian(_data.Slice(dataLengthHeaderSize+ 4 + nonceSize, 4)) ^ p_xorSeed;
+    var tagSize = BinaryPrimitives.ReadInt32LittleEndian(_data.Slice(dataLengthHeaderSize + 4 + nonceSize, 4)) ^ p_xorSeed;
     var cipherSize = payloadSize - 4 - nonceSize - 4 - tagSize;
 
     var nonce = _data.Slice(dataLengthHeaderSize + 4, nonceSize);

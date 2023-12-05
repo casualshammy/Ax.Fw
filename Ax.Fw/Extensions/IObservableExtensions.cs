@@ -2,11 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Ax.Fw.Extensions;
@@ -182,7 +185,6 @@ public static class IObservableExtensions
       .Subscribe(_lifetime);
   }
 
-#if NET6_0_OR_GREATER
   public static IObservable<TOut?> Alive<TIn, TOut>(
     this IObservable<TIn> _this,
     IReadOnlyLifetime _lifetime,
@@ -201,7 +203,75 @@ public static class IObservableExtensions
       })
       .Select(_ => _.Value);
   }
-#endif
+
+  public static IObservable<TResult> ObserveAndTransformLatestOn<TSource, TResult>(
+    this IObservable<TSource> _observable,
+    IScheduler _scheduler,
+    Func<TSource, CancellationToken, Task<TResult>> _transform)
+  {
+    return Observable.Create<TResult>(_observer =>
+    {
+      var channel = Channel.CreateBounded<TSource>(new BoundedChannelOptions(1)
+      {
+        FullMode = BoundedChannelFullMode.DropOldest
+      });
+
+      var notificationSubj = new Subject<Unit>();
+      var waitingNotificationsCount = 0L;
+
+      var handlerSubs = notificationSubj
+        .ObserveOn(Scheduler.Default)
+        .SelectAsync(async (_, _ct) =>
+        {
+          try
+          {
+            if (_ct.IsCancellationRequested)
+              return;
+
+            if (!channel.Reader.TryRead(out var item))
+              return;
+
+            var result = await _transform(item, _ct);
+            _observer.OnNext(result);
+          }
+          catch (Exception ex)
+          {
+            _observer.OnError(ex);
+          }
+          finally
+          {
+            Debug.WriteLine($"-counter: {Interlocked.Decrement(ref waitingNotificationsCount)}");
+          }
+        }, _scheduler)
+        .Subscribe();
+
+      var sourceSubs = _observable
+        .Subscribe(_item =>
+        {
+          // не может сфэйлиться из-за политики обновления
+          channel.Writer.TryWrite(_item);
+
+          // в очереди достаточно уведомлений, больше не требуется
+          if (Interlocked.Read(ref waitingNotificationsCount) >= 100)
+            return;
+
+          // посылаем уведомление
+          Debug.WriteLine($"+counter: {Interlocked.Increment(ref waitingNotificationsCount)}");
+          notificationSubj.OnNext(Unit.Default);
+        }, () =>
+        {
+          int maxWaitIterations = 50; // 5 sec
+          // мы должны дать время последнему уведомлению прожеваться
+          while (Interlocked.Read(ref waitingNotificationsCount) > 0 && maxWaitIterations-- > 0)
+            Thread.Sleep(100);
+
+          _observer.OnCompleted();
+        });
+
+      return new CompositeDisposable(notificationSubj, sourceSubs, handlerSubs);
+    });
+  }
+
 
   static class ImmutableHashSetComparer<T>
   {
