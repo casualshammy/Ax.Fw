@@ -1,13 +1,12 @@
-﻿using System;
+﻿using Ax.Fw.Converters;
+using System;
 using System.ComponentModel;
-using System.Globalization;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Ax.Fw;
 
-[TypeConverter(typeof(TypeConverter))]
-[JsonConverter(typeof(JsonConverter))]
+[TypeConverter(typeof(SerializableVersionTypeConverter))]
+[JsonConverter(typeof(SerializableVersionJsonConverter))]
 public class SerializableVersion : IEquatable<SerializableVersion>, IComparable<SerializableVersion>
 {
   public SerializableVersion(Version _version)
@@ -137,65 +136,6 @@ public class SerializableVersion : IEquatable<SerializableVersion>, IComparable<
       return -1;
 
     return 0;
-  }
-
-  class TypeConverter : System.ComponentModel.TypeConverter
-  {
-    public override bool CanConvertFrom(ITypeDescriptorContext? _context, Type _sourceType)
-        => _sourceType == typeof(string);
-
-    public override bool CanConvertTo(ITypeDescriptorContext? _context, Type? _destinationType)
-        => _destinationType == typeof(string);
-
-    public override object ConvertFrom(ITypeDescriptorContext? _context, CultureInfo? _culture, object _value)
-    {
-      if (_value is string sv)
-      {
-        var split = sv.Split('.');
-        return new SerializableVersion(int.Parse(split[0]), int.Parse(split[1]), int.Parse(split[2]));
-      }
-
-      throw new InvalidOperationException();
-    }
-
-    public override object ConvertTo(ITypeDescriptorContext? _context, CultureInfo? _culture, object? _value, Type _destinationType)
-    {
-      if (_value == null)
-        throw new InvalidOperationException("Can't convert from null!");
-
-      if (_destinationType == typeof(string))
-        return ((SerializableVersion)_value).ToString();
-
-      throw new InvalidOperationException();
-    }
-  }
-
-  class JsonConverter : JsonConverter<SerializableVersion>
-  {
-    public override void Write(Utf8JsonWriter _writer, SerializableVersion? _value, JsonSerializerOptions _options)
-    {
-      if (_value is null)
-        _writer.WriteNullValue();
-      else
-        _writer.WriteStringValue(_value.ToString());
-    }
-
-    public override SerializableVersion? Read(
-        ref Utf8JsonReader _reader,
-        Type _objectType,
-        JsonSerializerOptions _options)
-    {
-      if (_reader.TokenType == JsonTokenType.Null)
-        return null;
-
-      if (_reader.TokenType == JsonTokenType.String && _reader.GetString() is string value)
-      {
-        var split = value.Split('.');
-        return new SerializableVersion(int.Parse(split[0]), int.Parse(split[1]), int.Parse(split[2]));
-      }
-
-      throw new BadImageFormatException("can't deserialize document id");
-    }
   }
 
 }
