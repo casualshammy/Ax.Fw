@@ -1,4 +1,5 @@
-﻿using Ax.Fw.SharedTypes.Interfaces;
+﻿using Ax.Fw.SharedTypes.Data.Crypto;
+using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.IO;
 using System.Linq;
@@ -14,17 +15,16 @@ public class AesCbc : ICryptoAlgorithm
   private readonly byte[] p_iv;
   private readonly Aes p_aes;
 
-  public AesCbc(IReadOnlyLifetime _lifetime, string _key, int _keyLengthBits = 256)
+  public AesCbc(IReadOnlyLifetime _lifetime, string _key, EncryptionKeyLength _keyLength = EncryptionKeyLength.Bits256)
   {
-    if (_keyLengthBits != 128 && _keyLengthBits != 256)
-      throw new ArgumentOutOfRangeException(nameof(_keyLengthBits), $"Key length must be 16 or 32 bytes (128 or 256 bits)");
+    if (_keyLength != EncryptionKeyLength.Bits128 && _keyLength != EncryptionKeyLength.Bits256)
+      throw new ArgumentOutOfRangeException(nameof(_keyLength), $"Key length must be 128 or 256 bits");
 
     var key = Encoding.UTF8.GetBytes(_key);
-    using var sha = SHA512.Create();
-    var hashSource = sha.ComputeHash(key);
+    var hashSource = SHA512.HashData(key);
 
     p_aes = _lifetime.ToDisposeOnEnding(Aes.Create());
-    p_aes.KeySize = _keyLengthBits;
+    p_aes.KeySize = (int)_keyLength;
     p_aes.BlockSize = 128;
     p_iv = hashSource
       .Reverse()

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Ax.Fw.SharedTypes.Interfaces;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -8,7 +9,7 @@ namespace Ax.Fw.DependencyInjection;
 
 #if NET7_0_OR_GREATER
 
-public sealed class AppDependencyManager
+public sealed class AppDependencyManager : IReadOnlyDependencyContainer
 {
   private readonly IAppDependencyCtx p_ctx;
   private readonly ConcurrentDictionary<Type, Lazy<object>> p_dependencies = [];
@@ -26,7 +27,7 @@ public sealed class AppDependencyManager
   {
     p_dependencies.AddOrUpdate(
       typeof(T),
-      new Lazy<object>(() => new T(), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication),
+      new Lazy<object>(() => new T(), LazyThreadSafetyMode.ExecutionAndPublication),
       (_type, _obj) => throw new InvalidOperationException($"Instance of type '{typeof(T).Name}' is already registered"));
     return this;
   }
@@ -35,7 +36,7 @@ public sealed class AppDependencyManager
   {
     p_dependencies.AddOrUpdate(
       typeof(T),
-      new Lazy<object>(() => _instance, System.Threading.LazyThreadSafetyMode.ExecutionAndPublication),
+      new Lazy<object>(() => _instance, LazyThreadSafetyMode.ExecutionAndPublication),
       (_type, _obj) => throw new InvalidOperationException($"Instance of type '{typeof(T).Name}' is already registered"));
     return this;
   }
@@ -44,7 +45,7 @@ public sealed class AppDependencyManager
   {
     p_dependencies.AddOrUpdate(
       typeof(TInterface),
-      new Lazy<object>(() => new T(), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication),
+      new Lazy<object>(() => new T(), LazyThreadSafetyMode.ExecutionAndPublication),
       (_type, _obj) => throw new InvalidOperationException($"Instance of type '{typeof(T).Name}' is already registered"));
     return this;
   }
@@ -53,8 +54,17 @@ public sealed class AppDependencyManager
   {
     p_dependencies.AddOrUpdate(
       typeof(TInterface),
-      new Lazy<object>(() => _instance, System.Threading.LazyThreadSafetyMode.ExecutionAndPublication),
+      new Lazy<object>(() => _instance, LazyThreadSafetyMode.ExecutionAndPublication),
       (_type, _obj) => throw new InvalidOperationException($"Instance of type '{typeof(T).Name}' is already registered"));
+    return this;
+  }
+
+  public AppDependencyManager AddSingleton<TInterface>(Func<IAppDependencyCtx, TInterface> _factory) where TInterface : notnull
+  {
+    p_dependencies.AddOrUpdate(
+      typeof(TInterface),
+      new Lazy<object>(() => _factory(p_ctx), LazyThreadSafetyMode.ExecutionAndPublication),
+      (_type, _obj) => throw new InvalidOperationException($"Instance of type '{typeof(TInterface).Name}' is already registered"));
     return this;
   }
 
@@ -62,7 +72,7 @@ public sealed class AppDependencyManager
   {
     p_dependencies.AddOrUpdate(
       typeof(T),
-      new Lazy<object>(() => T.ExportInstance(p_ctx), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication),
+      new Lazy<object>(() => T.ExportInstance(p_ctx), LazyThreadSafetyMode.ExecutionAndPublication),
       (_type, _obj) => throw new InvalidOperationException($"Instance of type '{typeof(T).Name}' is already registered"));
     return this;
   }
@@ -71,7 +81,7 @@ public sealed class AppDependencyManager
   {
     p_dependencies.AddOrUpdate(
       typeof(TInterface),
-      new Lazy<object>(() => T.ExportInstance(p_ctx), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication),
+      new Lazy<object>(() => T.ExportInstance(p_ctx), LazyThreadSafetyMode.ExecutionAndPublication),
       (_type, _obj) => throw new InvalidOperationException($"Instance of type '{typeof(T).Name}' is already registered"));
     return this;
   }
@@ -98,7 +108,7 @@ public sealed class AppDependencyManager
     return (T)instanceFactory.Value;
   }
 
-  public AppDependencyManager Run()
+  public AppDependencyManager Build()
   {
     if (Interlocked.Exchange(ref p_built, 1) == 1)
       throw new InvalidOperationException($"This instance of '{typeof(AppDependencyManager).Name}' is already built");

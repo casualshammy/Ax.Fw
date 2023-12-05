@@ -14,78 +14,6 @@ public static class EnumerableExtensions
       _action(item);
   }
 
-  public static async Task<T?> FirstOrDefaultAsync<T>(
-    this IEnumerable<T> _enumerable,
-    Func<T, CancellationToken, Task<bool>> _predicate,
-    CancellationToken _ct = default)
-  {
-    if (_enumerable == null) throw new ArgumentNullException(nameof(_enumerable));
-    if (_predicate == null) throw new ArgumentNullException(nameof(_predicate));
-    foreach (var element in _enumerable)
-      if (await _predicate(element, _ct))
-        return element;
-
-    return default;
-  }
-
-  public static async Task<bool> AnyAsync<T>(this IEnumerable<T> _enumerable, Func<T, Task<bool>> _predicate)
-  {
-    if (_enumerable == null) throw new ArgumentNullException(nameof(_enumerable));
-    if (_predicate == null) throw new ArgumentNullException(nameof(_predicate));
-    foreach (var element in _enumerable)
-    {
-      if (await _predicate(element)) return true;
-    }
-    return false;
-  }
-
-  public static async Task<bool> AllAsync<T>(this IEnumerable<T> _enumerable, Func<T, Task<bool>> _predicate)
-  {
-    if (_enumerable == null) throw new ArgumentNullException(nameof(_enumerable));
-    if (_predicate == null) throw new ArgumentNullException(nameof(_predicate));
-    foreach (var element in _enumerable)
-    {
-      if (!await _predicate(element)) return false;
-    }
-    return true;
-  }
-
-  public static async Task<T> FirstAsync<T>(this IEnumerable<T> _enumerable, Func<T, Task<bool>> _predicate)
-  {
-    if (_enumerable == null) throw new ArgumentNullException(nameof(_enumerable));
-    if (_predicate == null) throw new ArgumentNullException(nameof(_predicate));
-    foreach (var element in _enumerable)
-    {
-      if (await _predicate(element)) return element;
-    }
-    throw new InvalidOperationException("Element not found");
-  }
-
-  public static async IAsyncEnumerable<TResult> SelectAsync<TSource, TResult>(this IEnumerable<TSource> _source, Func<TSource, Task<TResult>> _selector)
-  {
-    if (_source == null)
-      throw new ArgumentNullException(nameof(_source));
-
-    if (_selector == null)
-      throw new ArgumentNullException(nameof(_selector));
-
-    foreach (var entry in _source)
-      yield return await _selector(entry);
-  }
-
-  public static async IAsyncEnumerable<TSource> WhereAsync<TSource>(this IEnumerable<TSource> _source, Func<TSource, Task<bool>> _selector)
-  {
-    if (_source == null)
-      throw new ArgumentNullException(nameof(_source));
-
-    if (_selector == null)
-      throw new ArgumentNullException(nameof(_selector));
-
-    foreach (var entry in _source)
-      if (await _selector(entry))
-        yield return entry;
-  }
-
   public static T Mean<T>(this IEnumerable<T> _enumerable, Comparer<T>? _comparer = null)
   {
     if (_enumerable is not List<T> list)
@@ -106,15 +34,6 @@ public static class EnumerableExtensions
     return _enumerable
         .Where(_x => _x != null)
         .Select(_x => _x!);
-  }
-
-  public static async Task<T[]> OrderByAsync<T>(this IEnumerable<T> _enumerable, Func<T, T, CancellationToken, Task<int>> _comparer, CancellationToken _ct = default)
-  {
-    var array = _enumerable.ToArray();
-    if (array.Length > 1)
-      await QuickSortAsync(array, 0, array.Length - 1, _comparer, _ct);
-
-    return array;
   }
 
   private static async Task QuickSortAsync<T>(T[] _array, int _left, int _right, Func<T, T, CancellationToken, Task<int>> _comparer, CancellationToken _ct = default)

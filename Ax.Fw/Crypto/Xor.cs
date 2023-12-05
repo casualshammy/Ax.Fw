@@ -16,12 +16,11 @@ public class Xor : ICryptoAlgorithm
       throw new ArgumentOutOfRangeException(nameof(_keySize), $"Key size must be divisible by 64!");
 
     Span<byte> buffer = new byte[_keySize];
-    using var sha = SHA512.Create();
-    var hash = sha.ComputeHash(_key);
+    var hash = SHA512.HashData(_key);
     for (var i = 0; i < buffer.Length / hash.Length; i++)
     {
       var mergeSlice = buffer.Slice(i * hash.Length, hash.Length);
-      hash = sha.ComputeHash(hash);
+      hash = SHA512.HashData(hash);
       hash.CopyTo(mergeSlice);
     }
     p_keyArray = buffer.ToArray();

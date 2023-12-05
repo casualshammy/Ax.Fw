@@ -1,4 +1,5 @@
-﻿using Ax.Fw.SharedTypes.Interfaces;
+﻿using Ax.Fw.SharedTypes.Data.Crypto;
+using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Buffers.Binary;
 using System.IO;
@@ -14,17 +15,16 @@ public class AesWithGcm : ICryptoAlgorithm
   private readonly AesGcm p_aesGcm;
   private long p_nonce;
 
-  public AesWithGcm(IReadOnlyLifetime _lifetime, string _key, int _keyLengthBits = 256)
+  public AesWithGcm(IReadOnlyLifetime _lifetime, string _key, EncryptionKeyLength _keyLength = EncryptionKeyLength.Bits256)
   {
-    if (_keyLengthBits != 128 && _keyLengthBits != 192 && _keyLengthBits != 256)
-      throw new ArgumentOutOfRangeException(nameof(_keyLengthBits), $"Key length must be 16, 24, or 32 bytes (128, 192, or 256 bits)");
+    if (_keyLength != EncryptionKeyLength.Bits128 && _keyLength != EncryptionKeyLength.Bits192 && _keyLength != EncryptionKeyLength.Bits256)
+      throw new ArgumentOutOfRangeException(nameof(_keyLength), $"Key length must be 128, 192, or 256 bits");
 
     p_nonce = GetRandomNegativeInt64();
 
     var key = Encoding.UTF8.GetBytes(_key);
-    using var sha = SHA512.Create();
-    var hashSource = sha.ComputeHash(key);
-    p_aesGcm = _lifetime.ToDisposeOnEnding(new AesGcm(hashSource.Take(_keyLengthBits / 8).ToArray()));
+    var hashSource = SHA512.HashData(key);
+    p_aesGcm = _lifetime.ToDisposeOnEnding(new AesGcm(hashSource.Take((int)_keyLength / 8).ToArray()));
   }
 
   public Span<byte> Encrypt(ReadOnlySpan<byte> _data)
@@ -77,7 +77,7 @@ public class AesWithGcm : ICryptoAlgorithm
     const int chunkSize = 64 * 1024;
 
     Span<byte> meta = new byte[4 + 4 + 4];
-    BinaryPrimitives.WriteInt32LittleEndian(meta.Slice(0,4), nonceSize);
+    BinaryPrimitives.WriteInt32LittleEndian(meta.Slice(0, 4), nonceSize);
     BinaryPrimitives.WriteInt32LittleEndian(meta.Slice(4, 4), tagSize);
     BinaryPrimitives.WriteInt32LittleEndian(meta.Slice(8, 4), chunkSize);
     _out.Write(meta);
