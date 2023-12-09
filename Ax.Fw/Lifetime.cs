@@ -172,6 +172,17 @@ public class Lifetime : ILifetime
     return lifetime;
   }
 
+  public void InstallConsoleCtrlCHook()
+  {
+    void onCancelKeyPress(object? _o, ConsoleCancelEventArgs _e)
+    {
+      _e.Cancel = true;
+      Console.CancelKeyPress -= onCancelKeyPress;
+      End();
+    }
+    Console.CancelKeyPress += onCancelKeyPress;
+  }
+
   public void End()
   {
     if (Interlocked.Exchange(ref p_ending, 1L) == 1L)
