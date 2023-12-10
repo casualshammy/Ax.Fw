@@ -205,7 +205,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
       $"  (@from IS NULL OR last_modified>=@from) AND " +
       $"  (@to IS NULL OR last_modified<=@to); ";
 
-    await p_accessSemaphore.WaitAsync(_ct);
+    //await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       await using var cmd = p_connection.CreateCommand();
@@ -245,7 +245,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     }
     finally
     {
-      p_accessSemaphore.Release();
+      //p_accessSemaphore.Release();
     }
   }
 
@@ -265,7 +265,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
       $"  (@from IS NULL OR last_modified>=@from) AND " +
       $"  (@to IS NULL OR last_modified<=@to); ";
 
-    await p_accessSemaphore.WaitAsync(_ct);
+    //await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       await using var cmd = p_connection.CreateCommand();
@@ -306,7 +306,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     }
     finally
     {
-      p_accessSemaphore.Release();
+      //p_accessSemaphore.Release();
     }
   }
 
@@ -327,7 +327,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
       $"  (@from IS NULL OR last_modified>=@from) AND " +
       $"  (@to IS NULL OR last_modified<=@to); ";
 
-    await p_accessSemaphore.WaitAsync(_ct);
+    //await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       await using var cmd = p_connection.CreateCommand();
@@ -367,7 +367,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     }
     finally
     {
-      p_accessSemaphore.Release();
+      //p_accessSemaphore.Release();
     }
   }
 
@@ -395,7 +395,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
       $"  @namespace=namespace AND " +
       $"  key=@key; ";
 
-    await p_accessSemaphore.WaitAsync(_ct);
+    //await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       await using var cmd = p_connection.CreateCommand();
@@ -424,7 +424,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     }
     finally
     {
-      p_accessSemaphore.Release();
+      //p_accessSemaphore.Release();
     }
   }
 
@@ -497,7 +497,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
       $"  (@namespace IS NULL OR @namespace=namespace) AND " +
       $"  (@key_like IS NULL OR key LIKE @key_like); ";
 
-    await p_accessSemaphore.WaitAsync(_ct);
+    //await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       await using var cmd = p_connection.CreateCommand();
@@ -524,7 +524,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     }
     finally
     {
-      p_accessSemaphore.Release();
+      //p_accessSemaphore.Release();
     }
   }
 
