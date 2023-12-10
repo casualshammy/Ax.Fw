@@ -12,47 +12,44 @@ namespace Ax.Fw.Storage;
 #if NET8_0_OR_GREATER
 public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
 {
-  private readonly object p_lock = new();
+  private readonly SemaphoreSlim p_accessSemaphore;
   private readonly SqliteConnection p_connection;
   private long p_documentsCounter = 0;
 
   public SqliteDocumentStorageAot(string _dbFilePath)
   {
     var connectionString = $"Data Source={_dbFilePath};";
+    p_accessSemaphore = ToDispose(new SemaphoreSlim(1, 1));
     p_connection = ToDispose(new SqliteConnection(connectionString));
     p_connection.Open();
 
-    Monitor.Enter(p_lock);
-    try
-    {
-      using var command = p_connection.CreateCommand();
-      command.CommandText =
-          $"PRAGMA synchronous = NORMAL; " +
-          $"PRAGMA journal_mode = WAL; " +
-          $"PRAGMA case_sensitive_like = true; " +
-          $"CREATE TABLE IF NOT EXISTS document_data " +
-          $"( " +
-          $"  doc_id INTEGER PRIMARY KEY, " +
-          $"  namespace TEXT NOT NULL, " +
-          $"  key TEXT NOT NULL, " +
-          $"  last_modified INTEGER NOT NULL, " +
-          $"  created INTEGER NOT NULL, " +
-          $"  version INTEGER NOT NULL, " +
-          $"  data TEXT NOT NULL, " +
-          $"  UNIQUE(namespace, key) " +
-          $"); " +
-          $"CREATE INDEX IF NOT EXISTS index_namespace_key ON document_data (namespace, key); " +
-          $"CREATE INDEX IF NOT EXISTS index_key ON document_data (key); " +
-          $"CREATE INDEX IF NOT EXISTS index_namespace ON document_data (namespace); ";
+    p_accessSemaphore.Wait();
 
-      command.ExecuteNonQuery();
+    using var command = p_connection.CreateCommand();
+    command.CommandText =
+        $"PRAGMA synchronous = NORMAL; " +
+        $"PRAGMA journal_mode = WAL; " +
+        $"PRAGMA case_sensitive_like = true; " +
+        $"CREATE TABLE IF NOT EXISTS document_data " +
+        $"( " +
+        $"  doc_id INTEGER PRIMARY KEY, " +
+        $"  namespace TEXT NOT NULL, " +
+        $"  key TEXT NOT NULL, " +
+        $"  last_modified INTEGER NOT NULL, " +
+        $"  created INTEGER NOT NULL, " +
+        $"  version INTEGER NOT NULL, " +
+        $"  data TEXT NOT NULL, " +
+        $"  UNIQUE(namespace, key) " +
+        $"); " +
+        $"CREATE INDEX IF NOT EXISTS index_namespace_key ON document_data (namespace, key); " +
+        $"CREATE INDEX IF NOT EXISTS index_key ON document_data (key); " +
+        $"CREATE INDEX IF NOT EXISTS index_namespace ON document_data (namespace); ";
 
-      p_documentsCounter = GetLatestDocumentId();
-    }
-    finally
-    {
-      Monitor.Exit(p_lock);
-    }
+    command.ExecuteNonQuery();
+
+    p_documentsCounter = GetLatestDocumentId();
+
+    p_accessSemaphore.Release();
   }
 
   public async Task<DocumentEntry<T>> WriteDocumentAsync<T>(
@@ -65,7 +62,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     var now = DateTimeOffset.UtcNow;
     var json = JsonSerializer.Serialize(_data, _jsonTypeInfo);
 
-    Monitor.Enter(p_lock);
+    await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       var insertSql =
@@ -99,7 +96,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     }
     finally
     {
-      Monitor.Exit(p_lock);
+      p_accessSemaphore.Release();
     }
 
     throw new InvalidOperationException($"Can't create document - db reader returned no result");
@@ -150,7 +147,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
       $"  (@from IS NULL OR last_modified>=@from) AND " +
       $"  (@to IS NULL OR last_modified<=@to); ";
 
-    Monitor.Enter(p_lock);
+    await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       await using var cmd = p_connection.CreateCommand();
@@ -176,7 +173,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     }
     finally
     {
-      Monitor.Exit(p_lock);
+      p_accessSemaphore.Release();
     }
   }
 
@@ -208,7 +205,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
       $"  (@from IS NULL OR last_modified>=@from) AND " +
       $"  (@to IS NULL OR last_modified<=@to); ";
 
-    Monitor.Enter(p_lock);
+    await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       await using var cmd = p_connection.CreateCommand();
@@ -248,7 +245,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     }
     finally
     {
-      Monitor.Exit(p_lock);
+      p_accessSemaphore.Release();
     }
   }
 
@@ -268,7 +265,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
       $"  (@from IS NULL OR last_modified>=@from) AND " +
       $"  (@to IS NULL OR last_modified<=@to); ";
 
-    Monitor.Enter(p_lock);
+    await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       await using var cmd = p_connection.CreateCommand();
@@ -309,7 +306,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     }
     finally
     {
-      Monitor.Exit(p_lock);
+      p_accessSemaphore.Release();
     }
   }
 
@@ -330,7 +327,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
       $"  (@from IS NULL OR last_modified>=@from) AND " +
       $"  (@to IS NULL OR last_modified<=@to); ";
 
-    Monitor.Enter(p_lock);
+    await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       await using var cmd = p_connection.CreateCommand();
@@ -370,7 +367,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     }
     finally
     {
-      Monitor.Exit(p_lock);
+      p_accessSemaphore.Release();
     }
   }
 
@@ -398,7 +395,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
       $"  @namespace=namespace AND " +
       $"  key=@key; ";
 
-    Monitor.Enter(p_lock);
+    await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       await using var cmd = p_connection.CreateCommand();
@@ -427,7 +424,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     }
     finally
     {
-      Monitor.Exit(p_lock);
+      p_accessSemaphore.Release();
     }
   }
 
@@ -460,7 +457,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
 
   public async Task CompactDatabase(CancellationToken _ct)
   {
-    Monitor.Enter(p_lock);
+    await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       await using var command = p_connection.CreateCommand();
@@ -469,13 +466,13 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     }
     finally
     {
-      Monitor.Exit(p_lock);
+      p_accessSemaphore.Release();
     }
   }
 
   public async Task FlushAsync(bool _force, CancellationToken _ct)
   {
-    Monitor.Enter(p_lock);
+    await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       await using var command = p_connection.CreateCommand();
@@ -484,7 +481,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     }
     finally
     {
-      Monitor.Exit(p_lock);
+      p_accessSemaphore.Release();
     }
   }
 
@@ -500,7 +497,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
       $"  (@namespace IS NULL OR @namespace=namespace) AND " +
       $"  (@key_like IS NULL OR key LIKE @key_like); ";
 
-    Monitor.Enter(p_lock);
+    await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       await using var cmd = p_connection.CreateCommand();
@@ -527,7 +524,7 @@ public class SqliteDocumentStorageAot : DisposableStack, IDocumentStorageAot
     }
     finally
     {
-      Monitor.Exit(p_lock);
+      p_accessSemaphore.Release();
     }
   }
 
