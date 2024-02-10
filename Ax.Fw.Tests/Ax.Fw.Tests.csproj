@@ -20,6 +20,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\Ax.Fw.App\Ax.Fw.App.csproj" />
 		<ProjectReference Include="..\Ax.Fw\Ax.Fw.csproj" />
 	</ItemGroup>
 

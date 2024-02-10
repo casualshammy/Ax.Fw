@@ -1,6 +1,13 @@
-﻿using Ax.Fw.DependencyInjection;
+﻿using Ax.Fw.App.Attributes;
+using Ax.Fw.App.Data;
+using Ax.Fw.App.Interfaces;
+using Ax.Fw.DependencyInjection;
+using Ax.Fw.JsonStorages;
 using Ax.Fw.Log;
 using Ax.Fw.SharedTypes.Interfaces;
+using System.Reactive.Linq;
+using System.Reflection;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace Ax.Fw.App;
@@ -139,6 +146,28 @@ public class AppBase
     p_depMgr.AddSingleton<ILogger>(_ctx =>
     {
       return _ctx.CreateInstance((IReadOnlyLifetime _lifetime) => _lifetime.ToDisposeOnEnded(new ConsoleLogger()));
+    });
+
+    return this;
+  }
+
+  // ===========================
+  // ========= CONFIGS =========
+  // ===========================
+
+  public AppBase UseConfigFile<T>(JsonSerializerContext? _jsonCtx)
+    where T : class
+  {
+    p_depMgr.AddSingleton(_ctx =>
+    {
+      return _ctx.CreateInstance<IReadOnlyLifetime, IObservableConfig<T?>>((IReadOnlyLifetime _lifetime) =>
+      {
+        var attribute = typeof(T).GetCustomAttribute<AppConfigFileAttribute>();
+        if (attribute == null)
+          throw new CustomAttributeFormatException($"Type {typeof(T)} does not have attribute of type {typeof(AppConfigFileAttribute)}");
+
+        return new ObservableConfig<T>(new JsonStorage<T>(attribute.FilePath, _jsonCtx, _lifetime));
+      });
     });
 
     return this;
