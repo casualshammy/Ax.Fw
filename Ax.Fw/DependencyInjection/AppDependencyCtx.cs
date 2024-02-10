@@ -17,6 +17,8 @@ public class AppDependencyCtx : IAppDependencyCtx
 
   public T? LocateOrDefault<T>() => p_mgr.LocateOrDefault<T>();
 
+  public TOut CreateInstance<TOut>(Func<TOut> _func) => _func();
+
   public TOut CreateInstance<T1, TOut>(Func<T1, TOut> _func)
     => _func(p_mgr.Locate<T1>());
 

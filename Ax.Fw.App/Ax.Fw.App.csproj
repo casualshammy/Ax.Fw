@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+		<PropertyGroup>
+				<TargetFramework>net8.0</TargetFramework>
+				<ImplicitUsings>enable</ImplicitUsings>
+				<Nullable>enable</Nullable>
+				<LangVersion>latest</LangVersion>
+				<PackageId>$(AssemblyName)</PackageId>
+				<Version>$(Version)</Version>
+				<Description>App Basement</Description>
+				<PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
+				<Authors>Axio</Authors>
+				<Company>$(Authors)</Company>
+				<Copyright>Axio</Copyright>
+				<PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
+				<RepositoryType>git</RepositoryType>
+				<RepositoryUrl>https://github.com/casualshammy/Ax.Fw</RepositoryUrl>
+				<!--<PackageReadmeFile>README.md</PackageReadmeFile>-->
+		</PropertyGroup>
+
+		<ItemGroup>
+				<ProjectReference Include="..\Ax.Fw.Log\Ax.Fw.Log.csproj" />
+				<ProjectReference Include="..\Ax.Fw\Ax.Fw.csproj" />
+		</ItemGroup>
+
+</Project>

@@ -188,7 +188,7 @@ public class Lifetime : ILifetime
     if (Interlocked.Exchange(ref p_ending, 1L) == 1L)
       return;
 
-    using var mre = new ManualResetEvent(false);
+    using var semaphore = new SemaphoreSlim(0, 1);
 
     _ = Task.Run(async () =>
     {
@@ -203,8 +203,6 @@ public class Lifetime : ILifetime
 
       while (p_doOnEnding.TryPop(out var task))
         await task();
-      while (p_doOnEnded.TryPop(out var task))
-        await task();
 
       while (p_doNotEndUntilCompleted.TryPop(out var observable))
         await observable
@@ -212,10 +210,13 @@ public class Lifetime : ILifetime
           .IgnoreElements()
           .LastOrDefaultAsync();
 
-      mre.Set();
+      while (p_doOnEnded.TryPop(out var task))
+        await task();
+
+      semaphore.Release();
     });
 
-    mre.WaitOne();
+    semaphore.Wait();
   }
 
   protected virtual void Dispose(bool _disposing)
