@@ -7,6 +7,7 @@ using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,7 +31,7 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
   };
 
   private readonly IObservable<T?> p_sharedObservable;
-  private readonly JsonTypeInfo<T>? p_jsonTypeInfo;
+  private readonly JsonSerializerContext? p_jsonCtx;
 
   /// <summary>
   ///
@@ -38,13 +39,13 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
   /// <param name="_jsonFilePath">Path to JSON file. Can't be null or empty.</param>
   public JsonStorage(
     string _jsonFilePath,
-    JsonTypeInfo<T>? _jsonTypeInfo,
+    JsonSerializerContext? _jsonCtx,
     IReadOnlyLifetime _lifetime)
   {
     if (string.IsNullOrWhiteSpace(_jsonFilePath))
       throw new ArgumentNullException(nameof(_jsonFilePath));
 
-    p_jsonTypeInfo = _jsonTypeInfo;
+    p_jsonCtx = _jsonCtx;
     JsonFilePath = _jsonFilePath;
 
     var scheduler = _lifetime.ToDisposeOnEnded(new EventLoopScheduler());
@@ -107,8 +108,8 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
     {
       try
       {
-        if (p_jsonTypeInfo != null)
-          return await JsonSerializer.DeserializeAsync(fileStream, p_jsonTypeInfo, _ct) ?? await _defaultFactory(_ct);
+        if (p_jsonCtx != null)
+          return (T?)await JsonSerializer.DeserializeAsync(fileStream, typeof(T), p_jsonCtx, _ct) ?? await _defaultFactory(_ct);
         else
           return await JsonSerializer.DeserializeAsync<T>(fileStream, cancellationToken: _ct) ?? await _defaultFactory(_ct);
       }
@@ -137,8 +138,8 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
     {
       try
       {
-        if (p_jsonTypeInfo != null)
-          return JsonSerializer.Deserialize(fileStream, p_jsonTypeInfo) ?? _defaultFactory();
+        if (p_jsonCtx != null)
+          return (T?)JsonSerializer.Deserialize(fileStream, typeof(T), p_jsonCtx) ?? _defaultFactory();
         else
           return JsonSerializer.Deserialize<T>(fileStream) ?? _defaultFactory();
       }
@@ -158,8 +159,8 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
     }
 
     using var fileStream = File.Open(JsonFilePath, FileMode.Create);
-    if (p_jsonTypeInfo != null)
-      await JsonSerializer.SerializeAsync(fileStream, _data, p_jsonTypeInfo, _ct);
+    if (p_jsonCtx != null)
+      await JsonSerializer.SerializeAsync(fileStream, _data, typeof(T), p_jsonCtx, _ct);
     else
       await JsonSerializer.SerializeAsync(fileStream, _data, cancellationToken: _ct);
   }
@@ -173,8 +174,8 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
     }
 
     using var fileStream = File.Open(JsonFilePath, FileMode.Create);
-    if (p_jsonTypeInfo != null)
-      JsonSerializer.Serialize(fileStream, _data, p_jsonTypeInfo);
+    if (p_jsonCtx != null)
+      JsonSerializer.Serialize(fileStream, _data, typeof(T), p_jsonCtx);
     else
       JsonSerializer.Serialize(fileStream, _data);
   }
@@ -190,8 +191,8 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
 
       using (var fileStream = File.OpenRead(JsonFilePath))
       {
-        if (p_jsonTypeInfo != null)
-          return await JsonSerializer.DeserializeAsync(fileStream, p_jsonTypeInfo, _ct) ?? default;
+        if (p_jsonCtx != null)
+          return (T?)await JsonSerializer.DeserializeAsync(fileStream, typeof(T), p_jsonCtx, _ct) ?? default;
         else
           return await JsonSerializer.DeserializeAsync<T>(fileStream, cancellationToken: _ct) ?? default;
       }
