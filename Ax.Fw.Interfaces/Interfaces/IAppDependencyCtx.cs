@@ -4,6 +4,7 @@ namespace Ax.Fw.DependencyInjection;
 
 public interface IAppDependencyCtx
 {
+  TOut CreateInstance<TOut>(Func<TOut> _func);
   TOut CreateInstance<T1, TOut>(Func<T1, TOut> _func);
   TOut CreateInstance<T1, T2, TOut>(Func<T1, T2, TOut> _func);
   TOut CreateInstance<T1, T2, T3, TOut>(Func<T1, T2, T3, TOut> _func);
