@@ -9,13 +9,13 @@ namespace Ax.Fw;
 /// This class can subscribe to IObservable and store its last value
 /// </summary>
 /// <typeparam name="T"></typeparam>
-public class RxProperty<T> : IRxProperty<T?>
+public class RxProperty<T> : IRxProperty<T>
 {
-  private readonly ReplaySubject<T?> p_replaySubject;
+  private readonly ReplaySubject<T> p_replaySubject;
 
-  public RxProperty(IObservable<T?> _observable, IReadOnlyLifetime _lifetime, T? _defaultValue = default)
+  public RxProperty(IObservable<T> _observable, IReadOnlyLifetime _lifetime, T? _defaultValue = default)
   {
-    p_replaySubject = _lifetime.ToDisposeOnEnding(new ReplaySubject<T?>(1));
+    p_replaySubject = _lifetime.ToDisposeOnEnding(new ReplaySubject<T>(1));
 
     Value = _defaultValue;
 
@@ -29,6 +29,6 @@ public class RxProperty<T> : IRxProperty<T?>
 
   public T? Value { get; private set; }
 
-  public IDisposable Subscribe(IObserver<T?> _observer) => p_replaySubject.Subscribe(_observer);
+  public IDisposable Subscribe(IObserver<T> _observer) => p_replaySubject.Subscribe(_observer);
 
 }
