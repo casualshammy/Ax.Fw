@@ -7,8 +7,6 @@ using System.Threading;
 
 namespace Ax.Fw.DependencyInjection;
 
-#if NET7_0_OR_GREATER
-
 public sealed class AppDependencyManager : IReadOnlyDependencyContainer
 {
   private readonly IAppDependencyCtx p_ctx;
@@ -65,6 +63,7 @@ public sealed class AppDependencyManager : IReadOnlyDependencyContainer
       typeof(TInterface),
       new Lazy<object>(() => _factory(p_ctx), LazyThreadSafetyMode.ExecutionAndPublication),
       (_type, _obj) => throw new InvalidOperationException($"Instance of type '{typeof(TInterface).Name}' is already registered"));
+
     return this;
   }
 
@@ -74,15 +73,19 @@ public sealed class AppDependencyManager : IReadOnlyDependencyContainer
       typeof(T),
       new Lazy<object>(() => T.ExportInstance(p_ctx), LazyThreadSafetyMode.ExecutionAndPublication),
       (_type, _obj) => throw new InvalidOperationException($"Instance of type '{typeof(T).Name}' is already registered"));
+
     return this;
   }
 
-  public AppDependencyManager AddModule<T, TInterface>() where T : notnull, TInterface, IAppModule<T>
+  public AppDependencyManager AddModule<TImpl, TInterface>() 
+    where TImpl : notnull, TInterface, IAppModule<TInterface>
+    where TInterface : notnull
   {
     p_dependencies.AddOrUpdate(
       typeof(TInterface),
-      new Lazy<object>(() => T.ExportInstance(p_ctx), LazyThreadSafetyMode.ExecutionAndPublication),
-      (_type, _obj) => throw new InvalidOperationException($"Instance of type '{typeof(T).Name}' is already registered"));
+      new Lazy<object>(() => TImpl.ExportInstance(p_ctx), LazyThreadSafetyMode.ExecutionAndPublication),
+      (_type, _obj) => throw new InvalidOperationException($"Instance of type '{typeof(TImpl).Name}' is already registered"));
+
     return this;
   }
 
@@ -127,5 +130,3 @@ public sealed class AppDependencyManager : IReadOnlyDependencyContainer
   }
 
 }
-
-#endif

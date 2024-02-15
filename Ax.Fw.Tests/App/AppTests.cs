@@ -1,5 +1,4 @@
 ﻿using Ax.Fw.App;
-using Ax.Fw.App.Attributes;
 using Ax.Fw.App.Interfaces;
 using System;
 using System.IO;
@@ -11,7 +10,6 @@ using Xunit;
 
 namespace Ax.Fw.Tests.App;
 
-[AppConfigFile(AppTests.TEST_FILE_PATH)]
 internal record TestConfig(string Path, int Value);
 
 [JsonSerializable(typeof(TestConfig))]
@@ -35,7 +33,7 @@ public class AppTests
 
     var app = AppBase
       .Create()
-      .UseConfigFile<TestConfig>(TestConfigJsonCtx.Default)
+      .UseConfigFile<TestConfig>(TEST_FILE_PATH, TestConfigJsonCtx.Default)
       .AddSingleton<string>(_ctx => _ctx.CreateInstance((IObservableConfig<TestConfig> _conf) =>
       {
         _conf.Subscribe(_conf =>

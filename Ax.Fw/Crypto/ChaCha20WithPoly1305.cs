@@ -11,16 +11,16 @@ using System.Threading;
 namespace Ax.Fw.Crypto;
 
 #if NET6_0_OR_GREATER
-public class ChaCha20WithPoly1305 : ICryptoAlgorithm
+public class ChaCha20WithPoly1305 : DisposableStack, ICryptoAlgorithm
 {
   private readonly ChaCha20Poly1305 p_chacha;
   private long p_nonce = Random.Shared.NextInt64(long.MinValue, 0L);
 
-  public ChaCha20WithPoly1305(IReadOnlyLifetime _lifetime, string _key)
+  public ChaCha20WithPoly1305(string _key)
   {
     var key = Encoding.UTF8.GetBytes(_key);
     var hashSource = SHA512.HashData(key);
-    p_chacha = _lifetime.ToDisposeOnEnding(new ChaCha20Poly1305(hashSource.Take(32).ToArray()));
+    p_chacha = ToDispose(new ChaCha20Poly1305(hashSource.Take(32).ToArray()));
   }
 
   public Span<byte> Encrypt(ReadOnlySpan<byte> _data)

@@ -1,4 +1,5 @@
 ﻿using Ax.Fw;
+using Ax.Fw.App;
 using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Storage;
@@ -12,11 +13,19 @@ namespace ConsoleApp1
   {
     static async Task Main(string[] args)
     {
-      using var lifetime = new Lifetime();
+      Console.WriteLine($"Starting AppBase...");
 
-      IRxProperty<string> p = Observable
-        .Return("")
-        .ToProperty(lifetime);
+      await AppBase
+        .Create()
+        .AddSingleton<string>(_ctx => _ctx.CreateInstance((IReadOnlyLifetime _lifetime) =>
+        {
+          Console.WriteLine($"String is constructed");
+          return $"{_lifetime.IsCancellationRequested}";
+        }))
+        .ActivateOnStart<string>()
+        .RunWaitAsync();
+
+      Console.WriteLine($"AppBase is finished");
     }
 
     private static string GetDbTmpPath() => $"{Path.GetTempFileName()}";

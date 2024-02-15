@@ -5,13 +5,13 @@ using System.Threading;
 
 namespace Ax.Fw.Tests;
 
-internal class TestAppDependency : ITestAppDependency, IAppModule<TestAppDependency>
+internal class TestAppDependency : ITestAppDependency, IAppModule<ITestAppDependency>
 {
   private static long p_counter = 0L;
 
-  public static TestAppDependency ExportInstance(IAppDependencyCtx _ctx)
+  public static ITestAppDependency ExportInstance(IAppDependencyCtx _ctx)
   {
-    return _ctx.CreateInstance<IReadOnlyLifetime, TestAppDependency>((_lifetime) => new TestAppDependency(_lifetime));
+    return _ctx.CreateInstance((IReadOnlyLifetime _lifetime) => new TestAppDependency(_lifetime));
   }
 
   public TestAppDependency(IReadOnlyLifetime _lifetime)
