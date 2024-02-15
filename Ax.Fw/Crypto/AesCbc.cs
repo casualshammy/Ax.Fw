@@ -10,12 +10,12 @@ using System.Threading.Tasks;
 
 namespace Ax.Fw.Crypto;
 
-public class AesCbc : ICryptoAlgorithm
+public class AesCbc : DisposableStack, ICryptoAlgorithm
 {
   private readonly byte[] p_iv;
   private readonly Aes p_aes;
 
-  public AesCbc(IReadOnlyLifetime _lifetime, string _key, EncryptionKeyLength _keyLength = EncryptionKeyLength.Bits256)
+  public AesCbc(string _key, EncryptionKeyLength _keyLength = EncryptionKeyLength.Bits256)
   {
     if (_keyLength != EncryptionKeyLength.Bits128 && _keyLength != EncryptionKeyLength.Bits256)
       throw new ArgumentOutOfRangeException(nameof(_keyLength), $"Key length must be 128 or 256 bits");
@@ -23,7 +23,7 @@ public class AesCbc : ICryptoAlgorithm
     var key = Encoding.UTF8.GetBytes(_key);
     var hashSource = SHA512.HashData(key);
 
-    p_aes = _lifetime.ToDisposeOnEnding(Aes.Create());
+    p_aes = ToDispose(Aes.Create());
     p_aes.KeySize = (int)_keyLength;
     p_aes.BlockSize = 128;
     p_iv = hashSource

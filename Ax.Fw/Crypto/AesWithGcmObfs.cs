@@ -8,7 +8,7 @@ using System.Threading;
 
 namespace Ax.Fw.Crypto;
 
-public class AesWithGcmObfs : ICryptoAlgorithm
+public class AesWithGcmObfs : DisposableStack, ICryptoAlgorithm
 {
   private readonly AesGcm p_aesGcm;
   private readonly int p_minChunkSize;
@@ -16,7 +16,6 @@ public class AesWithGcmObfs : ICryptoAlgorithm
   private int p_xorSeed;
 
   public AesWithGcmObfs(
-    IReadOnlyLifetime _lifetime,
     string _key,
     int _minChunkSize,
     EncryptionKeyLength _keyLength = EncryptionKeyLength.Bits256)
@@ -31,7 +30,7 @@ public class AesWithGcmObfs : ICryptoAlgorithm
     var hashSource = SHA512.HashData(key);
 
     p_xorSeed = BinaryPrimitives.ReadInt32LittleEndian(hashSource.AsSpan().Slice(16, 4));
-    p_aesGcm = _lifetime.ToDisposeOnEnding(new AesGcm(hashSource[..((int)_keyLength / 8)]));
+    p_aesGcm = ToDispose(new AesGcm(hashSource[..((int)_keyLength / 8)], AesGcm.TagByteSizes.MaxSize));
   }
 
   public Span<byte> Encrypt(ReadOnlySpan<byte> _data)

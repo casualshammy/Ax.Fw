@@ -96,9 +96,9 @@ public class ObservableExtensionsTests
 
     Observable
       .Empty<Unit>()
-      .ObserveAndTransformLatestOn(scheduler, async (_, _ct) =>
+      .ObserveAndTransformLatestOn(scheduler, (_, _ct) =>
       {
-        return Interlocked.Increment(ref counter);
+        return Task.FromResult(Interlocked.Increment(ref counter));
       })
       .Subscribe(lifetime);
 
@@ -120,9 +120,9 @@ public class ObservableExtensionsTests
 
     Observable
       .Return(Unit.Default)
-      .ObserveAndTransformLatestOn(scheduler, async (_, _ct) =>
+      .ObserveAndTransformLatestOn(scheduler, (_, _ct) =>
       {
-        return Interlocked.Increment(ref counter);
+        return Task.FromResult(Interlocked.Increment(ref counter));
       })
       .Subscribe(_ => { }, () => completed = true);
 
@@ -130,7 +130,7 @@ public class ObservableExtensionsTests
 
     Assert.True(completed);
     Assert.Equal(1L, Interlocked.Read(ref counter));
-    
+
   }
 
 }

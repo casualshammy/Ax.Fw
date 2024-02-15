@@ -10,12 +10,12 @@ using System.Threading;
 
 namespace Ax.Fw.Crypto;
 
-public class AesWithGcm : ICryptoAlgorithm
+public class AesWithGcm : DisposableStack, ICryptoAlgorithm
 {
   private readonly AesGcm p_aesGcm;
   private long p_nonce;
 
-  public AesWithGcm(IReadOnlyLifetime _lifetime, string _key, EncryptionKeyLength _keyLength = EncryptionKeyLength.Bits256)
+  public AesWithGcm(string _key, EncryptionKeyLength _keyLength = EncryptionKeyLength.Bits256)
   {
     if (_keyLength != EncryptionKeyLength.Bits128 && _keyLength != EncryptionKeyLength.Bits192 && _keyLength != EncryptionKeyLength.Bits256)
       throw new ArgumentOutOfRangeException(nameof(_keyLength), $"Key length must be 128, 192, or 256 bits");
@@ -24,7 +24,7 @@ public class AesWithGcm : ICryptoAlgorithm
 
     var key = Encoding.UTF8.GetBytes(_key);
     var hashSource = SHA512.HashData(key);
-    p_aesGcm = _lifetime.ToDisposeOnEnding(new AesGcm(hashSource.Take((int)_keyLength / 8).ToArray()));
+    p_aesGcm = ToDispose(new AesGcm(hashSource.Take((int)_keyLength / 8).ToArray(), AesGcm.TagByteSizes.MaxSize));
   }
 
   public Span<byte> Encrypt(ReadOnlySpan<byte> _data)
@@ -163,8 +163,8 @@ public class AesWithGcm : ICryptoAlgorithm
   private static long GetRandomNegativeInt64()
   {
     Span<byte> nonceBuffer = new byte[8];
-    Utilities.SharedRandom.NextBytes(nonceBuffer);
-    nonceBuffer[7] = (byte)Utilities.SharedRandom.Next(128, 256);
+    Random.Shared.NextBytes(nonceBuffer);
+    nonceBuffer[7] = (byte)Random.Shared.Next(128, 256);
     var result = BinaryPrimitives.ReadInt64LittleEndian(nonceBuffer);
     return result;
   }

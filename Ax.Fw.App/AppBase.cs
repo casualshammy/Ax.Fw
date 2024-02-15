@@ -1,12 +1,10 @@
-﻿using Ax.Fw.App.Attributes;
-using Ax.Fw.App.Data;
+﻿using Ax.Fw.App.Data;
 using Ax.Fw.App.Interfaces;
 using Ax.Fw.DependencyInjection;
 using Ax.Fw.JsonStorages;
 using Ax.Fw.Log;
 using Ax.Fw.SharedTypes.Interfaces;
 using System.Reactive.Linq;
-using System.Reflection;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
@@ -23,6 +21,9 @@ public class AppBase
     p_depMgr = AppDependencyManager.Create();
   }
 
+  /// <summary>
+  /// Build dependencies and return
+  /// </summary>
   public void Run()
   {
     var lifetime = new Lifetime();
@@ -34,6 +35,9 @@ public class AppBase
     p_depMgr.Build();
   }
 
+  /// <summary>
+  /// Build dependencies and return when lifetime is completed
+  /// </summary>
   public async Task RunWaitAsync()
   {
     var lifetime = new Lifetime();
@@ -94,7 +98,9 @@ public class AppBase
     return this;
   }
 
-  public AppBase AddModule<T, TInterface>() where T : notnull, TInterface, IAppModule<T>
+  public AppBase AddModule<T, TInterface>()
+    where T : notnull, TInterface, IAppModule<TInterface>
+    where TInterface : notnull
   {
     p_depMgr.AddModule<T, TInterface>();
     return this;
@@ -155,18 +161,14 @@ public class AppBase
   // ========= CONFIGS =========
   // ===========================
 
-  public AppBase UseConfigFile<T>(JsonSerializerContext? _jsonCtx)
+  public AppBase UseConfigFile<T>(string _path, JsonSerializerContext? _jsonCtx)
     where T : class
   {
     p_depMgr.AddSingleton(_ctx =>
     {
       return _ctx.CreateInstance<IReadOnlyLifetime, IObservableConfig<T?>>((IReadOnlyLifetime _lifetime) =>
       {
-        var attribute = typeof(T).GetCustomAttribute<AppConfigFileAttribute>();
-        if (attribute == null)
-          throw new CustomAttributeFormatException($"Type {typeof(T)} does not have attribute of type {typeof(AppConfigFileAttribute)}");
-
-        return new ObservableConfig<T>(new JsonStorage<T>(attribute.FilePath, _jsonCtx, _lifetime));
+        return new ObservableConfig<T>(new JsonStorage<T>(_path, _jsonCtx, _lifetime));
       });
     });
 

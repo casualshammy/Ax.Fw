@@ -166,7 +166,7 @@ public class EncryptTests
     var data = new byte[_size];
     Random.Shared.NextBytes(data);
 
-    var chacha = new ChaCha20WithPoly1305(lifetime, key);
+    var chacha = lifetime.ToDisposeOnEnding(new ChaCha20WithPoly1305(key));
 
     var encryptedData = chacha.Encrypt(data);
     var encryptedDataBytes = encryptedData.ToArray();
@@ -195,7 +195,7 @@ public class EncryptTests
     var data = new byte[_taskSize];
     Random.Shared.NextBytes(data);
 
-    var aesGcm = new AesWithGcm(lifetime, key, _keySize);
+    var aesGcm = lifetime.ToDisposeOnEnding(new AesWithGcm(key, _keySize));
     var sw = Stopwatch.StartNew();
     var elapsed = 0L;
 
@@ -238,7 +238,7 @@ public class EncryptTests
 
     var encryptedSize = data.Length + 4 + 4 + AesGcm.NonceByteSizes.MaxSize + 4 + AesGcm.TagByteSizes.MaxSize;
 
-    var aesGcm = new AesWithGcmObfs(lifetime, key, _minChunkSize, _keySize);
+    var aesGcm = lifetime.ToDisposeOnEnding(new AesWithGcmObfs(key, _minChunkSize, _keySize));
     var sw = Stopwatch.StartNew();
     var elapsed = 0L;
 
@@ -280,7 +280,7 @@ public class EncryptTests
     var data = new byte[_taskSize];
     Random.Shared.NextBytes(data);
 
-    var aes = new AesCbc(lifetime, key, _keySize);
+    var aes = lifetime.ToDisposeOnEnding(new AesCbc(key, _keySize));
     var sw = Stopwatch.StartNew();
     var elapsed = 0L;
 
