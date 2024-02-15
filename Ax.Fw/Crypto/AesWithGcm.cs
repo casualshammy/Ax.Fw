@@ -68,13 +68,13 @@ public class AesWithGcm : DisposableStack, ICryptoAlgorithm
     if (!_out.CanWrite)
       throw new InvalidOperationException($"Output stream is not writable!");
 
-    using var sha = SHA512.Create();
-    var hashSource = sha.ComputeHash(_key);
-    using var aesGcm = new AesGcm(hashSource.Take(_keyLengthBits / 8).ToArray());
-
     var nonceSize = AesGcm.NonceByteSizes.MaxSize;
     var tagSize = AesGcm.TagByteSizes.MaxSize;
     const int chunkSize = 64 * 1024;
+
+    using var sha = SHA512.Create();
+    var hashSource = sha.ComputeHash(_key);
+    using var aesGcm = new AesGcm(hashSource.Take(_keyLengthBits / 8).ToArray(), tagSize);
 
     Span<byte> meta = new byte[4 + 4 + 4];
     BinaryPrimitives.WriteInt32LittleEndian(meta.Slice(0, 4), nonceSize);
@@ -112,10 +112,6 @@ public class AesWithGcm : DisposableStack, ICryptoAlgorithm
     if (!_out.CanWrite)
       throw new InvalidOperationException($"Output stream is not writable!");
 
-    using var sha = SHA512.Create();
-    var hashSource = sha.ComputeHash(_key);
-    using var aesGcm = new AesGcm(hashSource.Take(_keyLengthBits / 8).ToArray());
-
     Span<byte> meta = new byte[4 + 4 + 4];
     if (FillBuffer(meta, _in, _ct) != meta.Length)
       throw new InvalidOperationException("Can't read meta!");
@@ -123,6 +119,9 @@ public class AesWithGcm : DisposableStack, ICryptoAlgorithm
     var nonceSize = BinaryPrimitives.ReadInt32LittleEndian(meta.Slice(0, 4));
     var tagSize = BinaryPrimitives.ReadInt32LittleEndian(meta.Slice(4, 4));
     var chunkSize = BinaryPrimitives.ReadInt32LittleEndian(meta.Slice(8, 4));
+
+    var hashSource = SHA512.HashData(_key);
+    using var aesGcm = new AesGcm(hashSource.Take(_keyLengthBits / 8).ToArray(), tagSize);
 
     Span<byte> inBuffer = new byte[nonceSize + tagSize + chunkSize];
     Span<byte> outBuffer = new byte[chunkSize];
