@@ -27,7 +27,7 @@ public class ImprovedDocumentStorageTestsV2
     try
     {
       var entries = Enumerable.Range(0, 1000).ToArray();
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
 
       // warm-up
       foreach (var entry in entries)
@@ -92,7 +92,7 @@ public class ImprovedDocumentStorageTestsV2
       var entries = Enumerable.Range(0, 1000).ToArray();
 
       var counter = 0;
-      var storage = new SqliteDocumentStorageV2(dbFile)
+      var storage = new SqliteDocumentStorage(dbFile)
         .WithRetentionRules(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(100),
           _deletedDocsMeta => counter += _deletedDocsMeta.Count);
       lifetime.ToDisposeOnEnding(storage);

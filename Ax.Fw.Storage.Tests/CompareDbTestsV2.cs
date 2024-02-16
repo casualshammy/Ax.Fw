@@ -25,7 +25,7 @@ public class CompareDbTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
 
       var enumerable = Enumerable.Range(0, PROBLEM_SIZE);
 

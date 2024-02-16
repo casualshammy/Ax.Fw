@@ -16,9 +16,7 @@ namespace Ax.Fw.Extensions;
 
 public static class IObservableExtensions
 {
-#if NET6_0_OR_GREATER
   record AliveCtx<T>(ILifetime? Lifetime, T? Value);
-#endif
 
   public static IObservable<TOut> SelectAsync<TIn, TOut>(this IObservable<TIn> _this, Func<TIn, Task<TOut>> _selector)
   {
@@ -130,10 +128,7 @@ public static class IObservableExtensions
         .Select(_ => Unit.Default);
   }
 
-  public static void OnNext(this ISubject<Unit> _this)
-  {
-    _this.OnNext(Unit.Default);
-  }
+  public static void OnNext(this ISubject<Unit> _this) => _this.OnNext(Unit.Default);
 
   public static void Subscribe<T>(this IObservable<T> _observable, Action<T> _handler, IReadOnlyLifetime _lifetime)
   {

@@ -10,7 +10,7 @@ using System.Text.Json;
 
 namespace Ax.Fw.Storage;
 
-public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
+public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
 {
   private readonly SQLiteConnection p_connection;
   private long p_documentsCounter = 0;
@@ -19,7 +19,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
   /// Opens existing database or creates new
   /// </summary>
   /// <param name="_dbFilePath">Path to database file</param>
-  public SqliteDocumentStorageV2(string _dbFilePath)
+  public SqliteDocumentStorage(string _dbFilePath)
   {
     p_connection = ToDispose(new SQLiteConnection($"Data Source={_dbFilePath};Version=3;").OpenAndReturn());
 
