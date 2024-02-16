@@ -1,4 +1,4 @@
-﻿using Ax.Fw.App.Interfaces;
+﻿using Ax.Fw.SharedTypes.Interfaces;
 
 namespace Ax.Fw.App.Data;
 

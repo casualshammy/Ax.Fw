@@ -1,5 +1,5 @@
 ﻿using Ax.Fw.App;
-using Ax.Fw.App.Interfaces;
+using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -10,7 +10,12 @@ using Xunit;
 
 namespace Ax.Fw.Tests.App;
 
-internal record TestConfig(string Path, int Value);
+internal record TestConfig(string Path, int Value) : IConfigDefinition
+{
+  public static string FilePath => "C:\\Windows\\Temp\\ax.fw.app.test-config.json";
+
+  public static JsonSerializerContext? JsonCtx => TestConfigJsonCtx.Default;
+}
 
 [JsonSerializable(typeof(TestConfig))]
 internal partial class TestConfigJsonCtx : JsonSerializerContext
@@ -20,20 +25,18 @@ internal partial class TestConfigJsonCtx : JsonSerializerContext
 
 public class AppTests
 {
-  internal const string TEST_FILE_PATH = "C:\\Windows\\Temp\\ax.fw.app.test-config.json";
-
   [Fact(Timeout = 30000)]
   public async Task IObservableConfigTestAsync()
   {
     var data = new TestConfig("test", 123);
     var json = JsonSerializer.Serialize(data, TestConfigJsonCtx.Default.TestConfig);
-    File.WriteAllText(TEST_FILE_PATH, json);
+    File.WriteAllText(TestConfig.FilePath, json);
 
     using var semaphore = new SemaphoreSlim(0, 1);
 
     var app = AppBase
       .Create()
-      .UseConfigFile<TestConfig>(TEST_FILE_PATH, TestConfigJsonCtx.Default)
+      .UseConfigFile<TestConfig>()
       .AddSingleton<string>(_ctx => _ctx.CreateInstance((IObservableConfig<TestConfig> _conf) =>
       {
         _conf.Subscribe(_conf =>

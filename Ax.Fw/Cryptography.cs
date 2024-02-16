@@ -34,6 +34,7 @@ public static class Cryptography
     return await Crypto.AesCbc.DecryptAsync(_encryptedData, _password, _useFastHashing, _ct);
   }
 
+  [Obsolete($"Use corresponding 'SHA256', 'SHA384' or 'SHA512' static 'HashData' method")]
   public static byte[] CalculateSHAHash(byte[] _data, HashComplexity _hashComplexity = HashComplexity.Bit512)
   {
     var hashInst = _hashComplexity switch
@@ -48,6 +49,7 @@ public static class Cryptography
       return hashInst.ComputeHash(_data);
   }
 
+  [Obsolete($"Use corresponding 'SHA256', 'SHA384' or 'SHA512' static 'HashData' method")]
   public static byte[] CalculateSHAHash(Stream _stream, HashComplexity _hashComplexity = HashComplexity.Bit512)
   {
     var hashInst = _hashComplexity switch
@@ -62,6 +64,7 @@ public static class Cryptography
       return hashInst.ComputeHash(_stream);
   }
 
+  [Obsolete($"Use corresponding 'SHA256', 'SHA384' or 'SHA512' static 'HashData' method")]
   public static string CalculateSHAHash(string _data, HashComplexity _hashComplexity = HashComplexity.Bit512)
   {
     var data = Encoding.UTF8.GetBytes(_data);
@@ -69,12 +72,10 @@ public static class Cryptography
     return BitConverter.ToString(hash).Replace("-", "");
   }
 
-  public static byte[] CalculateMd5Hash(byte[] _data)
-  {
-    using (var hash = MD5.Create())
-      return hash.ComputeHash(_data);
-  }
+  [Obsolete($"Use corresponding 'SHA256', 'SHA384' or 'SHA512' static 'HashData' method")]
+  public static byte[] CalculateMd5Hash(byte[] _data) => MD5.HashData(_data);
 
+  [Obsolete($"Use corresponding 'SHA256', 'SHA384' or 'SHA512' static 'HashData' method")]
   public static string CalculateMd5Hash(string _data)
   {
     var data = Encoding.UTF8.GetBytes(_data);

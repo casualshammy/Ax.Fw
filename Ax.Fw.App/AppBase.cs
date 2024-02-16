@@ -1,5 +1,4 @@
 ﻿using Ax.Fw.App.Data;
-using Ax.Fw.App.Interfaces;
 using Ax.Fw.DependencyInjection;
 using Ax.Fw.JsonStorages;
 using Ax.Fw.Log;
@@ -161,18 +160,27 @@ public class AppBase
   // ========= CONFIGS =========
   // ===========================
 
-  public AppBase UseConfigFile<T>(string _path, JsonSerializerContext? _jsonCtx)
+  public AppBase UseConfigFile<T>(string _filePath, JsonSerializerContext? _jsonCtx)
     where T : class
   {
     p_depMgr.AddSingleton(_ctx =>
     {
       return _ctx.CreateInstance<IReadOnlyLifetime, IObservableConfig<T?>>((IReadOnlyLifetime _lifetime) =>
       {
-        return new ObservableConfig<T>(new JsonStorage<T>(_path, _jsonCtx, _lifetime));
+        return new ObservableConfig<T>(new JsonStorage<T>(_filePath, _jsonCtx, _lifetime));
       });
     });
 
     return this;
+  }
+
+  public AppBase UseConfigFile<T>()
+    where T : class, IConfigDefinition
+  {
+    var filePath = T.FilePath;
+    var jsonCtx = T.JsonCtx;
+
+    return UseConfigFile<T>(filePath, jsonCtx);
   }
 
 }
