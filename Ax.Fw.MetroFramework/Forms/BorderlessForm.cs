@@ -178,7 +178,7 @@ public class BorderlessForm : Form
     if (_sender is not FormButton formButton)
       return;
 
-    switch ((WindowButtons)formButton.Tag)
+    switch ((WindowButtons)formButton.Tag!)
     {
       case WindowButtons.Close:
         Close();
@@ -245,8 +245,8 @@ public class BorderlessForm : Form
       {
         Location = new Point
         {
-          X = (Screen.PrimaryScreen.WorkingArea.Width - (ClientRectangle.Width + 5)) / 2,
-          Y = (Screen.PrimaryScreen.WorkingArea.Height - (ClientRectangle.Height + 5)) / 2
+          X = ((Screen.PrimaryScreen?.WorkingArea.Width - (ClientRectangle.Width + 5)) ?? 0) / 2,
+          Y = ((Screen.PrimaryScreen?.WorkingArea.Height - (ClientRectangle.Height + 5)) ?? 0) / 2
         };
         base.OnActivated(_e);
       }

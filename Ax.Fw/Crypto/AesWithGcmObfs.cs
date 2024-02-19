@@ -82,8 +82,8 @@ public class AesWithGcmObfs : DisposableStack, ICryptoAlgorithm
   private static long GetRandomNegativeInt64()
   {
     Span<byte> nonceBuffer = new byte[8];
-    Utilities.SharedRandom.NextBytes(nonceBuffer);
-    nonceBuffer[7] = (byte)Utilities.SharedRandom.Next(128, 256);
+    Random.Shared.NextBytes(nonceBuffer);
+    nonceBuffer[7] = (byte)Random.Shared.Next(128, 256);
     var result = BinaryPrimitives.ReadInt64LittleEndian(nonceBuffer);
     return result;
   }

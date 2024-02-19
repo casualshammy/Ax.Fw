@@ -1,9 +1,8 @@
-﻿namespace Ax.Fw.SharedTypes.Data
+﻿namespace Ax.Fw.SharedTypes.Data;
+
+public enum HashComplexity
 {
-    public enum HashComplexity
-    {
-        Bit256,
-        Bit384,
-        Bit512
-    }
+  Bit256,
+  Bit384,
+  Bit512
 }

@@ -133,7 +133,7 @@ public class FileCache
 
   public Stream? Get(string _key)
   {
-    if (!IsKeyExists(_key, out var path))
+    if (!IsKeyExists(_key, out var path, out _))
       return null;
 
     try
@@ -146,25 +146,54 @@ public class FileCache
     }
   }
 
-  public bool IsKeyExists(string _key, [NotNullWhen(true)] out string? _path)
+  public bool TryGet(
+    string _key,
+    [NotNullWhen(true)] out Stream? _stream,
+    [NotNullWhen(true)] out string? _filePath,
+    [NotNullWhen(true)] out string? _hash)
   {
+    _stream = null;
+    _filePath = null;
+    _hash = null;
+
+    if (!IsKeyExists(_key, out var path, out var hash))
+      return false;
+
+    try
+    {
+      _stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+      _filePath = path;
+      _hash = hash;
+      return true;
+    }
+    catch
+    {
+      return false;
+    }
+  }
+
+  public bool IsKeyExists(
+    string _key,
+    [NotNullWhen(true)] out string? _path,
+    [NotNullWhen(true)] out string? _hash)
+  {
+    _path = null;
+    _hash = null;
+
     var folder = GetFolderForKey(_key, out var hash);
     var file = new FileInfo(Path.Combine(folder, hash));
     if (!file.Exists)
-    {
-      _path = null;
       return false;
-    }
 
     var now = DateTimeOffset.UtcNow;
     if (now - file.LastWriteTimeUtc > p_ttl)
     {
       file.TryDelete();
-      _path = null;
       return false;
     }
 
     _path = file.FullName;
+    _hash = hash;
     return true;
   }
 

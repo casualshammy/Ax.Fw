@@ -34,52 +34,24 @@ public static class Cryptography
     return await Crypto.AesCbc.DecryptAsync(_encryptedData, _password, _useFastHashing, _ct);
   }
 
-  [Obsolete($"Use corresponding 'SHA256', 'SHA384' or 'SHA512' static 'HashData' method")]
-  public static byte[] CalculateSHAHash(byte[] _data, HashComplexity _hashComplexity = HashComplexity.Bit512)
-  {
-    var hashInst = _hashComplexity switch
-    {
-      HashComplexity.Bit256 => SHA256.Create() as HashAlgorithm,
-      HashComplexity.Bit384 => SHA384.Create(),
-      HashComplexity.Bit512 => SHA512.Create(),
-      _ => throw new NotImplementedException()
-    };
-
-    using (hashInst)
-      return hashInst.ComputeHash(_data);
-  }
-
-  [Obsolete($"Use corresponding 'SHA256', 'SHA384' or 'SHA512' static 'HashData' method")]
-  public static byte[] CalculateSHAHash(Stream _stream, HashComplexity _hashComplexity = HashComplexity.Bit512)
-  {
-    var hashInst = _hashComplexity switch
-    {
-      HashComplexity.Bit256 => SHA256.Create() as HashAlgorithm,
-      HashComplexity.Bit384 => SHA384.Create(),
-      HashComplexity.Bit512 => SHA512.Create(),
-      _ => throw new NotImplementedException()
-    };
-
-    using (hashInst)
-      return hashInst.ComputeHash(_stream);
-  }
-
-  [Obsolete($"Use corresponding 'SHA256', 'SHA384' or 'SHA512' static 'HashData' method")]
   public static string CalculateSHAHash(string _data, HashComplexity _hashComplexity = HashComplexity.Bit512)
   {
     var data = Encoding.UTF8.GetBytes(_data);
-    var hash = CalculateSHAHash(data, _hashComplexity);
+    var hash = _hashComplexity switch
+    {
+      HashComplexity.Bit256 => SHA256.HashData(data),
+      HashComplexity.Bit384 => SHA384.HashData(data),
+      HashComplexity.Bit512 => SHA512.HashData(data),
+      _ => throw new InvalidOperationException($"Don't know how to calculate {_hashComplexity} hash!")
+    };
+
     return BitConverter.ToString(hash).Replace("-", "");
   }
 
-  [Obsolete($"Use corresponding 'SHA256', 'SHA384' or 'SHA512' static 'HashData' method")]
-  public static byte[] CalculateMd5Hash(byte[] _data) => MD5.HashData(_data);
-
-  [Obsolete($"Use corresponding 'SHA256', 'SHA384' or 'SHA512' static 'HashData' method")]
   public static string CalculateMd5Hash(string _data)
   {
     var data = Encoding.UTF8.GetBytes(_data);
-    var hash = CalculateMd5Hash(data);
+    var hash = MD5.HashData(data);
     return BitConverter.ToString(hash).Replace("-", "");
   }
 

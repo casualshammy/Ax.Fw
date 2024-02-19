@@ -31,7 +31,7 @@ public class EncryptTests
     try
     {
       var data = new byte[10 * 1024];
-      Utilities.SharedRandom.NextBytes(data);
+      Random.Shared.NextBytes(data);
 
       var password = Encoding.UTF8.GetBytes("123asd456qwe789zxc");
 
@@ -75,7 +75,7 @@ public class EncryptTests
     try
     {
       var data = new byte[_size];
-      Utilities.SharedRandom.NextBytes(data);
+      Random.Shared.NextBytes(data);
 
       var password = Encoding.UTF8.GetBytes("123asd456qwe789zxc");
 
@@ -104,7 +104,7 @@ public class EncryptTests
     try
     {
       var data = new byte[10 * 1024];
-      Utilities.SharedRandom.NextBytes(data);
+      Random.Shared.NextBytes(data);
 
       var password = Encoding.UTF8.GetBytes("123asd456qwe789zxc");
 

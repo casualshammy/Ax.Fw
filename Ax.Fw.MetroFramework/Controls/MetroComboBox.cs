@@ -93,14 +93,10 @@ public class MetroComboBox : ComboBox
   [Browsable(false)]
   public override Font Font
   {
-    get
-    {
-      return base.Font;
-    }
-    set
-    {
-      base.Font = value;
-    }
+    get => base.Font;
+#pragma warning disable CS8765 // パラメーターの型の NULL 値の許容が、オーバーライドされたメンバーと一致しません。おそらく、NULL 値の許容の属性が原因です。
+    set => base.Font = value;
+#pragma warning restore CS8765 // パラメーターの型の NULL 値の許容が、オーバーライドされたメンバーと一致しません。おそらく、NULL 値の許容の属性が原因です。
   }
 
   [Browsable(false)]
@@ -169,13 +165,13 @@ public class MetroComboBox : ComboBox
     }
   }
 
-  protected override void OnDrawItem(DrawItemEventArgs e)
+  protected override void OnDrawItem(DrawItemEventArgs _e)
   {
-    if (e.Index >= 0)
+    if (_e.Index >= 0)
     {
       Color foreColor;
       Color backColor;
-      if (e.State == (DrawItemState.NoAccelerator | DrawItemState.NoFocusRect) || e.State == DrawItemState.None)
+      if (_e.State == (DrawItemState.NoAccelerator | DrawItemState.NoFocusRect) || _e.State == DrawItemState.None)
       {
         foreColor = StyleManager.Current.PrimaryColor;
         backColor = StyleManager.Current.BackColor;
@@ -187,12 +183,12 @@ public class MetroComboBox : ComboBox
       }
 
       using (var brush = new SolidBrush(backColor))
-        e.Graphics.FillRectangle(brush, new Rectangle(e.Bounds.Left, e.Bounds.Top, e.Bounds.Width, e.Bounds.Height));
+        _e.Graphics.FillRectangle(brush, new Rectangle(_e.Bounds.Left, _e.Bounds.Top, _e.Bounds.Width, _e.Bounds.Height));
 
-      var bounds = new Rectangle(0, e.Bounds.Top, e.Bounds.Width, e.Bounds.Height);
+      var bounds = new Rectangle(0, _e.Bounds.Top, _e.Bounds.Width, _e.Bounds.Height);
       TextRenderer.DrawText(
-          e.Graphics,
-          Items[e.Index].ToString(),
+          _e.Graphics,
+          Items[_e.Index]?.ToString(),
           StyleManager.Current.GetLinkFont(p_metroLinkSize, p_metroLinkWeight),
           bounds,
           foreColor,
@@ -201,7 +197,7 @@ public class MetroComboBox : ComboBox
     }
     else
     {
-      base.OnDrawItem(e);
+      base.OnDrawItem(_e);
     }
   }
 
