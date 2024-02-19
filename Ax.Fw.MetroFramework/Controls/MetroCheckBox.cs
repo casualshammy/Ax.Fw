@@ -64,14 +64,10 @@ public class MetroCheckBox : CheckBox
   [Browsable(false)]
   public override Font Font
   {
-    get
-    {
-      return base.Font;
-    }
-    set
-    {
-      base.Font = value;
-    }
+    get => base.Font;
+#pragma warning disable CS8765 // パラメーターの型の NULL 値の許容が、オーバーライドされたメンバーと一致しません。おそらく、NULL 値の許容の属性が原因です。
+    set => base.Font = value;
+#pragma warning restore CS8765 // パラメーターの型の NULL 値の許容が、オーバーライドされたメンバーと一致しません。おそらく、NULL 値の許容の属性が原因です。
   }
 
   protected override void OnPaint(PaintEventArgs e)

@@ -1,4 +1,5 @@
 ﻿using Ax.Fw.Extensions;
+using System;
 using System.IO;
 using Xunit;
 using Xunit.Abstractions;
@@ -24,7 +25,7 @@ public class StreamWithProgressTests
       void onProgress(double _progress) => progress = _progress;
 
       var data = new byte[1024 * 1024];
-      Utilities.SharedRandom.NextBytes(data);
+      Random.Shared.NextBytes(data);
       using (var outputMs = new MemoryStream(data))
       using (var inputMs = new MemoryStream())
       using (var stream = new StreamWithProgress(data.Length, outputMs, onProgress))
@@ -48,7 +49,7 @@ public class StreamWithProgressTests
       void onProgress(double _progress) => progress = _progress;
 
       var data = new byte[1024 * 1024];
-      Utilities.SharedRandom.NextBytes(data);
+      Random.Shared.NextBytes(data);
       using (var outputMs = new MemoryStream(data))
       using (var inputMs = new MemoryStream())
       using (var stream = new StreamWithProgress(data.Length, inputMs, onProgress))

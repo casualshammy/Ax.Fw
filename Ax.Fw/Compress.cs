@@ -55,7 +55,7 @@ public static class Compress
       Action<TypedProgress<FileSystemInfo>>? _progressReport,
       CancellationToken _ct)
   {
-    var tmpFile = $"{_zipPath}-{Utilities.SharedRandom.Next()}.zip";
+    var tmpFile = $"{_zipPath}-{Random.Shared.Next()}.zip";
 
     try
     {

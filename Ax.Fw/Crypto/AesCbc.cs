@@ -62,7 +62,9 @@ public class AesCbc : DisposableStack, ICryptoAlgorithm
       }
       else
       {
+#pragma warning disable SYSLIB0041 // 型またはメンバーが旧型式です
         using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
+#pragma warning restore SYSLIB0041 // 型またはメンバーが旧型式です
         rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
         rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
       }
@@ -95,7 +97,9 @@ public class AesCbc : DisposableStack, ICryptoAlgorithm
       }
       else
       {
+#pragma warning disable SYSLIB0041 // 型またはメンバーが旧型式です
         using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
+#pragma warning restore SYSLIB0041 // 型またはメンバーが旧型式です
         rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
         rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
       }
@@ -140,7 +144,9 @@ public class AesCbc : DisposableStack, ICryptoAlgorithm
       }
       else
       {
+#pragma warning disable SYSLIB0041 // 型またはメンバーが旧型式です
         using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
+#pragma warning restore SYSLIB0041 // 型またはメンバーが旧型式です
         rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
         rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
       }
@@ -173,7 +179,9 @@ public class AesCbc : DisposableStack, ICryptoAlgorithm
       }
       else
       {
+#pragma warning disable SYSLIB0041 // 型またはメンバーが旧型式です
         using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
+#pragma warning restore SYSLIB0041 // 型またはメンバーが旧型式です
         rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
         rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
       }

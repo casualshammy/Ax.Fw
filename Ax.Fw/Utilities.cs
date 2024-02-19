@@ -5,7 +5,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Ax.Fw;
@@ -28,19 +27,13 @@ public static class Utilities
     public int GetHashCode([DisallowNull] T _obj) => _obj.GetHashCode();
   }
 
-  private static int p_seed = Environment.TickCount;
-  private static readonly ThreadLocal<Random> p_randomWrapper = new(() => new Random(Interlocked.Increment(ref p_seed)));
-
-  public static Random SharedRandom => p_randomWrapper.Value!;
-
   public static string GetRandomString(int _size, bool _onlyLetters)
   {
-    var rnd = SharedRandom;
     var builder = new StringBuilder(_size);
     var chars = _onlyLetters ? "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" : "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     for (int i = 0; i < _size; i++)
     {
-      var c = chars[rnd.Next(0, chars.Length)];
+      var c = chars[Random.Shared.Next(0, chars.Length)];
       builder.Append(c);
     }
     return builder.ToString();
@@ -64,12 +57,12 @@ public static class Utilities
   {
     var words = _text.Split(' ').ToList();
     var result = new StringBuilder();
-    while (words.Any())
+    while (words.Count != 0)
     {
       var sb = new StringBuilder();
-      while (words.Any() && sb.Length + 1 + words.First().Length <= _chunkSize)
+      while (words.Count != 0 && sb.Length + 1 + words[0].Length <= _chunkSize)
       {
-        sb.Append(" " + words.First());
+        sb.Append(" " + words[0]);
         words.RemoveAt(0);
       }
       result.Append(sb.ToString() + "\r\n");
@@ -79,13 +72,12 @@ public static class Utilities
 
   public static string SecureString(string _input)
   {
-    var rnd = SharedRandom;
     var indexesToHide = new int[_input.Length / 2];
     for (int i = 0; i < indexesToHide.Length; i++)
     {
-      var newValue = rnd.Next(0, _input.Length);
+      var newValue = Random.Shared.Next(0, _input.Length);
       while (indexesToHide.Contains(newValue))
-        newValue = rnd.Next(0, _input.Length);
+        newValue = Random.Shared.Next(0, _input.Length);
       indexesToHide[i] = newValue;
     }
     var builder = new StringBuilder(_input.Length);
