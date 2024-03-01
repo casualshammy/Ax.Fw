@@ -32,6 +32,7 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
 
   private readonly IObservable<T?> p_sharedObservable;
   private readonly JsonSerializerContext? p_jsonCtx;
+  private readonly Action<Exception>? p_onDeserializationError;
 
   /// <summary>
   ///
@@ -40,12 +41,14 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
   public JsonStorage(
     string _jsonFilePath,
     JsonSerializerContext? _jsonCtx,
-    IReadOnlyLifetime _lifetime)
+    IReadOnlyLifetime _lifetime,
+    Action<Exception>? _onDeserializationError = null)
   {
     if (string.IsNullOrWhiteSpace(_jsonFilePath))
       throw new ArgumentNullException(nameof(_jsonFilePath));
 
     p_jsonCtx = _jsonCtx;
+    p_onDeserializationError = _onDeserializationError;
     JsonFilePath = _jsonFilePath;
 
     var scheduler = _lifetime.ToDisposeOnEnded(new EventLoopScheduler());
@@ -94,12 +97,12 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
   /// Loads data from JSON file
   /// </summary>
   /// <param name="_defaultFactory">
-  /// If file doesn't exist, this method will be invoked to produce default value
+  /// If file doesn't exist, or have wrong format, this method will be invoked to produce default value
   /// </param>
   /// <returns>
   /// Instance of <see cref="T"/>
   /// </returns>
-  public async Task<T> ReadAsync(Func<CancellationToken, Task<T>> _defaultFactory, CancellationToken _ct)
+  public async Task<T?> ReadAsync(Func<CancellationToken, Task<T?>> _defaultFactory, CancellationToken _ct)
   {
     if (!File.Exists(JsonFilePath))
       return await _defaultFactory(_ct);
@@ -124,12 +127,12 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
   /// Loads data from JSON file
   /// </summary>
   /// <param name="_defaultFactory">
-  /// If file doesn't exist, this method will be invoked to produce default value
+  /// If file doesn't exist, or have wrong format, this method will be invoked to produce default value
   /// </param>
   /// <returns>
   /// Instance of <see cref="T"/>
   /// </returns>
-  public T Read(Func<T> _defaultFactory)
+  public T? Read(Func<T?> _defaultFactory)
   {
     if (!File.Exists(JsonFilePath))
       return _defaultFactory();
@@ -197,8 +200,9 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
           return await JsonSerializer.DeserializeAsync<T>(fileStream, cancellationToken: _ct) ?? default;
       }
     }
-    catch
+    catch (Exception ex)
     {
+      p_onDeserializationError?.Invoke(ex);
       return default;
     }
   }
