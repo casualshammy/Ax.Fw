@@ -45,14 +45,21 @@ public static class DateTimeOffsetExtensions
     var minutes = delta.Minutes;
     var seconds = delta.Seconds;
 
+    var init = false;
+
     if (hours > 0)
+    {
       sb.Append($"{hours} {_options.HoursWord} ");
+      init = true;
+    }
 
-    if (minutes > 0)
+    if (minutes > 0 || init)
+    {
       sb.Append($"{minutes} {_options.MinutesWord} ");
+      init = true;
+    }
 
-    if (seconds > 0)
-      sb.Append($"{seconds} {_options.SecondsWord} ");
+    sb.Append($"{seconds} {_options.SecondsWord}");
 
     return sb.ToString().TrimEnd();
   }
