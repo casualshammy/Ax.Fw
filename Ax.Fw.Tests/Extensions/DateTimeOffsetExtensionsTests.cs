@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -17,27 +18,24 @@ public class DateTimeOffsetExtensionsTests
   public void ToHumanFriendlyStringTest()
   {
     var now = DateTimeOffset.Now;
+    var reference = new Dictionary<DateTimeOffset, string>()
+    {
+      {now - new TimeSpan(25, 0, 0), $"{(now - new TimeSpan(25, 0, 0)):yyyy/MM/dd HH:mm:ss}"},
+      {now - new TimeSpan(10, 11, 12), $"10 hours 11 min 12 sec" },
+      {now - new TimeSpan(10, 11, 00), $"10 hours 11 min 0 sec" },
+      {now - new TimeSpan(10, 0, 12), $"10 hours 0 min 12 sec" },
+      {now - new TimeSpan(10, 0, 0), $"10 hours 0 min 0 sec" },
+      {now - new TimeSpan(0, 11, 12), $"11 min 12 sec" },
+      {now - new TimeSpan(0, 11, 00), $"11 min 0 sec" },
+      {now - new TimeSpan(0, 00, 12), $"12 sec" },
+      {now - new TimeSpan(0, 0, 0), $"0 sec" },
+    };
 
-    var dateTime0 = now - TimeSpan.FromSeconds(36);
-    var srt0 = dateTime0.ToHumanFriendlyString(DateTimeOffsetToHumanFriendlyStringOptions.Default);
-    Assert.Equal($"36 sec", srt0);
-
-    var dateTime1 = now - TimeSpan.FromMinutes(36);
-    var srt1 = dateTime1.ToHumanFriendlyString(DateTimeOffsetToHumanFriendlyStringOptions.Default);
-    Assert.Equal($"36 min", srt1);
-
-    var dateTime2 = now - TimeSpan.FromHours(14);
-    var srt2 = dateTime2.ToHumanFriendlyString(DateTimeOffsetToHumanFriendlyStringOptions.Default);
-    Assert.Equal(dateTime2.ToString(DateTimeOffsetToHumanFriendlyStringOptions.Default.FallbackFormat), srt2);
-
-    var dateTime3 = now - TimeSpan.FromHours(36);
-    var srt3 = dateTime3.ToHumanFriendlyString(DateTimeOffsetToHumanFriendlyStringOptions.Default);
-    Assert.Equal(dateTime3.ToString(DateTimeOffsetToHumanFriendlyStringOptions.Default.FallbackFormat), srt3);
-
-    var dateTime4 = now - TimeSpan.FromSeconds(14 * 3600 + 17 * 60 + 48);
-    var srt4 = dateTime4.ToHumanFriendlyString(DateTimeOffsetToHumanFriendlyStringOptions.Default);
-    Assert.Equal(dateTime4.ToString(DateTimeOffsetToHumanFriendlyStringOptions.Default.FallbackFormat), srt4);
-
+    foreach (var (dateTime, refResult) in reference)
+    {
+      var result = dateTime.ToHumanFriendlyString(DateTimeOffsetToHumanFriendlyStringOptions.Default with { MaxUnit = DateTimeOffsetToHumanFriendlyStringMaxUnit.Hours });
+      Assert.Equal(refResult, result);
+    }
   }
 
 }
