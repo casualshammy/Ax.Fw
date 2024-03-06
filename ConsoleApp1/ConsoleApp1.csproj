@@ -12,6 +12,7 @@
 
 		<ItemGroup>
 				<ProjectReference Include="..\Ax.Fw.App\Ax.Fw.App.csproj" />
+				<ProjectReference Include="..\Ax.Fw.Log\Ax.Fw.Log.csproj" />
 				<ProjectReference Include="..\Ax.Fw.Storage\Ax.Fw.Storage.csproj" />
 		</ItemGroup>
 

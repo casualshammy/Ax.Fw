@@ -125,7 +125,7 @@ public class FileCache
               // ignore errors
             }
           }
-          var stats = new FileCacheStatFile(totalFolderCount, totalFileCount, totalSize, sw.Elapsed.TotalMilliseconds);
+          var stats = new FileCacheStatFile(totalFolderCount, totalFileCount, totalSize, sw.Elapsed.TotalMilliseconds, DateTimeOffset.UtcNow);
           var json = JsonSerializer.Serialize(stats, FileCacheJsonCtx.Default.FileCacheStatFile);
           File.WriteAllText(Path.Combine(p_folder, "cache-stats.json"), json, Encoding.UTF8);
         }, _lifetime);
