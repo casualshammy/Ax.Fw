@@ -93,6 +93,7 @@ public class FileCacheTests
         var key = $"test-key-{i}";
         ms.Position = 0;
         await cache.StoreAsync(key, ms, true, lifetime.Token);
+        await Task.Delay(1000);
       }
 
       await cache.CleanFilesWaitAsync(lifetime.Token);

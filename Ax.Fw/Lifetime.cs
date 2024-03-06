@@ -19,16 +19,19 @@ public class Lifetime : ILifetime
   private readonly ConcurrentStack<IObservable<Unit>> p_doNotEndUntilCompleted = new();
   private readonly CancellationTokenSource p_cts = new();
   private readonly ReplaySubject<Unit> p_onEnding = new(1);
+  private readonly ReplaySubject<Unit> p_onEnd = new(1);
   private long p_ending = 0;
 
   public Lifetime()
   {
     OnEnding = p_onEnding;
+    OnEnd = p_onEnd;
   }
 
   public CancellationToken Token => p_cts.Token;
   public bool IsCancellationRequested => p_cts.Token.IsCancellationRequested;
   public IObservable<Unit> OnEnding { get; }
+  public IObservable<Unit> OnEnd { get; }
 
   [return: NotNullIfNotNull(parameterName: nameof(_instance))]
   public T? ToDisposeOnEnding<T>(T? _instance) where T : IDisposable
@@ -200,6 +203,7 @@ public class Lifetime : ILifetime
 
       p_cts.Cancel();
       p_onEnding.OnNext();
+      p_onEnding.OnCompleted();
 
       while (p_doOnEnding.TryPop(out var task))
         await task();
@@ -217,6 +221,8 @@ public class Lifetime : ILifetime
     });
 
     semaphore.Wait();
+    p_onEnd.OnNext();
+    p_onEnd.OnCompleted();
   }
 
   protected virtual void Dispose(bool _disposing)

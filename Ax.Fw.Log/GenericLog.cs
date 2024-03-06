@@ -115,12 +115,12 @@ public class GenericLog : DisposableStack, ILog
 
   public void SetJsonCtx(JsonSerializerContext? _jsonCtx) => p_jsonCtx = _jsonCtx;
 
+  public void AddEndAction(Action _action) => p_endActions.Push(_action);
+
   internal void OnNewLogEntry(LogEntry _entry)
   {
     p_stats.AddOrUpdate(_entry.Type, 1, (_, _prevValue) => ++_prevValue);
     p_logEntriesSubj.OnNext(_entry);
   }
-
-  internal void AddEndAction(Action _action) => p_endActions.Push(_action);
 
 }

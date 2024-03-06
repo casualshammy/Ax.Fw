@@ -25,7 +25,7 @@ public class AppBase
     p_depMgr.AddSingleton<ILifetime>(lifetime);
     p_depMgr.AddSingleton<IReadOnlyLifetime>(lifetime);
 
-    var log = new GenericLog(null);
+    var log = lifetime.ToDisposeOnEnded(new GenericLog(null));
     p_depMgr.AddSingleton<ILog>(log);
   }
 
