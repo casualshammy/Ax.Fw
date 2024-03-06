@@ -2,26 +2,12 @@
 
 namespace Ax.Fw.SharedTypes.Data.Log;
 
-public class LogEntry
+public record LogEntry(LogEntryType Type, string Text, DateTimeOffset Time, string? Scope)
 {
-  public LogEntryType Type;
-  public string Text;
-  public DateTimeOffset Time;
-  public string? LogName;
-
-  public LogEntry(LogEntryType _type, string _text, DateTimeOffset _time, string? _scope)
+  public string GetTypePrefix() => Type switch
   {
-    Type = _type;
-    Text = _text;
-    Time = _time;
-    LogName = _scope;
-  }
-
-  public char GetTypePrefix() => Type switch
-  {
-    LogEntryType.WARN => 'W',
-    LogEntryType.ERROR => 'E',
-    _ => ' ',
+    LogEntryType.WARN => "W",
+    LogEntryType.ERROR => "E",
+    _ => " ",
   };
-
 }

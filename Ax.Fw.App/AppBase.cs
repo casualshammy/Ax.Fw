@@ -2,6 +2,7 @@
 using Ax.Fw.DependencyInjection;
 using Ax.Fw.JsonStorages;
 using Ax.Fw.Log;
+using Ax.Fw.SharedTypes.Data.Log;
 using Ax.Fw.SharedTypes.Interfaces;
 using System.Reactive.Linq;
 using System.Text.Json.Serialization;
@@ -18,34 +19,29 @@ public class AppBase
   private AppBase()
   {
     p_depMgr = AppDependencyManager.Create();
+
+    var lifetime = new Lifetime();
+    lifetime.InstallConsoleCtrlCHook();
+    p_depMgr.AddSingleton<ILifetime>(lifetime);
+    p_depMgr.AddSingleton<IReadOnlyLifetime>(lifetime);
+
+    var log = new GenericLog(null);
+    p_depMgr.AddSingleton<ILog>(log);
   }
 
   /// <summary>
   /// Build dependencies and return
   /// </summary>
-  public void Run()
-  {
-    var lifetime = new Lifetime();
-    lifetime.InstallConsoleCtrlCHook();
-
-    p_depMgr.AddSingleton<ILifetime>(lifetime);
-    p_depMgr.AddSingleton<IReadOnlyLifetime>(lifetime);
-
-    p_depMgr.Build();
-  }
+  public void Run() => p_depMgr.Build();
 
   /// <summary>
   /// Build dependencies and return when lifetime is completed
   /// </summary>
   public async Task RunWaitAsync()
   {
-    var lifetime = new Lifetime();
-    lifetime.InstallConsoleCtrlCHook();
-
-    p_depMgr.AddSingleton<ILifetime>(lifetime);
-    p_depMgr.AddSingleton<IReadOnlyLifetime>(lifetime);
-
     p_depMgr.Build();
+
+    var lifetime = p_depMgr.Locate<IReadOnlyLifetime>();
 
     try
     {
@@ -115,21 +111,6 @@ public class AppBase
   // =========== LOG ===========
   // ===========================
 
-  public AppBase UseFileAndConsoleLog(Func<string> _fileNameFactory)
-  {
-    p_depMgr.AddSingleton<ILogger>(_ctx =>
-    {
-      return _ctx.CreateInstance((IReadOnlyLifetime _lifetime) =>
-      {
-        var fileLog = _lifetime.ToDisposeOnEnded(new FileLogger(_fileNameFactory, TimeSpan.FromSeconds(1)));
-        var consoleLog = _lifetime.ToDisposeOnEnded(new ConsoleLogger());
-        return new CompositeLogger(fileLog, consoleLog);
-      });
-    });
-
-    return this;
-  }
-
   public AppBase UseFileLogRotate(DirectoryInfo _logFolder, bool _recursive, Regex _logFilesPattern, TimeSpan _logFileTtl)
   {
     p_depMgr
@@ -148,11 +129,24 @@ public class AppBase
 
   public AppBase UseConsoleLog()
   {
-    p_depMgr.AddSingleton<ILogger>(_ctx =>
-    {
-      return _ctx.CreateInstance((IReadOnlyLifetime _lifetime) => _lifetime.ToDisposeOnEnded(new ConsoleLogger()));
-    });
+    var log = p_depMgr.Locate<ILog>() as GenericLog;
+    if (log == null)
+      throw new InvalidOperationException($"Can't get the instance of {typeof(GenericLog)}!");
 
+    log.AttachConsoleLog();
+    return this;
+  }
+
+  public AppBase UseFileLog(
+    Func<string> _fileNameFactory,
+    Action<Exception, IEnumerable<LogEntry>>? _onError = null,
+    Action<HashSet<string>>? _filesWrittenCallback = null)
+  {
+    var log = p_depMgr.Locate<ILog>() as GenericLog;
+    if (log == null)
+      throw new InvalidOperationException($"Can't get the instance of {typeof(GenericLog)}!");
+
+    log.AttachFileLog(_fileNameFactory, TimeSpan.FromSeconds(1), _onError, _filesWrittenCallback);
     return this;
   }
 
