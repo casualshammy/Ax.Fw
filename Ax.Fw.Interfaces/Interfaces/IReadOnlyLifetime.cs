@@ -15,6 +15,7 @@ public interface IReadOnlyLifetime
   /// This IObservable will produce single value (<see cref="true"/>) before completion of this instance of <see cref="IReadOnlyLifetime"/> 
   /// </summary>
   IObservable<Unit> OnEnding { get; }
+  IObservable<Unit> OnEnd { get; }
 
   [return: NotNullIfNotNull(parameterName: "_instance")]
   T? ToDisposeAsyncOnEnding<T>(T? _instance) where T : IAsyncDisposable;
