@@ -177,10 +177,7 @@ public class AppBase
   }
 
   public AppBase UseFileLogRotateFromConf<T>(
-    Func<T?, DirectoryInfo> _logFolderFactory,
-    bool _recursive,
-    Regex _logFilesPattern,
-    TimeSpan _logFileTtl)
+    Func<T?, FileLogRotateDescription> _factory)
   {
     p_depMgr
       .ActivateOnStart((IObservableConfig<T?> _confFlow, IReadOnlyLifetime _lifetime) =>
@@ -188,8 +185,8 @@ public class AppBase
         _confFlow
           .HotAlive(_lifetime, (_conf, _life) =>
           {
-            var dir = _logFolderFactory.Invoke(_conf);
-            _life.ToDisposeOnEnding(FileLoggerCleaner.Create(dir, _recursive, _logFilesPattern, _logFileTtl, TimeSpan.FromHours(3)));
+            var desc = _factory.Invoke(_conf);
+            _life.ToDisposeOnEnding(FileLoggerCleaner.Create(desc.Directory, desc.Recursive, desc.LogFilesPattern, desc.LogFileTtl, TimeSpan.FromHours(3)));
           });
       });
 
