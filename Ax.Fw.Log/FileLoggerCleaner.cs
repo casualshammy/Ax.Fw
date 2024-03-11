@@ -7,11 +7,9 @@ using System.Text.RegularExpressions;
 
 namespace Ax.Fw.Log;
 
-public class FileLoggerCleaner : IDisposable
+public class FileLoggerCleaner : DisposableStack
 {
-  private readonly ConcurrentStack<IDisposable> p_disposableStack = new();
   private readonly Subject<Unit> p_purgeReqFlow = new();
-  private bool p_disposedValue;
 
   private FileLoggerCleaner(
     DirectoryInfo _directory,
@@ -21,8 +19,7 @@ public class FileLoggerCleaner : IDisposable
     TimeSpan? _rotateInterval = null,
     Action<FileInfo>? _onFileDeleted = null)
   {
-    var scheduler = new EventLoopScheduler();
-    p_disposableStack.Push(scheduler);
+    var scheduler = ToDisposeOnEnded(new EventLoopScheduler());
 
     IObservable<Unit> observable;
     if (_rotateInterval != null)
@@ -74,7 +71,7 @@ public class FileLoggerCleaner : IDisposable
           }
       });
 
-    p_disposableStack.Push(subs);
+    ToDispose(subs);
   }
 
   /// <summary>
@@ -92,23 +89,5 @@ public class FileLoggerCleaner : IDisposable
     => new(_directory, _recursive, _logFileNamePattern, _logTtl, _rotateInterval, _onFileDeleted);
 
   public void Purge() => p_purgeReqFlow.OnNext(Unit.Default);
-
-  protected virtual void Dispose(bool _disposing)
-  {
-    if (!p_disposedValue)
-    {
-      if (_disposing)
-        while (p_disposableStack.TryPop(out var disposable))
-          disposable.Dispose();
-
-      p_disposedValue = true;
-    }
-  }
-
-  public void Dispose()
-  {
-    Dispose(_disposing: true);
-    GC.SuppressFinalize(this);
-  }
 
 }

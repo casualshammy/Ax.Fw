@@ -1,16 +1,12 @@
-﻿using Ax.Fw.Cache.Parts;
-using Ax.Fw.Extensions;
+﻿using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Interfaces;
 using System;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,8 +26,7 @@ public class FileCache
     string _folder,
     TimeSpan _filesTtl,
     long _maxFolderSize,
-    TimeSpan? _cleanUpInterval,
-    bool _generateStatFile = false)
+    TimeSpan? _cleanUpInterval)
   {
     p_lifetime = _lifetime;
     p_folder = _folder;
@@ -91,45 +86,6 @@ public class FileCache
           _flag?.Release();
         }
       }, _lifetime);
-
-    if (_generateStatFile)
-    {
-      Observable
-        .Interval(TimeSpan.FromHours(1))
-        .StartWithDefault()
-        .ToUnit()
-        .ObserveOnThreadPool()
-        .Subscribe(_ =>
-        {
-          var sw = Stopwatch.StartNew();
-          var dirInfo = new DirectoryInfo(p_folder);
-          var totalFileCount = 0L;
-          var totalFolderCount = 0L;
-          var totalSize = 0L;
-          foreach (var entry in dirInfo.GetFileSystemInfos("*", SearchOption.AllDirectories))
-          {
-            try
-            {
-              if (entry is FileInfo fileInfo)
-              {
-                ++totalFileCount;
-                totalSize += fileInfo.Length;
-              }
-              else if (entry is DirectoryInfo)
-              {
-                ++totalFolderCount;
-              }
-            }
-            catch (Exception)
-            {
-              // ignore errors
-            }
-          }
-          var stats = new FileCacheStatFile(totalFolderCount, totalFileCount, totalSize, sw.Elapsed.TotalMilliseconds, DateTimeOffset.UtcNow);
-          var json = JsonSerializer.Serialize(stats, FileCacheJsonCtx.Default.FileCacheStatFile);
-          File.WriteAllText(Path.Combine(p_folder, "cache-stats.json"), json, Encoding.UTF8);
-        }, _lifetime);
-    }
   }
 
   public async Task StoreAsync(
