@@ -1,5 +1,6 @@
 ﻿using Ax.Fw.App.Data;
 using Ax.Fw.DependencyInjection;
+using Ax.Fw.Extensions;
 using Ax.Fw.JsonStorages;
 using Ax.Fw.Log;
 using Ax.Fw.SharedTypes.Data.Log;
@@ -111,21 +112,6 @@ public class AppBase
   // =========== LOG ===========
   // ===========================
 
-  public AppBase UseFileLogRotate(DirectoryInfo _logFolder, bool _recursive, Regex _logFilesPattern, TimeSpan _logFileTtl)
-  {
-    p_depMgr
-      .AddSingleton(_ctx =>
-      {
-        return _ctx.CreateInstance(() =>
-        {
-          var fileLogRotate = FileLoggerCleaner.Create(_logFolder, _recursive, _logFilesPattern, _logFileTtl, TimeSpan.FromHours(3));
-          return fileLogRotate;
-        });
-      })
-      .ActivateOnStart<FileLoggerCleaner>();
-
-    return this;
-  }
 
   public AppBase UseConsoleLog()
   {
@@ -147,6 +133,66 @@ public class AppBase
       throw new InvalidOperationException($"Can't get the instance of {typeof(GenericLog)}!");
 
     log.AttachFileLog(_fileNameFactory, TimeSpan.FromSeconds(1), _onError, _filesWrittenCallback);
+    return this;
+  }
+
+  public AppBase UseFileLogFromConf<T>(
+    Func<T?, string> _fileNameFactory,
+    Action<Exception, IEnumerable<LogEntry>>? _onError = null,
+    Action<HashSet<string>>? _filesWrittenCallback = null)
+    where T : class
+  {
+    var lifetime = p_depMgr.Locate<IReadOnlyLifetime>();
+
+    var log = p_depMgr.Locate<ILog>() as GenericLog;
+    if (log == null)
+      throw new InvalidOperationException($"Can't get the instance of {typeof(GenericLog)}!");
+
+    var confFlow = p_depMgr.Locate<IObservableConfig<T?>>();
+    if (confFlow == null)
+      throw new InvalidOperationException($"Can't get the instance of {typeof(IObservableConfig<T?>)}!");
+
+    var confProp = confFlow.ToProperty(lifetime, null);
+
+    string factory()
+    {
+      var conf = confProp.Value;
+      var path = _fileNameFactory.Invoke(conf);
+      return path;
+    }
+
+    log.AttachFileLog(factory, TimeSpan.FromSeconds(1), _onError, _filesWrittenCallback);
+    return this;
+  }
+
+  public AppBase UseFileLogRotate(DirectoryInfo _logFolder, bool _recursive, Regex _logFilesPattern, TimeSpan _logFileTtl)
+  {
+    p_depMgr
+      .ActivateOnStart((IReadOnlyLifetime _lifetime) =>
+      {
+        _lifetime.ToDisposeOnEnding(FileLoggerCleaner.Create(_logFolder, _recursive, _logFilesPattern, _logFileTtl, TimeSpan.FromHours(3)));
+      });
+
+    return this;
+  }
+
+  public AppBase UseFileLogRotateFromConf<T>(
+    Func<T?, DirectoryInfo> _logFolderFactory,
+    bool _recursive,
+    Regex _logFilesPattern,
+    TimeSpan _logFileTtl)
+  {
+    p_depMgr
+      .ActivateOnStart((IObservableConfig<T?> _confFlow, IReadOnlyLifetime _lifetime) =>
+      {
+        _confFlow
+          .HotAlive(_lifetime, (_conf, _life) =>
+          {
+            var dir = _logFolderFactory.Invoke(_conf);
+            _life.ToDisposeOnEnding(FileLoggerCleaner.Create(dir, _recursive, _logFilesPattern, _logFileTtl, TimeSpan.FromHours(3)));
+          });
+      });
+
     return this;
   }
 

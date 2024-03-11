@@ -95,7 +95,7 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
         var data = await GetDataOrDefaultSafeAsync(_ct);
         return data;
       }, scheduler)
-      .Publish()
+      .Replay(1)
       .RefCount();
   }
 

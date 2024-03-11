@@ -11,7 +11,7 @@ public sealed class AppDependencyManager : IReadOnlyDependencyContainer
 {
   private readonly IAppDependencyCtx p_ctx;
   private readonly ConcurrentDictionary<Type, Lazy<object>> p_dependencies = [];
-  private ImmutableHashSet<Type> p_activateOnStart = [];
+  private ImmutableList<Action> p_actions = [];
   private volatile int p_built = 0;
 
   private AppDependencyManager()
@@ -77,7 +77,7 @@ public sealed class AppDependencyManager : IReadOnlyDependencyContainer
     return this;
   }
 
-  public AppDependencyManager AddModule<TImpl, TInterface>() 
+  public AppDependencyManager AddModule<TImpl, TInterface>()
     where TImpl : notnull, TInterface, IAppModule<TInterface>
     where TInterface : notnull
   {
@@ -91,7 +91,57 @@ public sealed class AppDependencyManager : IReadOnlyDependencyContainer
 
   public AppDependencyManager ActivateOnStart<T>()
   {
-    p_activateOnStart = p_activateOnStart.Add(typeof(T));
+    p_actions = p_actions.Add(() =>
+    {
+      var type = typeof(T);
+      if (!p_dependencies.TryGetValue(type, out var instanceFactory))
+        throw new KeyNotFoundException($"Instance of type '{type.Name}' is not found!");
+
+      _ = instanceFactory.Value;
+    });
+
+    return this;
+  }
+
+  public AppDependencyManager ActivateOnStart(Action _action)
+  {
+    p_actions = p_actions.Add(_action);
+    return this;
+  }
+
+  public AppDependencyManager ActivateOnStart<T1>(Action<T1> _action)
+  {
+    p_actions = p_actions.Add(() =>
+    {
+      var t1 = Locate<T1>();
+      _action(t1);
+    });
+
+    return this;
+  }
+
+  public AppDependencyManager ActivateOnStart<T1, T2>(Action<T1, T2> _action)
+  {
+    p_actions = p_actions.Add(() =>
+    {
+      var t1 = Locate<T1>();
+      var t2 = Locate<T2>();
+      _action(t1, t2);
+    });
+
+    return this;
+  }
+
+  public AppDependencyManager ActivateOnStart<T1, T2, T3>(Action<T1, T2, T3> _action)
+  {
+    p_actions = p_actions.Add(() =>
+    {
+      var t1 = Locate<T1>();
+      var t2 = Locate<T2>();
+      var t3 = Locate<T3>();
+      _action(t1, t2, t3);
+    });
+
     return this;
   }
 
@@ -116,15 +166,10 @@ public sealed class AppDependencyManager : IReadOnlyDependencyContainer
     if (Interlocked.Exchange(ref p_built, 1) == 1)
       throw new InvalidOperationException($"This instance of '{typeof(AppDependencyManager).Name}' is already built");
 
-    foreach (var type in p_activateOnStart)
-    {
-      if (!p_dependencies.TryGetValue(type, out var instanceFactory))
-        throw new KeyNotFoundException($"Instance of type '{type.Name}' is not found!");
+    foreach (var action in p_actions)
+      action();
 
-      _ = instanceFactory.Value;
-    }
-
-    p_activateOnStart = [];
+    p_actions = [];
 
     return this;
   }
