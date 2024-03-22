@@ -10,7 +10,7 @@ namespace Ax.Fw.Log;
 
 public class GenericLog : DisposableStack, ILog
 {
-  private readonly Subject<LogEntry> p_logEntriesSubj;
+  private readonly ReplaySubject<LogEntry> p_logEntriesSubj;
   private readonly ConcurrentDictionary<LogEntryType, long> p_stats;
   private readonly ConcurrentStack<Action> p_endActions;
   private readonly string p_scopeSeparator;
@@ -23,7 +23,7 @@ public class GenericLog : DisposableStack, ILog
     p_stats = new();
     p_endActions = new();
 
-    p_logEntriesSubj = ToDisposeOnEnded(new Subject<LogEntry>());
+    p_logEntriesSubj = ToDisposeOnEnded(new ReplaySubject<LogEntry>(100));
     LogEntries = p_logEntriesSubj;
 
     ToDoOnDisposing(() =>

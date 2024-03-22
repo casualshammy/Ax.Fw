@@ -1,7 +1,9 @@
-﻿using System;
+﻿using Ax.Fw.Extensions;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Text;
@@ -113,5 +115,52 @@ public static class Utilities
   public static IComparer<T> CreateComparer<T>(Comparison<T?> _comparison) => new CustomComparer<T>(_comparison);
 
   public static IEqualityComparer<T> CreateEqualityComparer<T>(Func<T?, T?, bool> _func) => new CustomEqualityComparer<T>(_func);
+
+}
+
+public static class UtilitiesIO
+{
+  public static bool IsExecutableAvailable(string _executableNameWithoutExtension, [NotNullWhen(true)] out string? _executablePath)
+  {
+    _executablePath = null;
+
+    var currentPathUnix = Path.Combine(Directory.GetCurrentDirectory(), _executableNameWithoutExtension);
+    if (File.Exists(currentPathUnix))
+    {
+      _executablePath = currentPathUnix;
+      return true;
+    }
+
+    var currentPathWindows = Path.Combine(Directory.GetCurrentDirectory(), $"{_executableNameWithoutExtension}.exe");
+    if (File.Exists(currentPathWindows))
+    {
+      _executablePath = currentPathWindows;
+      return true;
+    }
+
+    var pathVar = Environment.GetEnvironmentVariable("PATH");
+    if (pathVar.IsNullOrWhiteSpace())
+      return false;
+
+    var folders = pathVar.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    foreach (var folder in folders)
+    {
+      var pathUnix = Path.Combine(folder, _executableNameWithoutExtension);
+      if (File.Exists(pathUnix))
+      {
+        _executablePath = pathUnix;
+        return true;
+      }
+
+      var pathWindows = Path.Combine(folder, $"{_executableNameWithoutExtension}.exe");
+      if (File.Exists(pathWindows))
+      {
+        _executablePath = pathWindows;
+        return true;
+      }
+    }
+
+    return false;
+  }
 
 }

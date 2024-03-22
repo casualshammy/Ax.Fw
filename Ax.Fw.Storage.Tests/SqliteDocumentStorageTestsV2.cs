@@ -1,10 +1,13 @@
 using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Attributes;
+using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Extensions;
 using Ax.Fw.Storage.Interfaces;
+using Ax.Fw.Storage.Tests.Data;
 using Ax.Fw.Tests.Tools;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 
 namespace Ax.Fw.Storage.Tests;
 
@@ -20,7 +23,7 @@ public class SqliteDocumentStorageTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, SqliteDocumentStorageTestsV2JsonCtx.Default));
       var doc = await storage.WriteSimpleDocumentAsync(_entryId: 123, _data: "test_data", lifetime.Token);
 
       var data0 = await storage.ReadSimpleDocumentAsync<string>(_entryId: 123, lifetime.Token);
@@ -35,8 +38,8 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -52,7 +55,7 @@ public class SqliteDocumentStorageTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, SqliteDocumentStorageTestsV2JsonCtx.Default));
       var doc0 = await storage.WriteSimpleDocumentAsync(123, "test_data", lifetime.Token);
       var doc1 = await storage.ReadSimpleDocumentAsync<string>(123, lifetime.Token);
 
@@ -70,8 +73,8 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -84,7 +87,7 @@ public class SqliteDocumentStorageTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, SqliteDocumentStorageTestsV2JsonCtx.Default));
 
       var record0 = await storage.WriteSimpleDocumentAsync(123, "test-data-0", lifetime.Token);
       var record1 = await storage.WriteSimpleDocumentAsync(123, "test-data-1", lifetime.Token);
@@ -100,8 +103,8 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -117,7 +120,7 @@ public class SqliteDocumentStorageTestsV2
       var ns = "test_table";
       var key = "test-key";
 
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, SqliteDocumentStorageTestsV2JsonCtx.Default));
 
       var record0 = await storage.WriteDocumentAsync(_namespace: ns, _key: key, _data: "test-data-0", lifetime.Token);
 
@@ -135,8 +138,8 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -149,7 +152,7 @@ public class SqliteDocumentStorageTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, SqliteDocumentStorageTestsV2JsonCtx.Default));
 
       var record0 = await storage.WriteDocumentAsync("test-table", "test-key", "test-data-0", lifetime.Token);
       Assert.Equal(0, record0.DocId);
@@ -165,8 +168,8 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -182,7 +185,7 @@ public class SqliteDocumentStorageTestsV2
     {
       // open db, write documents, then close db
       var entriesCount = 100;
-      var storage0 = lifetime0.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      var storage0 = lifetime0.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, SqliteDocumentStorageTestsV2JsonCtx.Default));
       var enumerable = Enumerable.Range(0, entriesCount);
 
       var lastDocId = 0;
@@ -201,7 +204,7 @@ public class SqliteDocumentStorageTestsV2
 
       Assert.Equal(entriesCount * 3, lastDocId + 1);
 
-      var storage1 = lifetime1.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      var storage1 = lifetime1.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, SqliteDocumentStorageTestsV2JsonCtx.Default));
       var document = await storage1.WriteDocumentAsync("test-table", entriesCount + 1, "test-data", lifetime1.Token);
 
       Assert.True(document.DocId > lastDocId);
@@ -210,8 +213,8 @@ public class SqliteDocumentStorageTestsV2
     {
       lifetime0.End();
       lifetime1.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -222,7 +225,7 @@ public class SqliteDocumentStorageTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, SqliteDocumentStorageTestsV2JsonCtx.Default));
 
       var document0 = await storage.WriteSimpleDocumentAsync(100, new DataRecord(100, "100"), lifetime.Token);
       var document1 = await storage.ReadSimpleDocumentAsync<DataRecord>(100, lifetime.Token);
@@ -235,8 +238,8 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -248,7 +251,7 @@ public class SqliteDocumentStorageTestsV2
     try
     {
       var wrongNs = "wrong_ns";
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, SqliteDocumentStorageTestsV2JsonCtx.Default));
       Assert.Equal(0, await storage.CountSimpleDocuments<DataRecord>(null, lifetime.Token));
       Assert.Equal(0, await storage.Count(wrongNs, null, lifetime.Token));
 
@@ -269,8 +272,8 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -282,7 +285,7 @@ public class SqliteDocumentStorageTestsV2
     try
     {
       var totalEntriesCount = 10000;
-      IDocumentStorage storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      IDocumentStorage storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, SqliteDocumentStorageTestsV2JsonCtx.Default));
       for (var i = 0; i < 10000; i++)
       {
         var entry = new DataRecord(i % 100, string.Empty);
@@ -304,7 +307,7 @@ public class SqliteDocumentStorageTestsV2
       targetIdSwMiddle.Stop();
 
       var targetIdSwMiddleLike = Stopwatch.StartNew();
-      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new Data.LikeExpr($"{targetIdMiddle}.%"), _ct: lifetime.Token))
+      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new LikeExpr($"{targetIdMiddle}.%"), _ct: lifetime.Token))
       {
         var id = DataRecord.GetIdFromStorageKey(doc.Key);
         if (id == targetIdMiddle)
@@ -326,7 +329,7 @@ public class SqliteDocumentStorageTestsV2
       targetIdSwEnd.Stop();
 
       var targetIdSwEndLike = Stopwatch.StartNew();
-      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new Data.LikeExpr($"{targetIdEnd}.%"), _ct: lifetime.Token))
+      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new LikeExpr($"{targetIdEnd}.%"), _ct: lifetime.Token))
       {
         var id = DataRecord.GetIdFromStorageKey(doc.Key);
         if (id == targetIdEnd)
@@ -339,8 +342,8 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -351,7 +354,7 @@ public class SqliteDocumentStorageTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, SqliteDocumentStorageTestsV2JsonCtx.Default));
       for (var i = 0; i < 1000; i++)
       {
         var entry = new DataRecord(i % 100, string.Empty);
@@ -373,8 +376,8 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -385,7 +388,7 @@ public class SqliteDocumentStorageTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, SqliteDocumentStorageTestsV2JsonCtx.Default));
 
       var list = new[] { 1, 2, 3 };
       var dictionary = ImmutableDictionary.CreateBuilder<string, int>();
@@ -403,38 +406,17 @@ public class SqliteDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
-
 
   private static string GetDbTmpPath() => $"{Path.GetTempFileName()}";
 
-  [SimpleDocument("simple-record")]
-  record DataRecord(int Id, string Name)
-  {
-    public string GetStorageKey() => $"{Id}.{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
-    public static int? GetIdFromStorageKey(string _storageKey)
-    {
-      var split = _storageKey.Split('.', StringSplitOptions.RemoveEmptyEntries);
-      if (split.Length != 2)
-        return null;
-
-      if (!int.TryParse(split[0], out var projectId))
-        return null;
-
-      return projectId;
-    }
-  };
-
-  enum RecordEnum
-  {
-    None = 0,
-    Class = 1,
-    Record = 2
-  }
-
-  record InterfacesRecord(IReadOnlyList<int> ListOfInt, IReadOnlyDictionary<string, int> Dictionary, RecordEnum Enum);
-
 }
+
+[JsonSourceGenerationOptions()]
+[JsonSerializable(typeof(string))]
+[JsonSerializable(typeof(DataRecord))]
+[JsonSerializable(typeof(InterfacesRecord))]
+internal partial class SqliteDocumentStorageTestsV2JsonCtx : JsonSerializerContext { }
