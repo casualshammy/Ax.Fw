@@ -682,13 +682,12 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     JsonTypeInfo<T> _jsonTypeInfo,
     CancellationToken _ct)
   {
+    if (p_cache?.TryGet(new CacheKey(_namespace, _key), out var cachedValue) == true)
+      return cachedValue as DocumentEntry<T>;
+
     var result = await ReadDocumentInternalAsync<T>(_namespace, _key, _jsonTypeInfo, _ct);
 
-    if (p_cache != null)
-    {
-      var cacheKey = new CacheKey(_namespace, _key);
-      p_cache.Put(cacheKey, result);
-    }
+    p_cache?.Put(new CacheKey(_namespace, _key), result);
 
     return result;
   }
@@ -708,11 +707,14 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// <summary>
   /// Read document from the database
   /// </summary>
-  public Task<DocumentEntry<T>?> ReadDocumentAsync<T>(
+  public async Task<DocumentEntry<T>?> ReadDocumentAsync<T>(
     string _namespace,
     string _key,
     CancellationToken _ct)
   {
+    if (p_cache?.TryGet(new CacheKey(_namespace, _key), out var cachedValue) == true)
+      return cachedValue as DocumentEntry<T>;
+
     if (p_jsonCtx == null)
       throw new InvalidOperationException($"You must specify a JsonSerializerContext in constructor");
 
@@ -720,13 +722,9 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     if (typeInfo == null)
       throw new InvalidOperationException($"Type '{typeof(T).Name}' is not found in JsonSerializerContext!");
 
-    var result = ReadDocumentInternalAsync<T>(_namespace, _key, typeInfo, _ct);
+    var result = await ReadDocumentInternalAsync<T>(_namespace, _key, typeInfo, _ct);
 
-    if (p_cache != null)
-    {
-      var cacheKey = new CacheKey(_namespace, _key);
-      p_cache.Put(cacheKey, result);
-    }
+    p_cache?.Put(new CacheKey(_namespace, _key), result);
 
     return result;
   }
@@ -892,6 +890,13 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     if (p_cache == null)
       return;
 
+    if (_key != null)
+    {
+      var cacheKey = new CacheKey(_namespace, _key);
+      p_cache.TryRemove(cacheKey, out _);
+      return;
+    }
+
     foreach (var cacheEntry in p_cache.GetValues())
     {
       var cacheKey = cacheEntry.Key;
@@ -899,7 +904,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       if (cacheValue == null)
         continue;
 
-      if (_namespace == cacheKey.Namespace && (_key == null || _key == cacheKey.Key))
+      if (_namespace == cacheKey.Namespace)
         p_cache.TryRemove(cacheKey, out _);
     }
   }
