@@ -38,7 +38,7 @@ public class AppBase
   /// <summary>
   /// Build dependencies and return when lifetime is completed
   /// </summary>
-  public async Task RunWaitAsync()
+  public async Task RunWaitAsync(bool _waitLifetime = true, TimeSpan? _waitLifetimeTime = null)
   {
     p_depMgr.Build();
 
@@ -51,6 +51,18 @@ public class AppBase
     catch (TaskCanceledException)
     {
       // ignore
+    }
+
+    if (_waitLifetime)
+    {
+      var deadLine = DateTimeOffset.UtcNow + (_waitLifetimeTime ?? TimeSpan.FromSeconds(5));
+      try
+      {
+        await lifetime.OnEnd
+          .TakeUntil(deadLine)
+          .LastOrDefaultAsync();
+      }
+      catch { }
     }
   }
 
@@ -108,10 +120,33 @@ public class AppBase
     return this;
   }
 
+  public AppBase ActivateOnStart(Action _action)
+  {
+    p_depMgr.ActivateOnStart(_action);
+    return this;
+  }
+
+  public AppBase ActivateOnStart<T1>(Action<T1> _action)
+  {
+    p_depMgr.ActivateOnStart(_action);
+    return this;
+  }
+
+  public AppBase ActivateOnStart<T1, T2>(Action<T1, T2> _action)
+  {
+    p_depMgr.ActivateOnStart(_action);
+    return this;
+  }
+
+  public AppBase ActivateOnStart<T1, T2, T3>(Action<T1, T2, T3> _action)
+  {
+    p_depMgr.ActivateOnStart(_action);
+    return this;
+  }
+
   // ===========================
   // =========== LOG ===========
   // ===========================
-
 
   public AppBase UseConsoleLog()
   {

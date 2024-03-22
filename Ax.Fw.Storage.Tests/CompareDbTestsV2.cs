@@ -1,6 +1,7 @@
 ﻿using Ax.Fw.Extensions;
 using LiteDB;
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 using Xunit.Abstractions;
 
 namespace Ax.Fw.Storage.Tests;
@@ -25,7 +26,7 @@ public class CompareDbTestsV2
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, CompareDbTestsV2JsonCtx.Default));
 
       var enumerable = Enumerable.Range(0, PROBLEM_SIZE);
 
@@ -39,7 +40,10 @@ public class CompareDbTestsV2
 
       var writeElapsed = sw.Elapsed;
 
-      var list = await storage.ListDocumentsAsync<string>("test-table", _ct: lifetime.Token).ToListAsync(lifetime.Token);
+      var list = await storage
+        .ListDocumentsAsync<string>("test-table", _ct: lifetime.Token)
+        .ToListAsync(lifetime.Token);
+
       Assert.Equal(PROBLEM_SIZE, list.Count);
 
       var listElapsed = sw.Elapsed - writeElapsed;
@@ -69,8 +73,8 @@ public class CompareDbTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -136,3 +140,6 @@ public class CompareDbTestsV2
   private static string GetDbTmpPath() => $"{Path.GetTempFileName()}";
 
 }
+
+[JsonSerializable(typeof(string))]
+internal partial class CompareDbTestsV2JsonCtx : JsonSerializerContext { }

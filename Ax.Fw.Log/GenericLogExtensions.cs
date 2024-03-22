@@ -2,6 +2,7 @@
 using Ax.Fw.Log.Data;
 using Ax.Fw.SharedTypes.Data.Log;
 using System.Collections.Concurrent;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Text;
 
@@ -173,8 +174,11 @@ public static class GenericLogExtensions
     }
 
     var consoleLock = new object();
+    var scheduler = new EventLoopScheduler();
+    _log.AddEndAction(() => scheduler.Dispose());
 
     var writerSubs = _log.LogEntries
+      .ObserveOn(scheduler)
       .Subscribe(_ =>
       {
         lock (consoleLock)

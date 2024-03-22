@@ -33,14 +33,14 @@ public class JsonStorageTests
 
     var jsonStorage = new JsonStorage<Sample>(tempFile, null, lifetime);
     var result = jsonStorage.Read(() => new Sample(0, string.Empty));
-    Assert.Equal(0, result.Number);
-    Assert.Equal(string.Empty, result.Message);
+    Assert.Equal(0, result!.Number);
+    Assert.Equal(string.Empty, result!.Message);
 
     var data = new Sample(123, "456");
     await jsonStorage.WriteAsync(data, lifetime.Token);
     result = jsonStorage.Read(() => new Sample(0, string.Empty));
-    Assert.Equal(data.Number, result.Number);
-    Assert.Equal(data.Message, result.Message);
+    Assert.Equal(data.Number, result!.Number);
+    Assert.Equal(data.Message, result!.Message);
   }
 
   [Fact(Timeout = 30000)]

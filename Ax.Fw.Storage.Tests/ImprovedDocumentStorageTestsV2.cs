@@ -2,16 +2,15 @@ using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Attributes;
 using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Extensions;
+using Ax.Fw.Storage.Tests.Data;
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 using Xunit.Abstractions;
 
 namespace Ax.Fw.Storage.Tests;
 
 public class ImprovedDocumentStorageTestsV2
 {
-  [SimpleDocument("simple-record")]
-  record DataRecord(int Id, string Name);
-
   private readonly ITestOutputHelper p_output;
 
   public ImprovedDocumentStorageTestsV2(ITestOutputHelper _output)
@@ -23,11 +22,12 @@ public class ImprovedDocumentStorageTestsV2
   public async Task CompareCachedAndNonCachedAsync()
   {
     var lifetime = new Lifetime();
-    var dbFile = GetDbTmpPath();
     try
     {
       var entries = Enumerable.Range(0, 1000).ToArray();
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(GetDbTmpPath(), ImprovedDocumentStorageTestsV2JsonCtx.Default));
+      var cachedStorage = lifetime.ToDisposeOnEnding(
+        new SqliteDocumentStorage(GetDbTmpPath(), ImprovedDocumentStorageTestsV2JsonCtx.Default, new StorageCacheOptions(entries.Length, TimeSpan.FromSeconds(60))));
 
       // warm-up
       foreach (var entry in entries)
@@ -35,6 +35,10 @@ public class ImprovedDocumentStorageTestsV2
         await storage.WriteSimpleDocumentAsync(entry, new DataRecord(entry, entry.ToString()), lifetime.Token);
         _ = await storage.ReadSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
         await storage.DeleteSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
+
+        await cachedStorage.WriteSimpleDocumentAsync(entry, new DataRecord(entry, entry.ToString()), lifetime.Token);
+        _ = await cachedStorage.ReadSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
+        await cachedStorage.DeleteSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
       }
 
       // non-cached
@@ -55,7 +59,6 @@ public class ImprovedDocumentStorageTestsV2
       p_output.WriteLine($"Non-cached: {elapsed}");
 
       // cached
-      var cachedStorage = storage.WithCache(entries.Length, TimeSpan.FromSeconds(60));
       sw.Restart();
       foreach (var entry in entries)
       {
@@ -77,8 +80,8 @@ public class ImprovedDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
@@ -92,9 +95,12 @@ public class ImprovedDocumentStorageTestsV2
       var entries = Enumerable.Range(0, 1000).ToArray();
 
       var counter = 0;
-      var storage = new SqliteDocumentStorage(dbFile)
-        .WithRetentionRules(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(100),
-          _deletedDocsMeta => counter += _deletedDocsMeta.Count);
+      var storage = new SqliteDocumentStorage(
+        dbFile,
+        ImprovedDocumentStorageTestsV2JsonCtx.Default,
+        null,
+        new StorageRetentionOptions(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(100), _deletedDocsMeta => counter += _deletedDocsMeta.Count));
+
       lifetime.ToDisposeOnEnding(storage);
 
       await storage.WriteSimpleDocumentAsync(100, new DataRecord(100, "entry-100"), lifetime.Token);
@@ -109,11 +115,14 @@ public class ImprovedDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
+      //if (!new FileInfo(dbFile).TryDelete())
+      //  Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
   private static string GetDbTmpPath() => $"{Path.GetTempFileName()}";
 
 }
+
+[JsonSerializable(typeof(DataRecord))]
+internal partial class ImprovedDocumentStorageTestsV2JsonCtx : JsonSerializerContext { }

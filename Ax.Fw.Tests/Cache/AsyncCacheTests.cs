@@ -14,10 +14,10 @@ public class AsyncCacheTests
     using var lifetime = new Lifetime();
 
     var counter = 0;
-    async Task<string?> generator(CancellationToken _ct)
+    Task<string?> generator(CancellationToken _ct)
     {
       var c = Interlocked.Increment(ref counter);
-      return c.ToString();
+      return Task.FromResult<string?>(c.ToString());
     }
 
     var cachedValue = new AsyncCachedValue<string>(TimeSpan.FromMinutes(1), generator);
@@ -36,10 +36,10 @@ public class AsyncCacheTests
     using var lifetime = new Lifetime();
 
     var counter = 0;
-    async Task<string?> generator(CancellationToken _ct)
+    Task<string?> generator(CancellationToken _ct)
     {
       var c = Interlocked.Increment(ref counter);
-      return c.ToString();
+      return Task.FromResult<string?>(c.ToString());
     }
 
     var cachedValue = new AsyncCachedValue<string>(TimeSpan.FromSeconds(1), generator);
