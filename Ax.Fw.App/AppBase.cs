@@ -172,7 +172,7 @@ public class AppBase
   }
 
   public AppBase UseFileLogFromConf<T>(
-    Func<T?, string> _fileNameFactory,
+    Func<T?, string?> _fileNameFactory,
     Action<Exception, IEnumerable<LogEntry>>? _onError = null,
     Action<HashSet<string>>? _filesWrittenCallback = null)
     where T : class
@@ -189,7 +189,7 @@ public class AppBase
 
     var confProp = confFlow.ToProperty(lifetime, null);
 
-    string factory()
+    string? factory()
     {
       var conf = confProp.Value;
       var path = _fileNameFactory.Invoke(conf);
@@ -200,19 +200,20 @@ public class AppBase
     return this;
   }
 
-  public AppBase UseFileLogRotate(DirectoryInfo _logFolder, bool _recursive, Regex _logFilesPattern, TimeSpan _logFileTtl)
+  public AppBase UseFileLogRotate(FileLogRotateDescription _desc)
   {
     p_depMgr
       .ActivateOnStart((IReadOnlyLifetime _lifetime) =>
       {
-        _lifetime.ToDisposeOnEnding(FileLoggerCleaner.Create(_logFolder, _recursive, _logFilesPattern, _logFileTtl, TimeSpan.FromHours(3)));
+        _lifetime.ToDisposeOnEnding(FileLoggerCleaner.Create(
+          _desc.Directory, _desc.Recursive, _desc.LogFilesPattern, _desc.LogFileTtl, _desc.GzipFiles, TimeSpan.FromHours(3)));
       });
 
     return this;
   }
 
   public AppBase UseFileLogRotateFromConf<T>(
-    Func<T?, FileLogRotateDescription> _factory)
+    Func<T?, FileLogRotateDescription?> _factory)
   {
     p_depMgr
       .ActivateOnStart((IObservableConfig<T?> _confFlow, IReadOnlyLifetime _lifetime) =>
@@ -221,7 +222,11 @@ public class AppBase
           .HotAlive(_lifetime, (_conf, _life) =>
           {
             var desc = _factory.Invoke(_conf);
-            _life.ToDisposeOnEnding(FileLoggerCleaner.Create(desc.Directory, desc.Recursive, desc.LogFilesPattern, desc.LogFileTtl, TimeSpan.FromHours(3)));
+            if (desc == null)
+              return;
+
+            _life.ToDisposeOnEnding(FileLoggerCleaner.Create(
+              desc.Directory, desc.Recursive, desc.LogFilesPattern, desc.LogFileTtl, desc.GzipFiles, TimeSpan.FromHours(3)));
           });
       });
 
