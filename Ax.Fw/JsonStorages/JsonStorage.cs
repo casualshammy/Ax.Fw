@@ -5,10 +5,8 @@ using System;
 using System.IO;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -252,6 +250,10 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
       {
         p_fileAccessSemaphore.Release();
       }
+    }
+    catch (OperationCanceledException)
+    {
+      return default;
     }
     catch (Exception ex)
     {
