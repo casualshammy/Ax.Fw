@@ -244,7 +244,13 @@ public class AppBase
     {
       return _ctx.CreateInstance<IReadOnlyLifetime, IObservableConfig<T?>>((IReadOnlyLifetime _lifetime) =>
       {
-        return new ObservableConfig<T>(new JsonStorage<T>(_filePath, _jsonCtx, _lifetime));
+        void tryLogDeserializationError(Exception _ex)
+        {
+          var log = _ctx.LocateOrDefault<ILog>();
+          log?.Warn($"Can't parse config file '{_filePath}': {_ex.Message}");
+        }
+
+        return new ObservableConfig<T>(new JsonStorage<T>(_filePath, _jsonCtx, _lifetime, tryLogDeserializationError));
       });
     });
 
