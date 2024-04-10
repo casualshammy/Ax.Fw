@@ -107,7 +107,10 @@ public static class IObservableExtensions
     });
   }
 
-  public static IObservable<T> WhereNotNull<T>(this IObservable<T?> _this) => _this.Where(_x => _x != null)!;
+  public static IObservable<T> WhereNotNull<T>(this IObservable<T?> _this)
+  {
+    return _this.Where(_x => _x != null)!;
+  }
 
   public static IObservable<T?> StartWithDefault<T>(this IObservable<T?> _this)
   {

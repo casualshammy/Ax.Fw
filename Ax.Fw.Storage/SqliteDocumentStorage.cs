@@ -9,7 +9,6 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -111,7 +110,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
           var now = DateTimeOffset.UtcNow;
           var docsToDeleteBuilder = ImmutableHashSet.CreateBuilder<DocumentEntryMeta>();
 
-          await foreach (var doc in ListDocumentsMetaAsync((string?)null, _ct: _ct).ConfigureAwait(false))
+          foreach (var doc in await ListDocumentsMetaAsync((string?)null, _ct: _ct).ConfigureAwait(false))
           {
             var docAge = now - doc.Created;
             var docLastModifiedAge = now - doc.LastModified;
@@ -390,12 +389,12 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// <summary>
   /// List documents meta info (without data)
   /// </summary>
-  public async IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
+  public async Task<IReadOnlyList<DocumentEntryMeta>> ListDocumentsMetaAsync(
     string? _namespace,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
-    [EnumeratorCancellation] CancellationToken _ct = default)
+    CancellationToken _ct = default)
   {
     var listSql =
       $"SELECT doc_id, namespace, key, last_modified, created, version " +
@@ -432,6 +431,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       else
         cmd.Parameters.AddWithValue("@to", DBNull.Value);
 
+      var result = new List<DocumentEntryMeta>();
       await using var reader = await cmd.ExecuteReaderAsync(_ct);
       while (await reader.ReadAsync(_ct))
       {
@@ -441,8 +441,10 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
         var created = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
         var version = reader.GetInt64(5);
 
-        yield return new DocumentEntryMeta(docId, _namespace ?? reader.GetString(1), optionalKey, lastModified, created, version);
+        result.Add(new DocumentEntryMeta(docId, _namespace ?? reader.GetString(1), optionalKey, lastModified, created, version));
       }
+
+      return result;
     }
     finally
     {
@@ -453,12 +455,12 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// <summary>
   /// List documents meta info (without data)
   /// </summary>
-  public async IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
+  public async Task<IReadOnlyList<DocumentEntryMeta>> ListDocumentsMetaAsync(
     LikeExpr? _namespaceLikeExpression = null,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
-    [EnumeratorCancellation] CancellationToken _ct = default)
+    CancellationToken _ct = default)
   {
     var listSql =
       $"SELECT doc_id, namespace, key, last_modified, created, version " +
@@ -495,6 +497,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       else
         cmd.Parameters.AddWithValue("@to", DBNull.Value);
 
+      var result = new List<DocumentEntryMeta>();
       await using var reader = await cmd.ExecuteReaderAsync(_ct);
       while (await reader.ReadAsync(_ct))
       {
@@ -505,8 +508,10 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
         var created = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
         var version = reader.GetInt64(5);
 
-        yield return new DocumentEntryMeta(docId, ns, optionalKey, lastModified, created, version);
+        result.Add(new DocumentEntryMeta(docId, ns, optionalKey, lastModified, created, version));
       }
+
+      return result;
     }
     finally
     {
@@ -517,13 +522,13 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// <summary>
   /// List documents
   /// </summary>
-  public async IAsyncEnumerable<DocumentEntry<T>> ListDocumentsAsync<T>(
+  public async Task<IReadOnlyList<DocumentEntry<T>>> ListDocumentsAsync<T>(
     string _namespace,
     JsonTypeInfo _jsonTypeInfo,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
-    [EnumeratorCancellation] CancellationToken _ct = default)
+    CancellationToken _ct = default)
   {
     var listSql =
       $"SELECT doc_id, key, last_modified, created, version, data " +
@@ -557,6 +562,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       else
         cmd.Parameters.AddWithValue("@to", DBNull.Value);
 
+      var result = new List<DocumentEntry<T>>();
       await using var reader = await cmd.ExecuteReaderAsync(_ct);
       while (await reader.ReadAsync(_ct))
       {
@@ -569,8 +575,10 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
         if (data == null)
           throw new FormatException($"Data of document '{docId}' is malformed!");
 
-        yield return new DocumentEntry<T>(docId, _namespace, key, lastModified, created, version, data);
+        result.Add(new DocumentEntry<T>(docId, _namespace, key, lastModified, created, version, data));
       }
+
+      return result;
     }
     finally
     {
@@ -581,7 +589,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// <summary>
   /// List documents
   /// </summary>
-  public IAsyncEnumerable<DocumentEntry<T>> ListDocumentsAsync<T>(
+  public Task<IReadOnlyList<DocumentEntry<T>>> ListDocumentsAsync<T>(
     string _namespace,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
@@ -602,7 +610,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// List documents
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public IAsyncEnumerable<DocumentEntry<T>> ListSimpleDocumentsAsync<T>(
+  public Task<IReadOnlyList<DocumentEntry<T>>> ListSimpleDocumentsAsync<T>(
     JsonTypeInfo<T> _jsonTypeInfo,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
@@ -617,7 +625,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// List documents
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public IAsyncEnumerable<DocumentEntry<T>> ListSimpleDocumentsAsync<T>(
+  public Task<IReadOnlyList<DocumentEntry<T>>> ListSimpleDocumentsAsync<T>(
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,

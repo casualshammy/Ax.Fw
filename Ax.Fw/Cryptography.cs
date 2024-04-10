@@ -1,6 +1,7 @@
 ﻿using Ax.Fw.SharedTypes.Data;
 using System;
 using System.IO;
+using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -53,6 +54,24 @@ public static class Cryptography
     var data = Encoding.UTF8.GetBytes(_data);
     var hash = MD5.HashData(data);
     return BitConverter.ToString(hash).Replace("-", "");
+  }
+
+  public static int CalculateCrc32(string _data)
+  {
+    return CalculateCrc32(Encoding.UTF8.GetBytes(_data));
+  }
+
+  public static int CalculateCrc32(ReadOnlySpan<byte> _data)
+  {
+    unchecked
+    {
+      uint rawHash = 0;
+      foreach (var b in _data)
+        rawHash = BitOperations.Crc32C(rawHash, b);
+
+      var hash = (int)rawHash;
+      return hash;
+    }
   }
 
 }
