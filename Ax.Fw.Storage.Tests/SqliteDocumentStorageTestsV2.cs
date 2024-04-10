@@ -97,7 +97,7 @@ public class SqliteDocumentStorageTestsV2
       Assert.Equal("test-data-1", record2?.Data);
       Assert.Equal(record0.DocId, record2?.DocId);
 
-      var list = await storage.ListSimpleDocumentsAsync<string>(_ct: lifetime.Token).ToListAsync(lifetime.Token);
+      var list = await storage.ListSimpleDocumentsAsync<string>(_ct: lifetime.Token);
       Assert.Single(list);
     }
     finally
@@ -132,7 +132,7 @@ public class SqliteDocumentStorageTestsV2
       Assert.Equal("test-data-1", record2?.Data);
       Assert.Equal(record0.DocId, record2?.DocId);
 
-      var list = await storage.ListDocumentsAsync<string>(ns, _ct: lifetime.Token).ToListAsync(lifetime.Token);
+      var list = await storage.ListDocumentsAsync<string>(ns, _ct: lifetime.Token);
       Assert.Single(list);
     }
     finally
@@ -159,7 +159,7 @@ public class SqliteDocumentStorageTestsV2
 
       await storage.DeleteDocumentsAsync("test-table", "test-key", null, null, lifetime.Token);
 
-      var list0 = await storage.ListDocumentsAsync<string>("test-table", _ct: lifetime.Token).ToListAsync(lifetime.Token);
+      var list0 = await storage.ListDocumentsAsync<string>("test-table", _ct: lifetime.Token);
       Assert.Empty(list0);
 
       var record1 = await storage.WriteDocumentAsync("test-table", "test-key", "test-data-0", lifetime.Token);
@@ -298,7 +298,7 @@ public class SqliteDocumentStorageTestsV2
       // ==========================================================
 
       var targetIdSwMiddle = Stopwatch.StartNew();
-      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _ct: lifetime.Token))
+      foreach (var doc in await storage.ListDocumentsMetaAsync("simple-record", _ct: lifetime.Token))
       {
         var id = DataRecord.GetIdFromStorageKey(doc.Key);
         if (id == targetIdMiddle)
@@ -307,7 +307,7 @@ public class SqliteDocumentStorageTestsV2
       targetIdSwMiddle.Stop();
 
       var targetIdSwMiddleLike = Stopwatch.StartNew();
-      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new LikeExpr($"{targetIdMiddle}.%"), _ct: lifetime.Token))
+      foreach (var doc in await storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new LikeExpr($"{targetIdMiddle}.%"), _ct: lifetime.Token))
       {
         var id = DataRecord.GetIdFromStorageKey(doc.Key);
         if (id == targetIdMiddle)
@@ -320,7 +320,7 @@ public class SqliteDocumentStorageTestsV2
       // ==========================================================
 
       var targetIdSwEnd = Stopwatch.StartNew();
-      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _ct: lifetime.Token))
+      foreach (var doc in await storage.ListDocumentsMetaAsync("simple-record", _ct: lifetime.Token))
       {
         var id = DataRecord.GetIdFromStorageKey(doc.Key);
         if (id == targetIdEnd)
@@ -329,7 +329,7 @@ public class SqliteDocumentStorageTestsV2
       targetIdSwEnd.Stop();
 
       var targetIdSwEndLike = Stopwatch.StartNew();
-      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new LikeExpr($"{targetIdEnd}.%"), _ct: lifetime.Token))
+      foreach (var doc in await storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new LikeExpr($"{targetIdEnd}.%"), _ct: lifetime.Token))
       {
         var id = DataRecord.GetIdFromStorageKey(doc.Key);
         if (id == targetIdEnd)

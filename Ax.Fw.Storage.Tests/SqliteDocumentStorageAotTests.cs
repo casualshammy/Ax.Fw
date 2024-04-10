@@ -97,7 +97,7 @@ public class SqliteDocumentStorageAotTests
       Assert.Equal("test-data-1", record2?.Data);
       Assert.Equal(record0.DocId, record2?.DocId);
 
-      var list = await storage.ListSimpleDocumentsAsync(SqliteDocumentStorageAotTestsJsonCtx.Default.String, _ct: lifetime.Token).ToListAsync(lifetime.Token);
+      var list = await storage.ListSimpleDocumentsAsync(SqliteDocumentStorageAotTestsJsonCtx.Default.String, _ct: lifetime.Token);
       Assert.Single(list);
     }
     finally
@@ -132,7 +132,7 @@ public class SqliteDocumentStorageAotTests
       Assert.Equal("test-data-1", record2?.Data);
       Assert.Equal(record0.DocId, record2?.DocId);
 
-      var list = await storage.ListDocumentsAsync<string>(ns, SqliteDocumentStorageAotTestsJsonCtx.Default.String, _ct: lifetime.Token).ToListAsync(lifetime.Token);
+      var list = await storage.ListDocumentsAsync<string>(ns, SqliteDocumentStorageAotTestsJsonCtx.Default.String, _ct: lifetime.Token);
       Assert.Single(list);
     }
     finally
@@ -159,7 +159,7 @@ public class SqliteDocumentStorageAotTests
 
       await storage.DeleteDocumentsAsync("test-table", "test-key", null, null, lifetime.Token);
 
-      var list0 = await storage.ListDocumentsAsync<string>("test-table", SqliteDocumentStorageAotTestsJsonCtx.Default.String, _ct: lifetime.Token).ToListAsync(lifetime.Token);
+      var list0 = await storage.ListDocumentsAsync<string>("test-table", SqliteDocumentStorageAotTestsJsonCtx.Default.String, _ct: lifetime.Token);
       Assert.Empty(list0);
 
       var record1 = await storage.WriteDocumentAsync("test-table", "test-key", "test-data-0", SqliteDocumentStorageAotTestsJsonCtx.Default.String, lifetime.Token);
@@ -298,7 +298,7 @@ public class SqliteDocumentStorageAotTests
       // ==========================================================
 
       var targetIdSwMiddle = Stopwatch.StartNew();
-      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _ct: lifetime.Token))
+      foreach (var doc in await storage.ListDocumentsMetaAsync("simple-record", _ct: lifetime.Token))
       {
         var id = DataRecord.GetIdFromStorageKey(doc.Key);
         if (id == targetIdMiddle)
@@ -307,7 +307,7 @@ public class SqliteDocumentStorageAotTests
       targetIdSwMiddle.Stop();
 
       var targetIdSwMiddleLike = Stopwatch.StartNew();
-      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new LikeExpr($"{targetIdMiddle}.%"), _ct: lifetime.Token))
+      foreach (var doc in await storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new LikeExpr($"{targetIdMiddle}.%"), _ct: lifetime.Token))
       {
         var id = DataRecord.GetIdFromStorageKey(doc.Key);
         if (id == targetIdMiddle)
@@ -320,7 +320,7 @@ public class SqliteDocumentStorageAotTests
       // ==========================================================
 
       var targetIdSwEnd = Stopwatch.StartNew();
-      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _ct: lifetime.Token))
+      foreach (var doc in await storage.ListDocumentsMetaAsync("simple-record", _ct: lifetime.Token))
       {
         var id = DataRecord.GetIdFromStorageKey(doc.Key);
         if (id == targetIdEnd)
@@ -329,7 +329,7 @@ public class SqliteDocumentStorageAotTests
       targetIdSwEnd.Stop();
 
       var targetIdSwEndLike = Stopwatch.StartNew();
-      await foreach (var doc in storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new LikeExpr($"{targetIdEnd}.%"), _ct: lifetime.Token))
+      foreach (var doc in await storage.ListDocumentsMetaAsync("simple-record", _keyLikeExpression: new LikeExpr($"{targetIdEnd}.%"), _ct: lifetime.Token))
       {
         var id = DataRecord.GetIdFromStorageKey(doc.Key);
         if (id == targetIdEnd)

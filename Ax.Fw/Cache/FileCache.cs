@@ -104,7 +104,7 @@ public class FileCache
 
     var folder = GetFolderForKey(_key, out var hash);
     var file = Path.Combine(folder, hash);
-    var tmpFile = Path.Combine(folder, $"{hash}_{Random.Shared.Next()}.tmp");
+    var tmpFile = Path.Combine(folder, $"{hash}_{Random.Shared.Next():X}.tmp");
 
     try
     {
@@ -137,7 +137,7 @@ public class FileCache
 
     var folder = GetFolderForKey(_key, out var hash);
     var file = Path.Combine(folder, hash);
-    var tmpFile = Path.Combine(folder, $"{hash}_{Random.Shared.Next()}.tmp");
+    var tmpFile = Path.Combine(folder, $"{hash}_{Random.Shared.Next():X}.tmp");
 
     try
     {

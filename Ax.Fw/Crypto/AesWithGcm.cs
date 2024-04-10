@@ -15,15 +15,17 @@ public class AesWithGcm : DisposableStack, ICryptoAlgorithm
   private readonly AesGcm p_aesGcm;
   private long p_nonce;
 
-  public AesWithGcm(string _key, EncryptionKeyLength _keyLength = EncryptionKeyLength.Bits256)
+  public AesWithGcm(string _key, EncryptionKeyLength _keyLength = EncryptionKeyLength.Bits256) : this(Encoding.UTF8.GetBytes(_key), _keyLength)
+  { }
+
+  public AesWithGcm(byte[] _key, EncryptionKeyLength _keyLength = EncryptionKeyLength.Bits256)
   {
     if (_keyLength != EncryptionKeyLength.Bits128 && _keyLength != EncryptionKeyLength.Bits192 && _keyLength != EncryptionKeyLength.Bits256)
       throw new ArgumentOutOfRangeException(nameof(_keyLength), $"Key length must be 128, 192, or 256 bits");
 
     p_nonce = GetRandomNegativeInt64();
 
-    var key = Encoding.UTF8.GetBytes(_key);
-    var hashSource = SHA512.HashData(key);
+    var hashSource = SHA512.HashData(_key);
     p_aesGcm = ToDispose(new AesGcm(hashSource.Take((int)_keyLength / 8).ToArray(), AesGcm.TagByteSizes.MaxSize));
   }
 

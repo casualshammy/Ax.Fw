@@ -1,4 +1,5 @@
 ﻿using Ax.Fw.Storage.Data;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization.Metadata;
 
@@ -40,33 +41,33 @@ public interface IDocumentStorage : IDisposable
   /// <param name="_force">If true, forcefully performs full flush and then truncates temporary file to zero bytes</param>
   /// <returns></returns>
   Task FlushAsync(bool _force, CancellationToken _ct);
-  IAsyncEnumerable<DocumentEntry<T>> ListDocumentsAsync<T>(string _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
-  IAsyncEnumerable<DocumentEntry<T>> ListDocumentsAsync<T>(string _namespace, JsonTypeInfo _jsonTypeInfo, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
+  Task<IReadOnlyList<DocumentEntry<T>>> ListDocumentsAsync<T>(string _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
+  Task<IReadOnlyList<DocumentEntry<T>>> ListDocumentsAsync<T>(string _namespace, JsonTypeInfo _jsonTypeInfo, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
 
   /// <summary>
   /// List documents meta info (without data)
   /// </summary>
   /// <param name="_namespaceLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with namespace starting with "tel:123-456-")</param>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(
+  Task<IReadOnlyList<DocumentEntryMeta>> ListDocumentsMetaAsync(
     LikeExpr? _namespaceLikeExpression = null,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
     [EnumeratorCancellation] CancellationToken _ct = default);
-  IAsyncEnumerable<DocumentEntryMeta> ListDocumentsMetaAsync(string? _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
+  Task<IReadOnlyList<DocumentEntryMeta>> ListDocumentsMetaAsync(string? _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
 
   /// <summary>
   /// List documents
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  IAsyncEnumerable<DocumentEntry<T>> ListSimpleDocumentsAsync<T>(
+  Task<IReadOnlyList<DocumentEntry<T>>> ListSimpleDocumentsAsync<T>(
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null,
     [EnumeratorCancellation] CancellationToken _ct = default);
-  IAsyncEnumerable<DocumentEntry<T>> ListSimpleDocumentsAsync<T>(JsonTypeInfo<T> _jsonTypeInfo, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default);
+  Task<IReadOnlyList<DocumentEntry<T>>> ListSimpleDocumentsAsync<T>(JsonTypeInfo<T> _jsonTypeInfo, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default);
 
 #pragma warning restore CS8424 // The EnumeratorCancellationAttribute will have no effect. The attribute is only effective on a parameter of type CancellationToken in an async-iterator method returning IAsyncEnumerable
   Task<DocumentEntry<T>?> ReadDocumentAsync<T>(string _namespace, string _key, CancellationToken _ct);
