@@ -90,18 +90,10 @@ public class FileCache
 
   public async Task StoreAsync(
     string _key,
-    Stream _stream,
+    Stream _inStream,
     bool _throwExceptions = false,
     CancellationToken _ct = default)
   {
-    if (!_stream.CanRead)
-    {
-      if (_throwExceptions)
-        throw new IOException("Can't read stream!");
-
-      return;
-    }
-
     var folder = GetFolderForKey(_key, out var hash);
     var file = Path.Combine(folder, hash);
     var tmpFile = Path.Combine(folder, $"{hash}_{Random.Shared.Next():X}.tmp");
@@ -112,7 +104,7 @@ public class FileCache
         Directory.CreateDirectory(folder);
 
       using (var fileStream = File.Open(tmpFile, FileMode.Create, FileAccess.Write, FileShare.None))
-        await _stream.CopyToAsync(fileStream, _ct);
+        await _inStream.CopyToAsync(fileStream, _ct);
 
       File.Move(tmpFile, file, true);
     }
@@ -120,42 +112,6 @@ public class FileCache
     {
       if (_throwExceptions)
         throw;
-    }
-    finally
-    {
-      new FileInfo(tmpFile).TryDelete();
-    }
-  }
-
-  public bool TryStore(string _key, Stream _stream, out Exception? _ex)
-  {
-    if (!_stream.CanRead)
-    {
-      _ex = new IOException("Can't read stream!");
-      return false;
-    }
-
-    var folder = GetFolderForKey(_key, out var hash);
-    var file = Path.Combine(folder, hash);
-    var tmpFile = Path.Combine(folder, $"{hash}_{Random.Shared.Next():X}.tmp");
-
-    try
-    {
-      if (!Directory.Exists(folder))
-        Directory.CreateDirectory(folder);
-
-      using (var fileStream = File.Open(tmpFile, FileMode.Create, FileAccess.Write, FileShare.None))
-        _stream.CopyTo(fileStream);
-
-      File.Move(tmpFile, file, true);
-
-      _ex = null;
-      return false;
-    }
-    catch (Exception ex)
-    {
-      _ex = ex;
-      return false;
     }
     finally
     {
