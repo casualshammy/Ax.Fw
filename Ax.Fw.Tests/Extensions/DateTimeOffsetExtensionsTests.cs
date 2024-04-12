@@ -14,7 +14,7 @@ public class DateTimeOffsetExtensionsTests
     p_output = _output;
   }
 
-  [Fact(Timeout = 30000)]
+  [Fact]
   public void ToHumanFriendlyStringTest()
   {
     var now = DateTimeOffset.Now;

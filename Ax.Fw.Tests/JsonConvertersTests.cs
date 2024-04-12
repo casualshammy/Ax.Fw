@@ -6,7 +6,7 @@ namespace Ax.Fw.Tests;
 
 public class JsonConvertersTests
 {
-  [Fact(Timeout = 1000)]
+  [Fact]
   public void ColorConverterTest()
   {
     var serializerOptions = new JsonSerializerOptions
@@ -34,7 +34,7 @@ public class JsonConvertersTests
     Assert.Equal(data.A, deserializedData.A);
   }
 
-  [Fact(Timeout = 1000)]
+  [Fact]
   public void PointConverterTest()
   {
     var serializerOptions = new JsonSerializerOptions
@@ -56,7 +56,7 @@ public class JsonConvertersTests
     Assert.Equal(data.Y, deserializedData.Y);
   }
 
-  [Fact(Timeout = 1000)]
+  [Fact]
   public void RectangleConverterTest()
   {
     var serializerOptions = new JsonSerializerOptions
@@ -85,7 +85,7 @@ public class JsonConvertersTests
   }
 
 
-  [Fact(Timeout = 1000)]
+  [Fact]
   public void SizeConverterTest()
   {
     var serializerOptions = new JsonSerializerOptions

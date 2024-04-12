@@ -15,8 +15,8 @@ internal class Program
   static async Task Main(string[] args)
   {
     var docStorage = new SqliteDocumentStorage(Path.GetTempFileName(), ProgramJsonCtx.Default);
-    await docStorage.WriteDocumentAsync("test-ns", "test-key", "test-data", CancellationToken.None);
-    var doc = await docStorage.ReadDocumentAsync<string>("test-ns", "test-key", CancellationToken.None);
+    docStorage.WriteDocument("test-ns", "test-key", "test-data");
+    var doc = docStorage.ReadDocument<string>("test-ns", "test-key");
     Console.WriteLine($"{doc?.Namespace}/{doc?.Key} = {doc?.Data}");
 
     Console.WriteLine($"Starting AppBase...");

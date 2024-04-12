@@ -16,7 +16,7 @@ public class AppDependencyManagerTests
     p_output = _output;
   }
 
-  [Fact(Timeout = 30000)]
+  [Fact]
   public void SimpleTestAsync()
   {
     var appDepMgr = AppDependencyManager
@@ -39,7 +39,7 @@ public class AppDependencyManagerTests
     Assert.Equal(testAppDependency0, testAppDependency1);
   }
 
-  [Fact(Timeout = 30000)]
+  [Fact]
   public void EqualTypeAddedExceptionAsync()
   {
     Assert.Throws<InvalidOperationException>(() =>
@@ -49,7 +49,7 @@ public class AppDependencyManagerTests
         .AddSingleton<IReadOnlyLifetime>(new Lifetime()));
   }
 
-  [Fact(Timeout = 30000)]
+  [Fact]
   public void DoubleBuildExceptionAsync()
   {
     Assert.Throws<InvalidOperationException>(() =>
@@ -60,7 +60,7 @@ public class AppDependencyManagerTests
         .Build());
   }
 
-  [Fact(Timeout = 30000)]
+  [Fact]
   public void UnknownTypeExceptionAsync()
   {
     var appDepMgr = AppDependencyManager

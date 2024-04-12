@@ -15,7 +15,7 @@ public class PoolTests
     p_output = output;
   }
 
-  [Fact(Timeout = 5000)]
+  [Fact]
   public void SimplePoolTest()
   {
     var instance0 = SharedPool<EventLoopScheduler>.Get(out var _eventLoopScheduler0);

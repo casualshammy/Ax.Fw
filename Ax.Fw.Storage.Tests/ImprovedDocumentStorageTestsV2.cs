@@ -32,28 +32,28 @@ public class ImprovedDocumentStorageTestsV2
       // warm-up
       foreach (var entry in entries)
       {
-        await storage.WriteSimpleDocumentAsync(entry, new DataRecord(entry, entry.ToString()), lifetime.Token);
-        _ = await storage.ReadSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
-        await storage.DeleteSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
+        storage.WriteSimpleDocument(entry, new DataRecord(entry, entry.ToString()));
+        _ = storage.ReadSimpleDocument<DataRecord>(entry);
+        storage.DeleteSimpleDocument<DataRecord>(entry);
 
-        await cachedStorage.WriteSimpleDocumentAsync(entry, new DataRecord(entry, entry.ToString()), lifetime.Token);
-        _ = await cachedStorage.ReadSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
-        await cachedStorage.DeleteSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
+        cachedStorage.WriteSimpleDocument(entry, new DataRecord(entry, entry.ToString()));
+        _ = cachedStorage.ReadSimpleDocument<DataRecord>(entry);
+        cachedStorage.DeleteSimpleDocument<DataRecord>(entry);
       }
 
       // non-cached
       var sw = Stopwatch.StartNew();
       foreach (var entry in entries)
       {
-        await storage.WriteSimpleDocumentAsync(entry, new DataRecord(entry, entry.ToString()), lifetime.Token);
+        storage.WriteSimpleDocument(entry, new DataRecord(entry, entry.ToString()));
 
         DocumentEntry<DataRecord>? document = null;
         for (int i = 0; i < 100; i++)
-          document = await storage.ReadSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
+          document = storage.ReadSimpleDocument<DataRecord>(entry);
         Assert.NotNull(document);
         Assert.Equal(entry, document.Data.Id);
 
-        await storage.DeleteSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
+        storage.DeleteSimpleDocument<DataRecord>(entry);
       }
       var elapsed = sw.Elapsed;
       p_output.WriteLine($"Non-cached: {elapsed}");
@@ -62,15 +62,15 @@ public class ImprovedDocumentStorageTestsV2
       sw.Restart();
       foreach (var entry in entries)
       {
-        await cachedStorage.WriteSimpleDocumentAsync(entry, new DataRecord(entry, entry.ToString()), lifetime.Token);
+        cachedStorage.WriteSimpleDocument(entry, new DataRecord(entry, entry.ToString()));
 
         DocumentEntry<DataRecord>? document = null;
         for (int i = 0; i < 100; i++)
-          document = await cachedStorage.ReadSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
+          document = cachedStorage.ReadSimpleDocument<DataRecord>(entry);
         Assert.NotNull(document);
         Assert.Equal(entry, document.Data.Id);
 
-        await cachedStorage.DeleteSimpleDocumentAsync<DataRecord>(entry, lifetime.Token);
+        cachedStorage.DeleteSimpleDocument<DataRecord>(entry);
       }
       var cachedElapsed = sw.Elapsed;
       p_output.WriteLine($"Cached: {cachedElapsed}");
@@ -103,13 +103,13 @@ public class ImprovedDocumentStorageTestsV2
 
       lifetime.ToDisposeOnEnding(storage);
 
-      await storage.WriteSimpleDocumentAsync(100, new DataRecord(100, "entry-100"), lifetime.Token);
-      var doc0 = await storage.ReadSimpleDocumentAsync<DataRecord>(100, lifetime.Token);
+      storage.WriteSimpleDocument(100, new DataRecord(100, "entry-100"));
+      var doc0 = storage.ReadSimpleDocument<DataRecord>(100);
       Assert.NotNull(doc0);
 
       await Task.Delay(TimeSpan.FromSeconds(2), lifetime.Token);
       Assert.Equal(1, counter);
-      var doc1 = await storage.ReadSimpleDocumentAsync<DataRecord>(100, lifetime.Token);
+      var doc1 = storage.ReadSimpleDocument<DataRecord>(100);
       Assert.Null(doc1);
     }
     finally
