@@ -10,29 +10,29 @@ public interface IDocumentStorage : IDisposable
   /// <summary>
   /// Rebuilds the database file, repacking it into a minimal amount of disk space
   /// </summary>
-  Task CompactDatabase(CancellationToken _ct);
+  void CompactDatabase();
 
   /// <summary>
   /// Returns number of documents in database
   /// </summary>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  Task<int> Count(string? _namespace, LikeExpr? _keyLikeExpression, CancellationToken _ct);
+  int Count(string? _namespace, LikeExpr? _keyLikeExpression);
 
   /// <summary>
   /// Returns number of simple documents in database
   /// </summary>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  Task<int> CountSimpleDocuments<T>(LikeExpr? _keyLikeExpression, CancellationToken _ct);
+  int CountSimpleDocuments<T>(LikeExpr? _keyLikeExpression);
 
-  Task DeleteDocumentsAsync(
+  void DeleteDocuments(
     string _namespace, 
     string? _key, 
     DateTimeOffset? _from = null, 
-    DateTimeOffset? _to = null, 
-    CancellationToken _ct = default);
-  Task DeleteDocumentsAsync(string _namespace, int? _key, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default);
-  Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull;
-  Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull;
+    DateTimeOffset? _to = null);
+
+  void DeleteDocuments(string _namespace, int? _key, DateTimeOffset? _from = null, DateTimeOffset? _to = null);
+  void DeleteSimpleDocument<T>(string _entryId) where T : notnull;
+  void DeleteSimpleDocument<T>(int _entryId) where T : notnull;
 
 #pragma warning disable CS8424 // The EnumeratorCancellationAttribute will have no effect. The attribute is only effective on a parameter of type CancellationToken in an async-iterator method returning IAsyncEnumerable
   /// <summary>
@@ -40,50 +40,50 @@ public interface IDocumentStorage : IDisposable
   /// </summary>
   /// <param name="_force">If true, forcefully performs full flush and then truncates temporary file to zero bytes</param>
   /// <returns></returns>
-  Task FlushAsync(bool _force, CancellationToken _ct);
-  Task<IReadOnlyList<DocumentEntry<T>>> ListDocumentsAsync<T>(string _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
-  Task<IReadOnlyList<DocumentEntry<T>>> ListDocumentsAsync<T>(string _namespace, JsonTypeInfo _jsonTypeInfo, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
+  void Flush(bool _force);
+  IEnumerable<DocumentEntry<T>> ListDocuments<T>(string _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null);
+  IEnumerable<DocumentEntry<T>> ListDocuments<T>(string _namespace, JsonTypeInfo _jsonTypeInfo, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null);
 
   /// <summary>
   /// List documents meta info (without data)
   /// </summary>
   /// <param name="_namespaceLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with namespace starting with "tel:123-456-")</param>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  Task<IReadOnlyList<DocumentEntryMeta>> ListDocumentsMetaAsync(
+  IEnumerable<DocumentEntryMeta> ListDocumentsMeta(
     LikeExpr? _namespaceLikeExpression = null,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
-    DateTimeOffset? _to = null,
-    [EnumeratorCancellation] CancellationToken _ct = default);
-  Task<IReadOnlyList<DocumentEntryMeta>> ListDocumentsMetaAsync(string? _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, [EnumeratorCancellation] CancellationToken _ct = default);
+    DateTimeOffset? _to = null);
+
+  IEnumerable<DocumentEntryMeta> ListDocumentsMeta(string? _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null);
 
   /// <summary>
   /// List documents
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
   /// <param name="_keyLikeExpression">SQL 'LIKE' expression (ex: "tel:123-456-%" will return all docs with key starting with "tel:123-456-")</param>
-  Task<IReadOnlyList<DocumentEntry<T>>> ListSimpleDocumentsAsync<T>(
+  IEnumerable<DocumentEntry<T>> ListSimpleDocuments<T>(
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
-    DateTimeOffset? _to = null,
-    [EnumeratorCancellation] CancellationToken _ct = default);
-  Task<IReadOnlyList<DocumentEntry<T>>> ListSimpleDocumentsAsync<T>(JsonTypeInfo<T> _jsonTypeInfo, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null, CancellationToken _ct = default);
+    DateTimeOffset? _to = null);
+
+  IEnumerable<DocumentEntry<T>> ListSimpleDocuments<T>(JsonTypeInfo<T> _jsonTypeInfo, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null);
 
 #pragma warning restore CS8424 // The EnumeratorCancellationAttribute will have no effect. The attribute is only effective on a parameter of type CancellationToken in an async-iterator method returning IAsyncEnumerable
-  Task<DocumentEntry<T>?> ReadDocumentAsync<T>(string _namespace, string _key, CancellationToken _ct);
-  Task<DocumentEntry<T>?> ReadDocumentAsync<T>(string _namespace, int _key, CancellationToken _ct);
-  Task<DocumentEntry<T>?> ReadDocumentAsync<T>(string _namespace, int _key, JsonTypeInfo<T> _jsonTypeInfo, CancellationToken _ct);
-  Task<DocumentEntry<T>?> ReadDocumentAsync<T>(string _namespace, string _key, JsonTypeInfo<T> _jsonTypeInfo, CancellationToken _ct);
-  Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull;
-  Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull;
-  Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(int _entryId, JsonTypeInfo<T> _jsonTypeInfo, CancellationToken _ct) where T : notnull;
-  Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(string _entryId, JsonTypeInfo<T> _jsonTypeInfo, CancellationToken _ct) where T : notnull;
-  Task<DocumentEntry<T>> WriteDocumentAsync<T>(string _namespace, string _key, T _data, CancellationToken _ct) where T : notnull;
-  Task<DocumentEntry<T>> WriteDocumentAsync<T>(string _namespace, int _key, T _data, CancellationToken _ct) where T : notnull;
-  Task<DocumentEntry<T>> WriteDocumentAsync<T>(string _namespace, int _key, T _data, JsonTypeInfo<T> _jsonTypeInfo, CancellationToken _ct) where T : notnull;
-  Task<DocumentEntry<T>> WriteDocumentAsync<T>(string _namespace, string _key, T _data, JsonTypeInfo<T> _jsonTypeInfo, CancellationToken _ct) where T : notnull;
-  Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(string _entryId, T _data, CancellationToken _ct) where T : notnull;
-  Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(int _entryId, T _data, CancellationToken _ct) where T : notnull;
-  Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(int _entryId, T _data, JsonTypeInfo<T> _jsonTypeInfo, CancellationToken _ct) where T : notnull;
-  Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(string _entryId, T _data, JsonTypeInfo<T> _jsonTypeInfo, CancellationToken _ct) where T : notnull;
+  DocumentEntry<T>? ReadDocument<T>(string _namespace, string _key);
+  DocumentEntry<T>? ReadDocument<T>(string _namespace, int _key);
+  DocumentEntry<T>? ReadDocument<T>(string _namespace, int _key, JsonTypeInfo<T> _jsonTypeInfo);
+  DocumentEntry<T>? ReadDocument<T>(string _namespace, string _key, JsonTypeInfo<T> _jsonTypeInfo);
+  DocumentEntry<T>? ReadSimpleDocument<T>(string _entryId) where T : notnull;
+  DocumentEntry<T>? ReadSimpleDocument<T>(int _entryId) where T : notnull;
+  DocumentEntry<T>? ReadSimpleDocument<T>(int _entryId, JsonTypeInfo<T> _jsonTypeInfo) where T : notnull;
+  DocumentEntry<T>? ReadSimpleDocument<T>(string _entryId, JsonTypeInfo<T> _jsonTypeInfo) where T : notnull;
+  DocumentEntry<T> WriteDocument<T>(string _namespace, string _key, T _data) where T : notnull;
+  DocumentEntry<T> WriteDocument<T>(string _namespace, int _key, T _data) where T : notnull;
+  DocumentEntry<T> WriteDocument<T>(string _namespace, int _key, T _data, JsonTypeInfo<T> _jsonTypeInfo) where T : notnull;
+  DocumentEntry<T> WriteDocument<T>(string _namespace, string _key, T _data, JsonTypeInfo<T> _jsonTypeInfo) where T : notnull;
+  DocumentEntry<T> WriteSimpleDocument<T>(string _entryId, T _data) where T : notnull;
+  DocumentEntry<T> WriteSimpleDocument<T>(int _entryId, T _data) where T : notnull;
+  DocumentEntry<T> WriteSimpleDocument<T>(int _entryId, T _data, JsonTypeInfo<T> _jsonTypeInfo) where T : notnull;
+  DocumentEntry<T> WriteSimpleDocument<T>(string _entryId, T _data, JsonTypeInfo<T> _jsonTypeInfo) where T : notnull;
 }

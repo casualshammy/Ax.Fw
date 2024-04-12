@@ -6,7 +6,7 @@ using Xunit.Abstractions;
 
 namespace Ax.Fw.Storage.Tests;
 
-public class CompareDbTestsV2
+public class StressTests
 {
   record LiteDbEntry(int Key, string Value);
 
@@ -14,13 +14,13 @@ public class CompareDbTestsV2
 
   private readonly ITestOutputHelper p_output;
 
-  public CompareDbTestsV2(ITestOutputHelper _output)
+  public StressTests(ITestOutputHelper _output)
   {
     p_output = _output;
   }
 
   [Fact]
-  public async Task StressTestSqliteAsync()
+  public void StressTestSqlite()
   {
     var lifetime = new Lifetime();
     var dbFile = GetDbTmpPath();
@@ -32,25 +32,22 @@ public class CompareDbTestsV2
 
       var sw = Stopwatch.StartNew();
 
-      await Parallel.ForEachAsync(enumerable, lifetime.Token, async (_key, _ct) =>
+      Parallel.ForEach(enumerable, _key =>
       {
         var i = _key;
-        await storage.WriteDocumentAsync("test-table", _key, $"test-data-{i}", _ct);
+        storage.WriteDocument("test-table", _key, $"test-data-{i}");
       });
-
       var writeElapsed = sw.Elapsed;
 
-      var list = await storage.ListDocumentsAsync<string>("test-table", _ct: lifetime.Token);
-
-      Assert.Equal(PROBLEM_SIZE, list.Count);
-
+      var list = storage.ListDocuments<string>("test-table");
+      Assert.Equal(PROBLEM_SIZE, list.Count());
       var listElapsed = sw.Elapsed - writeElapsed;
 
-      await Parallel.ForEachAsync(enumerable, lifetime.Token, async (_key, _ct) =>
+      Parallel.ForEach(enumerable, _key =>
       {
         var i = _key;
 
-        var result = await storage.ReadDocumentAsync<string>("test-table", _key, lifetime.Token);
+        var result = storage.ReadDocument<string>("test-table", _key);
         if (result == null)
           Assert.Fail($"Entry is null!");
 
@@ -67,6 +64,40 @@ public class CompareDbTestsV2
       Console.WriteLine($"SQLite Write: {writeElapsed} ({writeElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
       Console.WriteLine($"SQLite List: {listElapsed} ({listElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
       Console.WriteLine($"SQLite Read: {readElapsed} ({readElapsed.TotalMilliseconds / PROBLEM_SIZE} ms/entry)");
+    }
+    finally
+    {
+      lifetime.End();
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
+    }
+  }
+
+  [Fact]
+  public void SqliteList()
+  {
+    var lifetime = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    try
+    {
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, CompareDbTestsV2JsonCtx.Default));
+
+      var enumerable = Enumerable.Range(0, PROBLEM_SIZE);
+
+      Parallel.ForEach(enumerable, _key =>
+      {
+        var i = _key;
+        storage.WriteDocument("test-table", _key, $"test-data-{i}");
+      });
+
+      var list = storage.ListDocuments<string>("test-table");
+      Assert.Equal(PROBLEM_SIZE, list.Count());
+
+      Parallel.ForEach(enumerable, _key =>
+      {
+        var list = storage.ListDocuments<string>("test-table");
+        Assert.Equal(PROBLEM_SIZE, list.Count());
+      });
     }
     finally
     {

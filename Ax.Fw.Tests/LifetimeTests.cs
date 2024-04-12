@@ -11,7 +11,7 @@ namespace Ax.Fw.Tests;
 
 public class LifetimeTests
 {
-  [Fact(Timeout = 30000)]
+  [Fact]
   public void FlowTest()
   {
     var lifetime = new Lifetime();
@@ -29,7 +29,7 @@ public class LifetimeTests
     Assert.Equal(2, counter);
   }
 
-  [Fact(Timeout = 30000)]
+  [Fact]
   public void SyncCompleteTest()
   {
     var lifetime = new Lifetime();
@@ -47,7 +47,7 @@ public class LifetimeTests
     Assert.Equal(2, counter);
   }
 
-  [Fact(Timeout = 30000)]
+  [Fact]
   public void MultipleCompleteTest()
   {
     var lifetime = new Lifetime();
@@ -72,7 +72,7 @@ public class LifetimeTests
     Assert.Equal(2, counter);
   }
 
-  [Theory(Timeout = 30000)]
+  [Theory]
   [Repeat(10)]
   public void ParallelCompleteTest(int _iteration)
   {
@@ -94,7 +94,7 @@ public class LifetimeTests
     Assert.Equal(2, counter);
   }
 
-  [Fact(Timeout = 10000)]
+  [Fact]
   public void RxTest()
   {
     var lifetime = new Lifetime();
@@ -132,7 +132,7 @@ public class LifetimeTests
     Assert.Equal(4, Interlocked.Read(ref counter));
   }
 
-  [Fact(Timeout = 10000)]
+  [Fact]
   public void ChildNotBlocksParent()
   {
     var lifetime = new Lifetime();

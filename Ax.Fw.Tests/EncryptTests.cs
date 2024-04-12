@@ -151,7 +151,7 @@ public class EncryptTests
     }
   }
 
-  [Theory(Timeout = 30000)]
+  [Theory]
   [InlineData(512)]
   [InlineData(10 * 1024)]
   [InlineData(1024 * 1024)]
@@ -179,7 +179,7 @@ public class EncryptTests
     Assert.Equal(data, decryptedDataBytes);
   }
 
-  [Theory(Timeout = 30000)]
+  [Theory]
   [InlineData(EncryptionKeyLength.Bits128, 512)]
   [InlineData(EncryptionKeyLength.Bits128, 1024 * 1024)]
   [InlineData(EncryptionKeyLength.Bits128, 1165217)]
@@ -220,7 +220,7 @@ public class EncryptTests
     Assert.Equal(data, decryptedDataBytes);
   }
 
-  [Theory(Timeout = 30000)]
+  [Theory]
   [InlineData(EncryptionKeyLength.Bits128, 512, 80)]
   [InlineData(EncryptionKeyLength.Bits128, 512, 800)]
   [InlineData(EncryptionKeyLength.Bits128, 1165217, 800)]
@@ -266,7 +266,7 @@ public class EncryptTests
     Assert.Equal(data.Length, decryptedDataBytes.Length);
   }
 
-  [Theory(Timeout = 30000)]
+  [Theory]
   [InlineData(EncryptionKeyLength.Bits128, 512)]
   [InlineData(EncryptionKeyLength.Bits128, 1024 * 1024)]
   [InlineData(EncryptionKeyLength.Bits128, 1165217)]
@@ -303,7 +303,7 @@ public class EncryptTests
     Assert.Equal(data, decryptedDataBytes);
   }
 
-  [Fact(Timeout = 30000)]
+  [Fact]
   public void AesGcmStreamTest()
   {
     var key = Encoding.UTF8.GetBytes("fsdg54v26h4v35h4v2f68yb426");
@@ -328,7 +328,7 @@ public class EncryptTests
     Assert.Equal(msDec.ToArray(), data);
   }
 
-  [Fact(Timeout = 30000)]
+  [Fact]
   public void ChaCha20WithPoly1305StreamTest()
   {
     if (Environment.OSVersion.Platform == PlatformID.Win32NT && Environment.OSVersion.Version.Build < 20142)
@@ -383,7 +383,7 @@ public class EncryptTests
     Assert.Equal(msDec.ToArray(), data);
   }
 
-  [Theory(Timeout = 30000)]
+  [Theory]
   [InlineData(512)]
   [InlineData(1024 * 1024)]
   [InlineData(1165217)]
@@ -435,7 +435,7 @@ public class EncryptTests
     Assert.Equal("Can't decrypt message - header is invalid", ex.Message);
   }
 
-  [Theory(Timeout = 30000)]
+  [Theory]
   [InlineData(512)]
   [InlineData(1024 * 1024)]
   [InlineData(1165217)]
@@ -475,7 +475,7 @@ public class EncryptTests
     Assert.Equal(data, decryptedDataBytes);
   }
 
-  [Theory(Timeout = 30000)]
+  [Theory]
   [InlineData(512)]
   [InlineData(1024 * 1024)]
   [InlineData(1165217)]

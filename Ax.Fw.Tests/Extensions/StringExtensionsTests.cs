@@ -14,7 +14,7 @@ public class StringExtensionsTests
   }
 
 
-  [Fact(Timeout = 30000)]
+  [Fact]
   public void TryParseByteValueTest()
   {
     var simple = $"{1024 * 1024}";

@@ -19,9 +19,10 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
 {
   record CacheKey(string Namespace, string Key);
 
-  private readonly SemaphoreSlim p_accessSemaphore;
-  private readonly SqliteConnection p_connection;
+
+  private readonly string p_dbFilePath;
   private readonly JsonSerializerContext? p_jsonCtx;
+  private readonly SemaphoreSlim p_writeSemaphore;
   private readonly SyncCache<CacheKey, object>? p_cache;
   private long p_documentsCounter = 0;
 
@@ -36,59 +37,56 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     StorageCacheOptions? _cacheOptions = null,
     StorageRetentionOptions? _retentionOptions = null)
   {
+    p_dbFilePath = _dbFilePath;
     p_jsonCtx = _jsonCtx;
+    p_writeSemaphore = ToDisposeOnEnded(new SemaphoreSlim(1, 1));
 
-    var connectionString = $"Data Source={_dbFilePath};";
-    p_accessSemaphore = ToDispose(new SemaphoreSlim(1, 1));
     ToDoOnEnded(() => SqliteConnection.ClearAllPools());
-    p_connection = ToDispose(new SqliteConnection(connectionString));
-    p_connection.Open();
 
-    p_accessSemaphore.Wait();
-
-    using (var command = p_connection.CreateCommand())
+    using (var connection = GetConnection())
     {
-      command.CommandText =
-        $"PRAGMA synchronous = NORMAL; " +
-        $"PRAGMA journal_mode = WAL; " +
-        $"PRAGMA case_sensitive_like = true; " +
-        $"CREATE TABLE IF NOT EXISTS document_data " +
-        $"( " +
-        $"  doc_id INTEGER PRIMARY KEY, " +
-        $"  namespace TEXT NOT NULL, " +
-        $"  key TEXT NOT NULL, " +
-        $"  last_modified INTEGER NOT NULL, " +
-        $"  created INTEGER NOT NULL, " +
-        $"  version INTEGER NOT NULL, " +
-        $"  data TEXT NOT NULL, " +
-        $"  UNIQUE(namespace, key) " +
-        $"); " +
-        $"CREATE INDEX IF NOT EXISTS index_namespace_key ON document_data (namespace, key); " +
-        $"CREATE INDEX IF NOT EXISTS index_key ON document_data (key); " +
-        $"CREATE INDEX IF NOT EXISTS index_namespace ON document_data (namespace); ";
-
-      command.ExecuteNonQuery();
-    }
-
-    var counter = -1L;
-    using (var cmd = p_connection.CreateCommand())
-    {
-      cmd.CommandText =
-        $"SELECT MAX(doc_id) " +
-        $"FROM document_data; ";
-
-      try
+      using (var command = connection.CreateCommand())
       {
-        var max = (long?)cmd.ExecuteScalar() ?? 0;
+        command.CommandText =
+          $"PRAGMA synchronous = NORMAL; " +
+          $"PRAGMA journal_mode = WAL; " +
+          $"PRAGMA case_sensitive_like = true; " +
+          $"CREATE TABLE IF NOT EXISTS document_data " +
+          $"( " +
+          $"  doc_id INTEGER PRIMARY KEY, " +
+          $"  namespace TEXT NOT NULL, " +
+          $"  key TEXT NOT NULL, " +
+          $"  last_modified INTEGER NOT NULL, " +
+          $"  created INTEGER NOT NULL, " +
+          $"  version INTEGER NOT NULL, " +
+          $"  data TEXT NOT NULL, " +
+          $"  UNIQUE(namespace, key) " +
+          $"); " +
+          $"CREATE INDEX IF NOT EXISTS index_namespace_key ON document_data (namespace, key); " +
+          $"CREATE INDEX IF NOT EXISTS index_key ON document_data (key); " +
+          $"CREATE INDEX IF NOT EXISTS index_namespace ON document_data (namespace); ";
 
-        counter = Math.Max(counter, max);
+        command.ExecuteNonQuery();
       }
-      catch { }
+
+      var counter = -1L;
+      using (var cmd = connection.CreateCommand())
+      {
+        cmd.CommandText =
+          $"SELECT MAX(doc_id) " +
+          $"FROM document_data; ";
+
+        try
+        {
+          var max = (long?)cmd.ExecuteScalar() ?? 0;
+
+          counter = Math.Max(counter, max);
+        }
+        catch { }
+      }
+
+      p_documentsCounter = counter;
     }
-
-    p_documentsCounter = counter;
-
-    p_accessSemaphore.Release();
 
     if (_cacheOptions != null)
     {
@@ -105,12 +103,12 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
         .Interval(_retentionOptions.ScanInterval ?? TimeSpan.FromMinutes(10), scheduler)
         .StartWithDefault()
         .ObserveOn(scheduler)
-        .SelectAsync(async (_, _ct) =>
+        .Subscribe(_ =>
         {
           var now = DateTimeOffset.UtcNow;
           var docsToDeleteBuilder = ImmutableHashSet.CreateBuilder<DocumentEntryMeta>();
 
-          foreach (var doc in await ListDocumentsMetaAsync((string?)null, _ct: _ct).ConfigureAwait(false))
+          foreach (var doc in ListDocumentsMeta((string?)null))
           {
             var docAge = now - doc.Created;
             var docLastModifiedAge = now - doc.LastModified;
@@ -122,7 +120,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
 
           foreach (var doc in docsToDeleteBuilder)
           {
-            await DeleteDocumentsAsync(doc.Namespace, doc.Key, null, null, _ct);
+            DeleteDocuments(doc.Namespace, doc.Key, null, null);
             RemoveEntriesFromCache(doc.Namespace, doc.Key);
           }
 
@@ -135,37 +133,36 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
             }
             catch { }
           }
-        }, scheduler)
-        .Subscribe();
+        });
 
       ToDispose(subs);
     }
   }
 
-  private async Task<DocumentEntry<T>> WriteDocumentInternalAsync<T>(
+  private DocumentEntry<T> WriteDocumentInternal<T>(
     string _namespace,
     string _key,
     T _data,
-    JsonTypeInfo _jsonTypeInfo,
-    CancellationToken _ct)
+    JsonTypeInfo _jsonTypeInfo)
   {
     var now = DateTimeOffset.UtcNow;
     var json = JsonSerializer.Serialize(_data, _jsonTypeInfo);
 
-    await p_accessSemaphore.WaitAsync(_ct);
+    const string insertSql =
+      $"INSERT OR REPLACE INTO document_data (doc_id, namespace, key, last_modified, created, version, data) " +
+      $"VALUES (@doc_id, @namespace, @key, @last_modified, @created, @version, @data) " +
+      $"ON CONFLICT (namespace, key) " +
+      $"DO UPDATE SET " +
+      $"  last_modified=@last_modified, " +
+      $"  version=version+1, " +
+      $"  data=@data " +
+      $"RETURNING doc_id, version, created; ";
+
+    p_writeSemaphore.Wait();
     try
     {
-      var insertSql =
-        $"INSERT OR REPLACE INTO document_data (doc_id, namespace, key, last_modified, created, version, data) " +
-        $"VALUES (@doc_id, @namespace, @key, @last_modified, @created, @version, @data) " +
-        $"ON CONFLICT (namespace, key) " +
-        $"DO UPDATE SET " +
-        $"  last_modified=@last_modified, " +
-        $"  version=version+1, " +
-        $"  data=@data " +
-        $"RETURNING doc_id, version, created; ";
-
-      await using var command = p_connection.CreateCommand();
+      using var connection = GetConnection();
+      using var command = connection.CreateCommand();
       command.CommandText = insertSql;
       command.Parameters.AddWithValue("@doc_id", Interlocked.Increment(ref p_documentsCounter));
       command.Parameters.AddWithValue("@namespace", _namespace);
@@ -175,34 +172,33 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       command.Parameters.AddWithValue("@version", 1);
       command.Parameters.AddWithValue("@data", json);
 
-      await using var reader = await command.ExecuteReaderAsync(_ct);
-      if (await reader.ReadAsync(_ct))
+      using var reader = command.ExecuteReader();
+      if (reader.Read())
       {
         var docId = reader.GetInt32(0);
         var version = reader.GetInt64(1);
         var created = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
         return new DocumentEntry<T>(docId, _namespace, _key, now, created, version, _data);
       }
+
+      throw new InvalidOperationException($"Can't create document - db reader returned no result");
     }
     finally
     {
-      p_accessSemaphore.Release();
+      p_writeSemaphore.Release();
     }
-
-    throw new InvalidOperationException($"Can't create document - db reader returned no result");
   }
 
   /// <summary>
   /// Upsert document to database
   /// </summary>
-  public async Task<DocumentEntry<T>> WriteDocumentAsync<T>(
+  public DocumentEntry<T> WriteDocument<T>(
     string _namespace,
     string _key,
     T _data,
-    JsonTypeInfo<T> _jsonTypeInfo,
-    CancellationToken _ct) where T : notnull
+    JsonTypeInfo<T> _jsonTypeInfo) where T : notnull
   {
-    var document = await WriteDocumentInternalAsync(_namespace, _key, _data, _jsonTypeInfo, _ct);
+    var document = WriteDocumentInternal(_namespace, _key, _data, _jsonTypeInfo);
     p_cache?.Put(new CacheKey(_namespace, _key), document);
     return document;
   }
@@ -210,24 +206,22 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// <summary>
   /// Upsert document to database
   /// </summary>
-  public Task<DocumentEntry<T>> WriteDocumentAsync<T>(
+  public DocumentEntry<T> WriteDocument<T>(
     string _namespace,
     int _key,
     T _data,
-    JsonTypeInfo<T> _jsonTypeInfo,
-    CancellationToken _ct) where T : notnull
+    JsonTypeInfo<T> _jsonTypeInfo) where T : notnull
   {
-    return WriteDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), _data, _jsonTypeInfo, _ct);
+    return WriteDocument(_namespace, _key.ToString(CultureInfo.InvariantCulture), _data, _jsonTypeInfo);
   }
 
   /// <summary>
   /// Upsert document to database
   /// </summary>
-  public async Task<DocumentEntry<T>> WriteDocumentAsync<T>(
+  public DocumentEntry<T> WriteDocument<T>(
     string _namespace,
     string _key,
-    T _data,
-    CancellationToken _ct) where T : notnull
+    T _data) where T : notnull
   {
     if (p_jsonCtx == null)
       throw new InvalidOperationException($"You must specify a JsonSerializerContext in constructor");
@@ -236,7 +230,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     if (typeInfo == null)
       throw new InvalidOperationException($"Type '{typeof(T).Name}' is not found in JsonSerializerContext!");
 
-    var document = await WriteDocumentInternalAsync(_namespace, _key, _data, typeInfo, _ct);
+    var document = WriteDocumentInternal(_namespace, _key, _data, typeInfo);
     p_cache?.Put(new CacheKey(_namespace, _key), document);
     return document;
   }
@@ -244,78 +238,72 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// <summary>
   /// Upsert document to database
   /// </summary>
-  public Task<DocumentEntry<T>> WriteDocumentAsync<T>(
+  public DocumentEntry<T> WriteDocument<T>(
     string _namespace,
     int _key,
-    T _data,
-    CancellationToken _ct) where T : notnull
+    T _data) where T : notnull
   {
-    return WriteDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), _data, _ct);
+    return WriteDocument(_namespace, _key.ToString(CultureInfo.InvariantCulture), _data);
   }
 
   /// <summary>
   /// Upsert document to database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(
+  public DocumentEntry<T> WriteSimpleDocument<T>(
     string _entryId,
     T _data,
-    JsonTypeInfo<T> _jsonTypeInfo,
-    CancellationToken _ct) where T : notnull
+    JsonTypeInfo<T> _jsonTypeInfo) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
-    return WriteDocumentAsync(ns, _entryId, _data, _jsonTypeInfo, _ct);
+    return WriteDocument(ns, _entryId, _data, _jsonTypeInfo);
   }
 
   /// <summary>
   /// Upsert document to database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(
+  public DocumentEntry<T> WriteSimpleDocument<T>(
     int _entryId,
     T _data,
-    JsonTypeInfo<T> _jsonTypeInfo,
-    CancellationToken _ct) where T : notnull
+    JsonTypeInfo<T> _jsonTypeInfo) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
-    return WriteDocumentAsync(ns, _entryId, _data, _jsonTypeInfo, _ct);
+    return WriteDocument(ns, _entryId, _data, _jsonTypeInfo);
   }
 
   /// <summary>
   /// Upsert document to database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(
+  public DocumentEntry<T> WriteSimpleDocument<T>(
     string _entryId,
-    T _data,
-    CancellationToken _ct) where T : notnull
+    T _data) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
-    return WriteDocumentAsync(ns, _entryId, _data, _ct);
+    return WriteDocument(ns, _entryId, _data);
   }
 
   /// <summary>
   /// Upsert document to database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public async Task<DocumentEntry<T>> WriteSimpleDocumentAsync<T>(
+  public DocumentEntry<T> WriteSimpleDocument<T>(
     int _entryId,
-    T _data,
-    CancellationToken _ct) where T : notnull
+    T _data) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
-    return await WriteDocumentAsync(ns, _entryId, _data, _ct);
+    return WriteDocument(ns, _entryId, _data);
   }
 
   /// <summary>
   /// Delete document from the database
   /// </summary>
-  public async Task DeleteDocumentsAsync(
+  public void DeleteDocuments(
     string _namespace,
     string? _key,
     DateTimeOffset? _from = null,
-    DateTimeOffset? _to = null,
-    CancellationToken _ct = default)
+    DateTimeOffset? _to = null)
   {
     var deleteSql =
       $"DELETE FROM document_data " +
@@ -325,10 +313,12 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       $"  (@from IS NULL OR last_modified>=@from) AND " +
       $"  (@to IS NULL OR last_modified<=@to); ";
 
-    await p_accessSemaphore.WaitAsync(_ct);
+    using var connection = GetConnection();
+
+    //await p_accessSemaphore.WaitAsync(_ct);
     try
     {
-      await using var cmd = p_connection.CreateCommand();
+      using var cmd = connection.CreateCommand();
       cmd.CommandText = deleteSql;
       cmd.Parameters.AddWithValue("@namespace", _namespace);
 
@@ -347,56 +337,54 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       else
         cmd.Parameters.AddWithValue("@to", DBNull.Value);
 
-      await cmd.ExecuteNonQueryAsync(_ct);
+      cmd.ExecuteNonQuery();
     }
     finally
     {
       RemoveEntriesFromCache(_namespace, _key);
-      p_accessSemaphore.Release();
+      //p_accessSemaphore.Release();
     }
   }
 
-  public Task DeleteDocumentsAsync(
+  public void DeleteDocuments(
     string _namespace,
     int? _key,
     DateTimeOffset? _from = null,
-    DateTimeOffset? _to = null,
-    CancellationToken _ct = default)
+    DateTimeOffset? _to = null)
   {
-    return DeleteDocumentsAsync(_namespace, _key?.ToString(CultureInfo.InvariantCulture), _from, _to, _ct);
+    DeleteDocuments(_namespace, _key?.ToString(CultureInfo.InvariantCulture), _from, _to);
   }
 
   /// <summary>
   /// Delete document from the database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public async Task DeleteSimpleDocumentAsync<T>(string _entryId, CancellationToken _ct) where T : notnull
+  public void DeleteSimpleDocument<T>(string _entryId) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
-    await DeleteDocumentsAsync(ns, _entryId, null, null, _ct);
+    DeleteDocuments(ns, _entryId, null, null);
   }
 
   /// <summary>
   /// Delete document from the database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public async Task DeleteSimpleDocumentAsync<T>(int _entryId, CancellationToken _ct) where T : notnull
+  public void DeleteSimpleDocument<T>(int _entryId) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
-    await DeleteDocumentsAsync(ns, _entryId, null, null, _ct);
+    DeleteDocuments(ns, _entryId, null, null);
   }
 
   /// <summary>
   /// List documents meta info (without data)
   /// </summary>
-  public async Task<IReadOnlyList<DocumentEntryMeta>> ListDocumentsMetaAsync(
+  public IEnumerable<DocumentEntryMeta> ListDocumentsMeta(
     string? _namespace,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
-    DateTimeOffset? _to = null,
-    CancellationToken _ct = default)
+    DateTimeOffset? _to = null)
   {
-    var listSql =
+    const string listSql =
       $"SELECT doc_id, namespace, key, last_modified, created, version " +
       $"FROM document_data " +
       $"WHERE " +
@@ -405,64 +393,53 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       $"  (@from IS NULL OR last_modified>=@from) AND " +
       $"  (@to IS NULL OR last_modified<=@to); ";
 
-    await p_accessSemaphore.WaitAsync(_ct);
-    try
+    using var connection = GetConnection();
+    using var cmd = connection.CreateCommand();
+    cmd.CommandText = listSql;
+
+    if (_namespace != null)
+      cmd.Parameters.AddWithValue("@namespace", _namespace);
+    else
+      cmd.Parameters.AddWithValue("@namespace", DBNull.Value);
+
+    if (_keyLikeExpression != null)
+      cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression.Pattern);
+    else
+      cmd.Parameters.AddWithValue("@key_like", DBNull.Value);
+
+    if (_from != null)
+      cmd.Parameters.AddWithValue("@from", _from.Value.UtcTicks);
+    else
+      cmd.Parameters.AddWithValue("@from", DBNull.Value);
+
+    if (_to != null)
+      cmd.Parameters.AddWithValue("@to", _to.Value.UtcTicks);
+    else
+      cmd.Parameters.AddWithValue("@to", DBNull.Value);
+
+    using var reader = cmd.ExecuteReader();
+    while (reader.Read())
     {
-      await using var cmd = p_connection.CreateCommand();
-      cmd.CommandText = listSql;
+      var docId = reader.GetInt32(0);
+      var optionalKey = reader.GetString(2);
+      var lastModified = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
+      var created = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
+      var version = reader.GetInt64(5);
 
-      if (_namespace != null)
-        cmd.Parameters.AddWithValue("@namespace", _namespace);
-      else
-        cmd.Parameters.AddWithValue("@namespace", DBNull.Value);
-
-      if (_keyLikeExpression != null)
-        cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression.Pattern);
-      else
-        cmd.Parameters.AddWithValue("@key_like", DBNull.Value);
-
-      if (_from != null)
-        cmd.Parameters.AddWithValue("@from", _from.Value.UtcTicks);
-      else
-        cmd.Parameters.AddWithValue("@from", DBNull.Value);
-
-      if (_to != null)
-        cmd.Parameters.AddWithValue("@to", _to.Value.UtcTicks);
-      else
-        cmd.Parameters.AddWithValue("@to", DBNull.Value);
-
-      var result = new List<DocumentEntryMeta>();
-      await using var reader = await cmd.ExecuteReaderAsync(_ct);
-      while (await reader.ReadAsync(_ct))
-      {
-        var docId = reader.GetInt32(0);
-        var optionalKey = reader.GetString(2);
-        var lastModified = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
-        var created = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
-        var version = reader.GetInt64(5);
-
-        result.Add(new DocumentEntryMeta(docId, _namespace ?? reader.GetString(1), optionalKey, lastModified, created, version));
-      }
-
-      return result;
-    }
-    finally
-    {
-      p_accessSemaphore.Release();
+      yield return new DocumentEntryMeta(docId, _namespace ?? reader.GetString(1), optionalKey, lastModified, created, version);
     }
   }
 
   /// <summary>
   /// List documents meta info (without data)
   /// </summary>
-  public async Task<IReadOnlyList<DocumentEntryMeta>> ListDocumentsMetaAsync(
+  public IEnumerable<DocumentEntryMeta> ListDocumentsMeta(
     LikeExpr? _namespaceLikeExpression = null,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
-    DateTimeOffset? _to = null,
-    CancellationToken _ct = default)
+    DateTimeOffset? _to = null)
   {
-    var listSql =
+    const string listSql =
       $"SELECT doc_id, namespace, key, last_modified, created, version " +
       $"FROM document_data " +
       $"WHERE " +
@@ -471,66 +448,55 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       $"  (@from IS NULL OR last_modified>=@from) AND " +
       $"  (@to IS NULL OR last_modified<=@to); ";
 
-    await p_accessSemaphore.WaitAsync(_ct);
-    try
+    using var connection = GetConnection();
+    using var cmd = connection.CreateCommand();
+    cmd.CommandText = listSql;
+
+    if (_namespaceLikeExpression != null)
+      cmd.Parameters.AddWithValue("@namespace_like", _namespaceLikeExpression.Pattern);
+    else
+      cmd.Parameters.AddWithValue("@namespace_like", DBNull.Value);
+
+    if (_keyLikeExpression != null)
+      cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression.Pattern);
+    else
+      cmd.Parameters.AddWithValue("@key_like", DBNull.Value);
+
+    if (_from != null)
+      cmd.Parameters.AddWithValue("@from", _from.Value.UtcTicks);
+    else
+      cmd.Parameters.AddWithValue("@from", DBNull.Value);
+
+    if (_to != null)
+      cmd.Parameters.AddWithValue("@to", _to.Value.UtcTicks);
+    else
+      cmd.Parameters.AddWithValue("@to", DBNull.Value);
+
+    using var reader = cmd.ExecuteReader();
+    while (reader.Read())
     {
-      await using var cmd = p_connection.CreateCommand();
-      cmd.CommandText = listSql;
+      var docId = reader.GetInt32(0);
+      var ns = reader.GetString(1);
+      var optionalKey = reader.GetString(2);
+      var lastModified = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
+      var created = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
+      var version = reader.GetInt64(5);
 
-      if (_namespaceLikeExpression != null)
-        cmd.Parameters.AddWithValue("@namespace_like", _namespaceLikeExpression.Pattern);
-      else
-        cmd.Parameters.AddWithValue("@namespace_like", DBNull.Value);
-
-      if (_keyLikeExpression != null)
-        cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression.Pattern);
-      else
-        cmd.Parameters.AddWithValue("@key_like", DBNull.Value);
-
-      if (_from != null)
-        cmd.Parameters.AddWithValue("@from", _from.Value.UtcTicks);
-      else
-        cmd.Parameters.AddWithValue("@from", DBNull.Value);
-
-      if (_to != null)
-        cmd.Parameters.AddWithValue("@to", _to.Value.UtcTicks);
-      else
-        cmd.Parameters.AddWithValue("@to", DBNull.Value);
-
-      var result = new List<DocumentEntryMeta>();
-      await using var reader = await cmd.ExecuteReaderAsync(_ct);
-      while (await reader.ReadAsync(_ct))
-      {
-        var docId = reader.GetInt32(0);
-        var ns = reader.GetString(1);
-        var optionalKey = reader.GetString(2);
-        var lastModified = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
-        var created = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
-        var version = reader.GetInt64(5);
-
-        result.Add(new DocumentEntryMeta(docId, ns, optionalKey, lastModified, created, version));
-      }
-
-      return result;
-    }
-    finally
-    {
-      p_accessSemaphore.Release();
+      yield return new DocumentEntryMeta(docId, ns, optionalKey, lastModified, created, version);
     }
   }
 
   /// <summary>
   /// List documents
   /// </summary>
-  public async Task<IReadOnlyList<DocumentEntry<T>>> ListDocumentsAsync<T>(
+  public IEnumerable<DocumentEntry<T>> ListDocuments<T>(
     string _namespace,
     JsonTypeInfo _jsonTypeInfo,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
-    DateTimeOffset? _to = null,
-    CancellationToken _ct = default)
+    DateTimeOffset? _to = null)
   {
-    var listSql =
+    const string listSql =
       $"SELECT doc_id, key, last_modified, created, version, data " +
       $"FROM document_data " +
       $"WHERE " +
@@ -539,62 +505,51 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       $"  (@from IS NULL OR last_modified>=@from) AND " +
       $"  (@to IS NULL OR last_modified<=@to); ";
 
-    await p_accessSemaphore.WaitAsync(_ct);
-    try
+    using var connection = GetConnection();
+    using var cmd = connection.CreateCommand();
+    cmd.CommandText = listSql;
+
+    cmd.Parameters.AddWithValue("@namespace", _namespace);
+
+    if (_keyLikeExpression != null)
+      cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression.Pattern);
+    else
+      cmd.Parameters.AddWithValue("@key_like", DBNull.Value);
+
+    if (_from != null)
+      cmd.Parameters.AddWithValue("@from", _from.Value.UtcTicks);
+    else
+      cmd.Parameters.AddWithValue("@from", DBNull.Value);
+
+    if (_to != null)
+      cmd.Parameters.AddWithValue("@to", _to.Value.UtcTicks);
+    else
+      cmd.Parameters.AddWithValue("@to", DBNull.Value);
+
+    using var reader = cmd.ExecuteReader();
+    while (reader.Read())
     {
-      await using var cmd = p_connection.CreateCommand();
-      cmd.CommandText = listSql;
+      var docId = reader.GetInt32(0);
+      var key = reader.GetString(1);
+      var lastModified = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
+      var created = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
+      var version = reader.GetInt64(4);
+      var data = (T?)JsonSerializer.Deserialize(reader.GetString(5), _jsonTypeInfo);
+      if (data == null)
+        throw new FormatException($"Data of document '{docId}' is malformed!");
 
-      cmd.Parameters.AddWithValue("@namespace", _namespace);
-
-      if (_keyLikeExpression != null)
-        cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression.Pattern);
-      else
-        cmd.Parameters.AddWithValue("@key_like", DBNull.Value);
-
-      if (_from != null)
-        cmd.Parameters.AddWithValue("@from", _from.Value.UtcTicks);
-      else
-        cmd.Parameters.AddWithValue("@from", DBNull.Value);
-
-      if (_to != null)
-        cmd.Parameters.AddWithValue("@to", _to.Value.UtcTicks);
-      else
-        cmd.Parameters.AddWithValue("@to", DBNull.Value);
-
-      var result = new List<DocumentEntry<T>>();
-      await using var reader = await cmd.ExecuteReaderAsync(_ct);
-      while (await reader.ReadAsync(_ct))
-      {
-        var docId = reader.GetInt32(0);
-        var key = reader.GetString(1);
-        var lastModified = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
-        var created = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
-        var version = reader.GetInt64(4);
-        var data = (T?)JsonSerializer.Deserialize(reader.GetString(5), _jsonTypeInfo);
-        if (data == null)
-          throw new FormatException($"Data of document '{docId}' is malformed!");
-
-        result.Add(new DocumentEntry<T>(docId, _namespace, key, lastModified, created, version, data));
-      }
-
-      return result;
-    }
-    finally
-    {
-      p_accessSemaphore.Release();
+      yield return new DocumentEntry<T>(docId, _namespace, key, lastModified, created, version, data);
     }
   }
 
   /// <summary>
   /// List documents
   /// </summary>
-  public Task<IReadOnlyList<DocumentEntry<T>>> ListDocumentsAsync<T>(
+  public IEnumerable<DocumentEntry<T>> ListDocuments<T>(
     string _namespace,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
-    DateTimeOffset? _to = null,
-    CancellationToken _ct = default)
+    DateTimeOffset? _to = null)
   {
     if (p_jsonCtx == null)
       throw new InvalidOperationException($"You must specify a JsonSerializerContext in constructor");
@@ -603,43 +558,40 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     if (typeInfo == null)
       throw new InvalidOperationException($"Type '{typeof(T).Name}' is not found in JsonSerializerContext!");
 
-    return ListDocumentsAsync<T>(_namespace, typeInfo, _keyLikeExpression, _from, _to, _ct);
+    return ListDocuments<T>(_namespace, typeInfo, _keyLikeExpression, _from, _to);
   }
 
   /// <summary>
   /// List documents
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public Task<IReadOnlyList<DocumentEntry<T>>> ListSimpleDocumentsAsync<T>(
+  public IEnumerable<DocumentEntry<T>> ListSimpleDocuments<T>(
     JsonTypeInfo<T> _jsonTypeInfo,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
-    DateTimeOffset? _to = null,
-    CancellationToken _ct = default)
+    DateTimeOffset? _to = null)
   {
     var ns = typeof(T).GetNamespaceFromType();
-    return ListDocumentsAsync<T>(ns, _jsonTypeInfo, _keyLikeExpression, _from, _to, _ct);
+    return ListDocuments<T>(ns, _jsonTypeInfo, _keyLikeExpression, _from, _to);
   }
 
   /// <summary>
   /// List documents
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public Task<IReadOnlyList<DocumentEntry<T>>> ListSimpleDocumentsAsync<T>(
+  public IEnumerable<DocumentEntry<T>> ListSimpleDocuments<T>(
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
-    DateTimeOffset? _to = null,
-    CancellationToken _ct = default)
+    DateTimeOffset? _to = null)
   {
     var ns = typeof(T).GetNamespaceFromType();
-    return ListDocumentsAsync<T>(ns, _keyLikeExpression, _from, _to, _ct);
+    return ListDocuments<T>(ns, _keyLikeExpression, _from, _to);
   }
 
-  private async Task<DocumentEntry<T>?> ReadDocumentInternalAsync<T>(
+  private DocumentEntry<T>? ReadDocumentInternal<T>(
     string _namespace,
     string _key,
-    JsonTypeInfo _jsonTypeInfo,
-    CancellationToken _ct)
+    JsonTypeInfo _jsonTypeInfo)
   {
     var readSql =
       $"SELECT doc_id, key, last_modified, created, version, data " +
@@ -648,16 +600,18 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       $"  @namespace=namespace AND " +
       $"  key=@key; ";
 
-    await p_accessSemaphore.WaitAsync(_ct);
+    using var connection = GetConnection();
+
+    //p_accessSemaphore.Wait();
     try
     {
-      using var cmd = p_connection.CreateCommand();
+      using var cmd = connection.CreateCommand();
       cmd.CommandText = readSql;
       cmd.Parameters.AddWithValue("@namespace", _namespace);
       cmd.Parameters.AddWithValue("@key", _key);
 
-      await using var reader = await cmd.ExecuteReaderAsync(_ct);
-      if (await reader.ReadAsync(_ct))
+      using var reader = cmd.ExecuteReader();
+      if (reader.Read())
       {
         var docId = reader.GetInt32(0);
         var optionalKey = reader.GetString(1);
@@ -677,23 +631,22 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     }
     finally
     {
-      p_accessSemaphore.Release();
+      //p_accessSemaphore.Release();
     }
   }
 
   /// <summary>
   /// Read document from the database
   /// </summary>
-  public async Task<DocumentEntry<T>?> ReadDocumentAsync<T>(
+  public DocumentEntry<T>? ReadDocument<T>(
     string _namespace,
     string _key,
-    JsonTypeInfo<T> _jsonTypeInfo,
-    CancellationToken _ct)
+    JsonTypeInfo<T> _jsonTypeInfo)
   {
     if (p_cache?.TryGet(new CacheKey(_namespace, _key), out var cachedValue) == true)
       return cachedValue as DocumentEntry<T>;
 
-    var result = await ReadDocumentInternalAsync<T>(_namespace, _key, _jsonTypeInfo, _ct);
+    var result = ReadDocumentInternal<T>(_namespace, _key, _jsonTypeInfo);
 
     p_cache?.Put(new CacheKey(_namespace, _key), result);
 
@@ -703,22 +656,20 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// <summary>
   /// Read document from the database
   /// </summary>
-  public async Task<DocumentEntry<T>?> ReadDocumentAsync<T>(
+  public DocumentEntry<T>? ReadDocument<T>(
     string _namespace,
     int _key,
-    JsonTypeInfo<T> _jsonTypeInfo,
-    CancellationToken _ct)
+    JsonTypeInfo<T> _jsonTypeInfo)
   {
-    return await ReadDocumentAsync(_namespace, _key.ToString(CultureInfo.InvariantCulture), _jsonTypeInfo, _ct);
+    return ReadDocument(_namespace, _key.ToString(CultureInfo.InvariantCulture), _jsonTypeInfo);
   }
 
   /// <summary>
   /// Read document from the database
   /// </summary>
-  public async Task<DocumentEntry<T>?> ReadDocumentAsync<T>(
+  public DocumentEntry<T>? ReadDocument<T>(
     string _namespace,
-    string _key,
-    CancellationToken _ct)
+    string _key)
   {
     if (p_cache?.TryGet(new CacheKey(_namespace, _key), out var cachedValue) == true)
       return cachedValue as DocumentEntry<T>;
@@ -730,7 +681,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     if (typeInfo == null)
       throw new InvalidOperationException($"Type '{typeof(T).Name}' is not found in JsonSerializerContext!");
 
-    var result = await ReadDocumentInternalAsync<T>(_namespace, _key, typeInfo, _ct);
+    var result = ReadDocumentInternal<T>(_namespace, _key, typeInfo);
 
     p_cache?.Put(new CacheKey(_namespace, _key), result);
 
@@ -740,80 +691,68 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// <summary>
   /// Read document from the database
   /// </summary>
-  public Task<DocumentEntry<T>?> ReadDocumentAsync<T>(
+  public DocumentEntry<T>? ReadDocument<T>(
     string _namespace,
-    int _key,
-    CancellationToken _ct)
+    int _key)
   {
-    return ReadDocumentAsync<T>(_namespace, _key.ToString(CultureInfo.InvariantCulture), _ct);
+    return ReadDocument<T>(_namespace, _key.ToString(CultureInfo.InvariantCulture));
   }
 
   /// <summary>
   /// Read document from the database and deserialize data
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public async Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(
+  public DocumentEntry<T>? ReadSimpleDocument<T>(
     string _entryId,
-    JsonTypeInfo<T> _jsonTypeInfo,
-    CancellationToken _ct) where T : notnull
+    JsonTypeInfo<T> _jsonTypeInfo) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
-    return await ReadDocumentAsync(ns, _entryId, _jsonTypeInfo, _ct);
+    return ReadDocument(ns, _entryId, _jsonTypeInfo);
   }
 
   /// <summary>
   /// Read document from the database and deserialize data
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public async Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(
+  public DocumentEntry<T>? ReadSimpleDocument<T>(
     int _entryId,
-    JsonTypeInfo<T> _jsonTypeInfo,
-    CancellationToken _ct) where T : notnull
+    JsonTypeInfo<T> _jsonTypeInfo) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
-    return await ReadDocumentAsync(ns, _entryId, _jsonTypeInfo, _ct);
+    return ReadDocument(ns, _entryId, _jsonTypeInfo);
   }
 
   /// <summary>
   /// Read document from the database and deserialize data
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(
-    string _entryId,
-    CancellationToken _ct) where T : notnull
+  public DocumentEntry<T>? ReadSimpleDocument<T>(
+    string _entryId) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
-    return ReadDocumentAsync<T>(ns, _entryId, _ct);
+    return ReadDocument<T>(ns, _entryId);
   }
 
   /// <summary>
   /// Read document from the database and deserialize data
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public Task<DocumentEntry<T>?> ReadSimpleDocumentAsync<T>(
-    int _entryId,
-    CancellationToken _ct) where T : notnull
+  public DocumentEntry<T>? ReadSimpleDocument<T>(
+    int _entryId) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
-    return ReadDocumentAsync<T>(ns, _entryId, _ct);
+    return ReadDocument<T>(ns, _entryId);
   }
 
   /// <summary>
   /// Rebuilds the database file, repacking it into a minimal amount of disk space
   /// </summary>
-  public async Task CompactDatabase(CancellationToken _ct)
+  public void CompactDatabase()
   {
-    await p_accessSemaphore.WaitAsync(_ct);
-    try
-    {
-      await using var command = p_connection.CreateCommand();
-      command.CommandText = "VACUUM;";
-      await command.ExecuteNonQueryAsync(_ct);
-    }
-    finally
-    {
-      p_accessSemaphore.Release();
-    }
+    using var connection = GetConnection();
+    using var command = connection.CreateCommand();
+    command.CommandText = "VACUUM;";
+    command.ExecuteNonQuery();
   }
 
   /// <summary>
@@ -821,28 +760,20 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// </summary>
   /// <param name="_force">If true, forcefully performs full flush and then truncates temporary file to zero bytes</param>
   /// <returns></returns>
-  public async Task FlushAsync(bool _force, CancellationToken _ct)
+  public void Flush(bool _force)
   {
-    await p_accessSemaphore.WaitAsync(_ct);
-    try
-    {
-      await using var command = p_connection.CreateCommand();
-      command.CommandText = $"PRAGMA wal_checkpoint({(_force ? "TRUNCATE" : "PASSIVE")});";
-      await command.ExecuteNonQueryAsync(_ct);
-    }
-    finally
-    {
-      p_accessSemaphore.Release();
-    }
+    using var connection = GetConnection();
+    using var command = connection.CreateCommand();
+    command.CommandText = $"PRAGMA wal_checkpoint({(_force ? "TRUNCATE" : "PASSIVE")});";
+    command.ExecuteNonQuery();
   }
 
   /// <summary>
   /// Returns number of documents in database
   /// </summary>
-  public async Task<int> Count(
+  public int Count(
     string? _namespace,
-    LikeExpr? _keyLikeExpression,
-    CancellationToken _ct)
+    LikeExpr? _keyLikeExpression)
   {
     var readSql =
       $"SELECT COUNT(*) " +
@@ -851,46 +782,39 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       $"  (@namespace IS NULL OR @namespace=namespace) AND " +
       $"  (@key_like IS NULL OR key LIKE @key_like); ";
 
-    await p_accessSemaphore.WaitAsync(_ct);
-    try
+    using var connection = GetConnection();
+
+    using var cmd = connection.CreateCommand();
+    cmd.CommandText = readSql;
+
+    if (_namespace != null)
+      cmd.Parameters.AddWithValue("@namespace", _namespace);
+    else
+      cmd.Parameters.AddWithValue("@namespace", DBNull.Value);
+
+    if (_keyLikeExpression != null)
+      cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression.Pattern);
+    else
+      cmd.Parameters.AddWithValue("@key_like", DBNull.Value);
+
+    using var reader = cmd.ExecuteReader();
+    if (reader.Read())
     {
-      await using var cmd = p_connection.CreateCommand();
-      cmd.CommandText = readSql;
-
-      if (_namespace != null)
-        cmd.Parameters.AddWithValue("@namespace", _namespace);
-      else
-        cmd.Parameters.AddWithValue("@namespace", DBNull.Value);
-
-      if (_keyLikeExpression != null)
-        cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression.Pattern);
-      else
-        cmd.Parameters.AddWithValue("@key_like", DBNull.Value);
-
-      await using var reader = await cmd.ExecuteReaderAsync(_ct);
-      if (await reader.ReadAsync(_ct))
-      {
-        var count = reader.GetInt32(0);
-        return count;
-      }
-
-      return 0;
+      var count = reader.GetInt32(0);
+      return count;
     }
-    finally
-    {
-      p_accessSemaphore.Release();
-    }
+
+    return 0;
   }
 
   /// <summary>
   /// Returns number of simple documents in database
   /// </summary>
-  public async Task<int> CountSimpleDocuments<T>(
-    LikeExpr? _keyLikeExpression,
-    CancellationToken _ct)
+  public int CountSimpleDocuments<T>(
+    LikeExpr? _keyLikeExpression)
   {
     var ns = typeof(T).GetNamespaceFromType();
-    return await Count(ns, _keyLikeExpression, _ct);
+    return Count(ns, _keyLikeExpression);
   }
 
   private void RemoveEntriesFromCache(string _namespace, string? _key)
@@ -915,6 +839,13 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       if (_namespace == cacheKey.Namespace)
         p_cache.TryRemove(cacheKey, out _);
     }
+  }
+
+  private SqliteConnection GetConnection()
+  {
+    var connection = ToDispose(new SqliteConnection($"Data Source={p_dbFilePath};"));
+    connection.Open();
+    return connection;
   }
 
 }
