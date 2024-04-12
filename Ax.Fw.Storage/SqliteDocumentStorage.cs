@@ -43,49 +43,50 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
 
     ToDoOnEnded(() => SqliteConnection.ClearAllPools());
 
-    using var connection = GetConnection();
-
-    using (var command = connection.CreateCommand())
+    using (var connection = GetConnection())
     {
-      command.CommandText =
-        $"PRAGMA synchronous = NORMAL; " +
-        $"PRAGMA journal_mode = WAL; " +
-        $"PRAGMA case_sensitive_like = true; " +
-        $"CREATE TABLE IF NOT EXISTS document_data " +
-        $"( " +
-        $"  doc_id INTEGER PRIMARY KEY, " +
-        $"  namespace TEXT NOT NULL, " +
-        $"  key TEXT NOT NULL, " +
-        $"  last_modified INTEGER NOT NULL, " +
-        $"  created INTEGER NOT NULL, " +
-        $"  version INTEGER NOT NULL, " +
-        $"  data TEXT NOT NULL, " +
-        $"  UNIQUE(namespace, key) " +
-        $"); " +
-        $"CREATE INDEX IF NOT EXISTS index_namespace_key ON document_data (namespace, key); " +
-        $"CREATE INDEX IF NOT EXISTS index_key ON document_data (key); " +
-        $"CREATE INDEX IF NOT EXISTS index_namespace ON document_data (namespace); ";
-
-      command.ExecuteNonQuery();
-    }
-
-    var counter = -1L;
-    using (var cmd = connection.CreateCommand())
-    {
-      cmd.CommandText =
-        $"SELECT MAX(doc_id) " +
-        $"FROM document_data; ";
-
-      try
+      using (var command = connection.CreateCommand())
       {
-        var max = (long?)cmd.ExecuteScalar() ?? 0;
+        command.CommandText =
+          $"PRAGMA synchronous = NORMAL; " +
+          $"PRAGMA journal_mode = WAL; " +
+          $"PRAGMA case_sensitive_like = true; " +
+          $"CREATE TABLE IF NOT EXISTS document_data " +
+          $"( " +
+          $"  doc_id INTEGER PRIMARY KEY, " +
+          $"  namespace TEXT NOT NULL, " +
+          $"  key TEXT NOT NULL, " +
+          $"  last_modified INTEGER NOT NULL, " +
+          $"  created INTEGER NOT NULL, " +
+          $"  version INTEGER NOT NULL, " +
+          $"  data TEXT NOT NULL, " +
+          $"  UNIQUE(namespace, key) " +
+          $"); " +
+          $"CREATE INDEX IF NOT EXISTS index_namespace_key ON document_data (namespace, key); " +
+          $"CREATE INDEX IF NOT EXISTS index_key ON document_data (key); " +
+          $"CREATE INDEX IF NOT EXISTS index_namespace ON document_data (namespace); ";
 
-        counter = Math.Max(counter, max);
+        command.ExecuteNonQuery();
       }
-      catch { }
-    }
 
-    p_documentsCounter = counter;
+      var counter = -1L;
+      using (var cmd = connection.CreateCommand())
+      {
+        cmd.CommandText =
+          $"SELECT MAX(doc_id) " +
+          $"FROM document_data; ";
+
+        try
+        {
+          var max = (long?)cmd.ExecuteScalar() ?? 0;
+
+          counter = Math.Max(counter, max);
+        }
+        catch { }
+      }
+
+      p_documentsCounter = counter;
+    }
 
     if (_cacheOptions != null)
     {

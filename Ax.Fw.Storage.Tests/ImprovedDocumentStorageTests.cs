@@ -9,25 +9,27 @@ using Xunit.Abstractions;
 
 namespace Ax.Fw.Storage.Tests;
 
-public class ImprovedDocumentStorageTestsV2
+public class ImprovedDocumentStorageTests
 {
   private readonly ITestOutputHelper p_output;
 
-  public ImprovedDocumentStorageTestsV2(ITestOutputHelper _output)
+  public ImprovedDocumentStorageTests(ITestOutputHelper _output)
   {
     p_output = _output;
   }
 
   [Fact]
-  public async Task CompareCachedAndNonCachedAsync()
+  public void CompareCachedAndNonCached()
   {
     var lifetime = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    var cachedDbPath = GetDbTmpPath();
     try
     {
       var entries = Enumerable.Range(0, 1000).ToArray();
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(GetDbTmpPath(), ImprovedDocumentStorageTestsV2JsonCtx.Default));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, ImprovedDocumentStorageTestsV2JsonCtx.Default));
       var cachedStorage = lifetime.ToDisposeOnEnding(
-        new SqliteDocumentStorage(GetDbTmpPath(), ImprovedDocumentStorageTestsV2JsonCtx.Default, new StorageCacheOptions(entries.Length, TimeSpan.FromSeconds(60))));
+        new SqliteDocumentStorage(cachedDbPath, ImprovedDocumentStorageTestsV2JsonCtx.Default, new StorageCacheOptions(entries.Length, TimeSpan.FromSeconds(60))));
 
       // warm-up
       foreach (var entry in entries)
@@ -80,8 +82,10 @@ public class ImprovedDocumentStorageTestsV2
     finally
     {
       lifetime.End();
-      //if (!new FileInfo(dbFile).TryDelete())
-      //  Assert.Fail($"Can't delete file '{dbFile}'");
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
+      if (!new FileInfo(cachedDbPath).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
     }
   }
 
