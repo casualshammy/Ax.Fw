@@ -11,14 +11,12 @@ using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
 
 namespace Ax.Fw.Storage;
 
 public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
 {
   record CacheKey(string Namespace, string Key);
-
 
   private readonly string p_dbFilePath;
   private readonly JsonSerializerContext? p_jsonCtx;
@@ -30,7 +28,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// Opens existing database or creates new
   /// </summary>
   /// <param name="_dbFilePath">Path to database file</param>
-  /// <param name="_jsonCtx">Serialization context that will be used with methods without <see cref="JsonTypeInfo"/> parameter</param>
+  /// <param name="_jsonCtx">Serialization context that will be used for internal (de-)serialization</param>
   public SqliteDocumentStorage(
     string _dbFilePath,
     JsonSerializerContext? _jsonCtx,
@@ -142,11 +140,18 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   private DocumentEntry<T> WriteDocumentInternal<T>(
     string _namespace,
     string _key,
-    T _data,
-    JsonTypeInfo _jsonTypeInfo)
+    T _data)
   {
     var now = DateTimeOffset.UtcNow;
-    var json = JsonSerializer.Serialize(_data, _jsonTypeInfo);
+    string json;
+    if (p_jsonCtx != null)
+      json = JsonSerializer.Serialize(_data, typeof(T), p_jsonCtx);
+    else
+#pragma warning disable IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
+#pragma warning disable IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.
+      json = JsonSerializer.Serialize(_data);
+#pragma warning restore IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.
+#pragma warning restore IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
 
     const string insertSql =
       $"INSERT OR REPLACE INTO document_data (doc_id, namespace, key, last_modified, created, version, data) " +
@@ -195,42 +200,9 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   public DocumentEntry<T> WriteDocument<T>(
     string _namespace,
     string _key,
-    T _data,
-    JsonTypeInfo<T> _jsonTypeInfo) where T : notnull
-  {
-    var document = WriteDocumentInternal(_namespace, _key, _data, _jsonTypeInfo);
-    p_cache?.Put(new CacheKey(_namespace, _key), document);
-    return document;
-  }
-
-  /// <summary>
-  /// Upsert document to database
-  /// </summary>
-  public DocumentEntry<T> WriteDocument<T>(
-    string _namespace,
-    int _key,
-    T _data,
-    JsonTypeInfo<T> _jsonTypeInfo) where T : notnull
-  {
-    return WriteDocument(_namespace, _key.ToString(CultureInfo.InvariantCulture), _data, _jsonTypeInfo);
-  }
-
-  /// <summary>
-  /// Upsert document to database
-  /// </summary>
-  public DocumentEntry<T> WriteDocument<T>(
-    string _namespace,
-    string _key,
     T _data) where T : notnull
   {
-    if (p_jsonCtx == null)
-      throw new InvalidOperationException($"You must specify a JsonSerializerContext in constructor");
-
-    var typeInfo = p_jsonCtx.GetTypeInfo(typeof(T));
-    if (typeInfo == null)
-      throw new InvalidOperationException($"Type '{typeof(T).Name}' is not found in JsonSerializerContext!");
-
-    var document = WriteDocumentInternal(_namespace, _key, _data, typeInfo);
+    var document = WriteDocumentInternal(_namespace, _key, _data);
     p_cache?.Put(new CacheKey(_namespace, _key), document);
     return document;
   }
@@ -244,32 +216,6 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     T _data) where T : notnull
   {
     return WriteDocument(_namespace, _key.ToString(CultureInfo.InvariantCulture), _data);
-  }
-
-  /// <summary>
-  /// Upsert document to database
-  /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
-  /// </summary>
-  public DocumentEntry<T> WriteSimpleDocument<T>(
-    string _entryId,
-    T _data,
-    JsonTypeInfo<T> _jsonTypeInfo) where T : notnull
-  {
-    var ns = typeof(T).GetNamespaceFromType();
-    return WriteDocument(ns, _entryId, _data, _jsonTypeInfo);
-  }
-
-  /// <summary>
-  /// Upsert document to database
-  /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
-  /// </summary>
-  public DocumentEntry<T> WriteSimpleDocument<T>(
-    int _entryId,
-    T _data,
-    JsonTypeInfo<T> _jsonTypeInfo) where T : notnull
-  {
-    var ns = typeof(T).GetNamespaceFromType();
-    return WriteDocument(ns, _entryId, _data, _jsonTypeInfo);
   }
 
   /// <summary>
@@ -397,10 +343,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     using var cmd = connection.CreateCommand();
     cmd.CommandText = listSql;
 
-    if (_namespace != null)
-      cmd.Parameters.AddWithValue("@namespace", _namespace);
-    else
-      cmd.Parameters.AddWithValue("@namespace", DBNull.Value);
+    cmd.Parameters.AddWithNullableValue("@namespace", _namespace);
 
     if (_keyLikeExpression != null)
       cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression.Pattern);
@@ -491,7 +434,6 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// </summary>
   public IEnumerable<DocumentEntry<T>> ListDocuments<T>(
     string _namespace,
-    JsonTypeInfo _jsonTypeInfo,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null)
@@ -534,45 +476,22 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       var lastModified = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
       var created = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
       var version = reader.GetInt64(4);
-      var data = (T?)JsonSerializer.Deserialize(reader.GetString(5), _jsonTypeInfo);
+
+      T? data;
+      if (p_jsonCtx != null)
+        data = (T?)JsonSerializer.Deserialize(reader.GetString(5), typeof(T), p_jsonCtx);
+      else
+#pragma warning disable IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
+#pragma warning disable IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.
+        data = JsonSerializer.Deserialize<T>(reader.GetString(5));
+#pragma warning restore IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.
+#pragma warning restore IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
+
       if (data == null)
         throw new FormatException($"Data of document '{docId}' is malformed!");
 
       yield return new DocumentEntry<T>(docId, _namespace, key, lastModified, created, version, data);
     }
-  }
-
-  /// <summary>
-  /// List documents
-  /// </summary>
-  public IEnumerable<DocumentEntry<T>> ListDocuments<T>(
-    string _namespace,
-    LikeExpr? _keyLikeExpression = null,
-    DateTimeOffset? _from = null,
-    DateTimeOffset? _to = null)
-  {
-    if (p_jsonCtx == null)
-      throw new InvalidOperationException($"You must specify a JsonSerializerContext in constructor");
-
-    var typeInfo = p_jsonCtx.GetTypeInfo(typeof(T));
-    if (typeInfo == null)
-      throw new InvalidOperationException($"Type '{typeof(T).Name}' is not found in JsonSerializerContext!");
-
-    return ListDocuments<T>(_namespace, typeInfo, _keyLikeExpression, _from, _to);
-  }
-
-  /// <summary>
-  /// List documents
-  /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
-  /// </summary>
-  public IEnumerable<DocumentEntry<T>> ListSimpleDocuments<T>(
-    JsonTypeInfo<T> _jsonTypeInfo,
-    LikeExpr? _keyLikeExpression = null,
-    DateTimeOffset? _from = null,
-    DateTimeOffset? _to = null)
-  {
-    var ns = typeof(T).GetNamespaceFromType();
-    return ListDocuments<T>(ns, _jsonTypeInfo, _keyLikeExpression, _from, _to);
   }
 
   /// <summary>
@@ -590,8 +509,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
 
   private DocumentEntry<T>? ReadDocumentInternal<T>(
     string _namespace,
-    string _key,
-    JsonTypeInfo _jsonTypeInfo)
+    string _key)
   {
     var readSql =
       $"SELECT doc_id, key, last_modified, created, version, data " +
@@ -601,67 +519,38 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       $"  key=@key; ";
 
     using var connection = GetConnection();
+    using var cmd = connection.CreateCommand();
+    cmd.CommandText = readSql;
+    cmd.Parameters.AddWithValue("@namespace", _namespace);
+    cmd.Parameters.AddWithValue("@key", _key);
 
-    //p_accessSemaphore.Wait();
-    try
+    using var reader = cmd.ExecuteReader();
+    if (reader.Read())
     {
-      using var cmd = connection.CreateCommand();
-      cmd.CommandText = readSql;
-      cmd.Parameters.AddWithValue("@namespace", _namespace);
-      cmd.Parameters.AddWithValue("@key", _key);
+      var docId = reader.GetInt32(0);
+      var optionalKey = reader.GetString(1);
+      var lastModified = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
+      var created = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
+      var version = reader.GetInt64(4);
+      var json = reader.GetString(5);
 
-      using var reader = cmd.ExecuteReader();
-      if (reader.Read())
-      {
-        var docId = reader.GetInt32(0);
-        var optionalKey = reader.GetString(1);
-        var lastModified = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
-        var created = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
-        var version = reader.GetInt64(4);
-        var json = reader.GetString(5);
-        var data = (T?)JsonSerializer.Deserialize(json, _jsonTypeInfo);
+      T? data;
+      if (p_jsonCtx != null)
+        data = (T?)JsonSerializer.Deserialize(json, typeof(T), p_jsonCtx);
+      else
+#pragma warning disable IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
+#pragma warning disable IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.
+        data = JsonSerializer.Deserialize<T>(json);
+#pragma warning restore IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.
+#pragma warning restore IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
 
-        if (data == null)
-          throw new FormatException($"Data of document '{docId}' is malformed!");
+      if (data == null)
+        throw new FormatException($"Data of document '{docId}' is malformed!");
 
-        return new DocumentEntry<T>(docId, _namespace, optionalKey, lastModified, created, version, data);
-      }
-
-      return null;
+      return new DocumentEntry<T>(docId, _namespace, optionalKey, lastModified, created, version, data);
     }
-    finally
-    {
-      //p_accessSemaphore.Release();
-    }
-  }
 
-  /// <summary>
-  /// Read document from the database
-  /// </summary>
-  public DocumentEntry<T>? ReadDocument<T>(
-    string _namespace,
-    string _key,
-    JsonTypeInfo<T> _jsonTypeInfo)
-  {
-    if (p_cache?.TryGet(new CacheKey(_namespace, _key), out var cachedValue) == true)
-      return cachedValue as DocumentEntry<T>;
-
-    var result = ReadDocumentInternal<T>(_namespace, _key, _jsonTypeInfo);
-
-    p_cache?.Put(new CacheKey(_namespace, _key), result);
-
-    return result;
-  }
-
-  /// <summary>
-  /// Read document from the database
-  /// </summary>
-  public DocumentEntry<T>? ReadDocument<T>(
-    string _namespace,
-    int _key,
-    JsonTypeInfo<T> _jsonTypeInfo)
-  {
-    return ReadDocument(_namespace, _key.ToString(CultureInfo.InvariantCulture), _jsonTypeInfo);
+    return null;
   }
 
   /// <summary>
@@ -674,14 +563,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     if (p_cache?.TryGet(new CacheKey(_namespace, _key), out var cachedValue) == true)
       return cachedValue as DocumentEntry<T>;
 
-    if (p_jsonCtx == null)
-      throw new InvalidOperationException($"You must specify a JsonSerializerContext in constructor");
-
-    var typeInfo = p_jsonCtx.GetTypeInfo(typeof(T));
-    if (typeInfo == null)
-      throw new InvalidOperationException($"Type '{typeof(T).Name}' is not found in JsonSerializerContext!");
-
-    var result = ReadDocumentInternal<T>(_namespace, _key, typeInfo);
+    var result = ReadDocumentInternal<T>(_namespace, _key);
 
     p_cache?.Put(new CacheKey(_namespace, _key), result);
 
@@ -696,30 +578,6 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     int _key)
   {
     return ReadDocument<T>(_namespace, _key.ToString(CultureInfo.InvariantCulture));
-  }
-
-  /// <summary>
-  /// Read document from the database and deserialize data
-  /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
-  /// </summary>
-  public DocumentEntry<T>? ReadSimpleDocument<T>(
-    string _entryId,
-    JsonTypeInfo<T> _jsonTypeInfo) where T : notnull
-  {
-    var ns = typeof(T).GetNamespaceFromType();
-    return ReadDocument(ns, _entryId, _jsonTypeInfo);
-  }
-
-  /// <summary>
-  /// Read document from the database and deserialize data
-  /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
-  /// </summary>
-  public DocumentEntry<T>? ReadSimpleDocument<T>(
-    int _entryId,
-    JsonTypeInfo<T> _jsonTypeInfo) where T : notnull
-  {
-    var ns = typeof(T).GetNamespaceFromType();
-    return ReadDocument(ns, _entryId, _jsonTypeInfo);
   }
 
   /// <summary>
