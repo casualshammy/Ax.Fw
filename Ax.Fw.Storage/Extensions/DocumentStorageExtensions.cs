@@ -1,4 +1,5 @@
 ﻿using Ax.Fw.SharedTypes.Attributes;
+using Microsoft.Data.Sqlite;
 using System.Collections.Concurrent;
 using System.Reflection;
 
@@ -26,6 +27,17 @@ internal static class DocumentStorageExtensions
 
     p_namespacePerType[_type] = ns;
     return ns;
+  }
+
+  internal static SqliteParameter AddWithNullableValue(
+    this SqliteParameterCollection _collection, 
+    string _key, 
+    object? _value)
+  {
+    if (_value != null)
+      return _collection.AddWithValue(_key, _value);
+    else
+      return _collection.AddWithValue(_key, DBNull.Value);
   }
 
 }
