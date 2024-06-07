@@ -164,3 +164,57 @@ public static class UtilitiesIO
   }
 
 }
+
+public static class TaskUtils
+{
+  public static async Task<Tuple<T1, T2>> WhenAll<T1, T2>(
+    Task<T1> _task1,
+    Task<T2> _task2)
+  {
+    await Task.WhenAll(_task1, _task2);
+    return new Tuple<T1, T2>(_task1.Result, _task2.Result);
+  }
+
+  public static async Task<Tuple<T1, T2, T3>> WhenAll<T1, T2, T3>(
+    Task<T1> _task1,
+    Task<T2> _task2,
+    Task<T3> _task3)
+  {
+    await Task.WhenAll(_task1, _task2, _task3);
+    return new Tuple<T1, T2, T3>(_task1.Result, _task2.Result, _task3.Result);
+  }
+
+  public static async Task<Tuple<T1, T2, T3, T4>> WhenAll<T1, T2, T3, T4>(
+    Task<T1> _task1,
+    Task<T2> _task2,
+    Task<T3> _task3,
+    Task<T4> _task4)
+  {
+    await Task.WhenAll(_task1, _task2, _task3, _task4);
+    return new Tuple<T1, T2, T3, T4>(_task1.Result, _task2.Result, _task3.Result, _task4.Result);
+  }
+
+  public static async Task<Tuple<T1, T2, T3, T4, T5>> WhenAll<T1, T2, T3, T4, T5>(
+    Task<T1> _task1,
+    Task<T2> _task2,
+    Task<T3> _task3,
+    Task<T4> _task4,
+    Task<T5> _task5)
+  {
+    await Task.WhenAll(_task1, _task2, _task3, _task4, _task5);
+    return new Tuple<T1, T2, T3, T4, T5>(_task1.Result, _task2.Result, _task3.Result, _task4.Result, _task5.Result);
+  }
+
+  public static async Task<Tuple<T1, T2, T3, T4, T5, T6>> WhenAll<T1, T2, T3, T4, T5, T6>(
+    Task<T1> _task1,
+    Task<T2> _task2,
+    Task<T3> _task3,
+    Task<T4> _task4,
+    Task<T5> _task5,
+    Task<T6> _task6)
+  {
+    await Task.WhenAll(_task1, _task2, _task3, _task4, _task5, _task6);
+    return new Tuple<T1, T2, T3, T4, T5, T6>(_task1.Result, _task2.Result, _task3.Result, _task4.Result, _task5.Result, _task6.Result);
+  }
+
+}
