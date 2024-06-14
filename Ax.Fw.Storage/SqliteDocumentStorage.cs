@@ -104,30 +104,29 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
         .Subscribe(_ =>
         {
           var now = DateTimeOffset.UtcNow;
-          var docsToDeleteBuilder = ImmutableHashSet.CreateBuilder<DocumentEntryMeta>();
+          var docsToDelete = new HashSet<DocumentEntryMeta>();
 
           foreach (var doc in ListDocumentsMeta((string?)null))
           {
             var docAge = now - doc.Created;
             var docLastModifiedAge = now - doc.LastModified;
             if (_retentionOptions.DocumentMaxAgeFromCreation != null && docAge > _retentionOptions.DocumentMaxAgeFromCreation)
-              docsToDeleteBuilder.Add(doc);
+              docsToDelete.Add(doc);
             else if (_retentionOptions.DocumentMaxAgeFromLastChange != null && docLastModifiedAge > _retentionOptions.DocumentMaxAgeFromLastChange)
-              docsToDeleteBuilder.Add(doc);
+              docsToDelete.Add(doc);
           }
 
-          foreach (var doc in docsToDeleteBuilder)
+          foreach (var doc in docsToDelete)
           {
             DeleteDocuments(doc.Namespace, doc.Key, null, null);
             RemoveEntriesFromCache(doc.Namespace, doc.Key);
           }
 
-          if (docsToDeleteBuilder.Count > 0 && _retentionOptions.OnDocsDeleteCallback != null)
+          if (docsToDelete.Count > 0 && _retentionOptions.OnDocsDeleteCallback != null)
           {
             try
             {
-              var hashSet = docsToDeleteBuilder.ToImmutable();
-              _retentionOptions.OnDocsDeleteCallback.Invoke(hashSet);
+              _retentionOptions.OnDocsDeleteCallback.Invoke(docsToDelete);
             }
             catch { }
           }
@@ -251,7 +250,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null)
   {
-    var deleteSql =
+    const string deleteSql =
       $"DELETE FROM document_data " +
       $"WHERE " +
       $"  @namespace=namespace AND " +
@@ -261,7 +260,6 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
 
     using var connection = GetConnection();
 
-    //await p_accessSemaphore.WaitAsync(_ct);
     try
     {
       using var cmd = connection.CreateCommand();
@@ -288,7 +286,6 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     finally
     {
       RemoveEntriesFromCache(_namespace, _key);
-      //p_accessSemaphore.Release();
     }
   }
 
@@ -511,7 +508,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     string _namespace,
     string _key)
   {
-    var readSql =
+    const string readSql =
       $"SELECT doc_id, key, last_modified, created, version, data " +
       $"FROM document_data " +
       $"WHERE " +
@@ -633,7 +630,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     string? _namespace,
     LikeExpr? _keyLikeExpression)
   {
-    var readSql =
+    const string readSql =
       $"SELECT COUNT(*) " +
       $"FROM document_data " +
       $"WHERE " +
@@ -701,7 +698,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
 
   private SqliteConnection GetConnection()
   {
-    var connection = ToDispose(new SqliteConnection($"Data Source={p_dbFilePath};"));
+    var connection = new SqliteConnection($"Data Source={p_dbFilePath};");
     connection.Open();
     return connection;
   }
