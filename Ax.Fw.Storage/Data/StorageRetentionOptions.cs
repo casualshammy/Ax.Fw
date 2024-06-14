@@ -6,4 +6,4 @@ public record StorageRetentionOptions(
   TimeSpan? DocumentMaxAgeFromCreation,
   TimeSpan? DocumentMaxAgeFromLastChange,
   TimeSpan? ScanInterval,
-  Action<ImmutableHashSet<DocumentEntryMeta>>? OnDocsDeleteCallback = null);
+  Action<IReadOnlySet<DocumentEntryMeta>>? OnDocsDeleteCallback = null);
