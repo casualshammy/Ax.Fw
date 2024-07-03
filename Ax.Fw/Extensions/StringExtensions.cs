@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.IO;
+using System.Text;
 
 namespace Ax.Fw.Extensions;
 
@@ -42,6 +44,23 @@ public static class StringExtensions
     }
 
     return false;
+  }
+
+  public static string ToSafeFilePath(this string _str)
+  {
+    var sb = new StringBuilder(_str);
+    foreach (var c in Path.GetInvalidFileNameChars())
+      sb.Replace(c, '-');
+
+    return sb.ToString();
+  }
+
+  public static string Truncate(this string _str, int _maxLength)
+  {
+    if (_str.Length <= _maxLength)
+      return _str;
+
+    return _str[.._maxLength];
   }
 
 }
