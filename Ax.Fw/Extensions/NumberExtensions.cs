@@ -11,4 +11,18 @@ public static class NumberExtensions
 
     return _value;
   }
+
+
+  public static string ToHumanBytes(this long _value, int _fractions = 0)
+  {
+    if (_value > 1024 * 1024 * 1024)
+      return (_value / 1024f / 1024f / 1024f).ToString($"F{_fractions}") + " GB";
+    if (_value > 1024 * 1024)
+      return (_value / 1024f / 1024f).ToString($"F{_fractions}") + " MB";
+    if (_value > 1024)
+      return (_value / 1024f).ToString($"F{_fractions}") + " KB";
+
+    return $"{_value} B";
+  }
+
 }
