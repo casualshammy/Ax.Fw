@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 
 namespace Ax.Fw.Extensions;
 
@@ -47,20 +46,20 @@ public static class DictionaryExtensions
     return true;
   }
 
-  public static V AddOrUpdate<K, V>(
-    this ImmutableDictionary<K, V>.Builder _builder, 
+  public static V AddOrUpdateValue<K, V>(
+    this IDictionary<K, V> _dictionary, 
     K _key,
     V _value, 
     Func<K, V, V> _updateFactory)
     where K : notnull
   {
     V result;
-    if (_builder.TryGetValue(_key, out var existingValue))
+    if (_dictionary.TryGetValue(_key, out var existingValue))
       result = _updateFactory(_key, existingValue);
     else
       result = _value;
 
-    _builder[_key] = result;
+    _dictionary[_key] = result;
     return result;
   }
 
