@@ -11,24 +11,18 @@ namespace Ax.Fw;
 /// <typeparam name="T"></typeparam>
 public class RxProperty<T> : IRxProperty<T>
 {
-  private readonly ReplaySubject<T> p_replaySubject;
+  private readonly BehaviorSubject<T> p_flow;
 
-  public RxProperty(IObservable<T> _observable, IReadOnlyLifetime _lifetime, T? _defaultValue = default)
+  public RxProperty(IObservable<T> _observable, IReadOnlyLifetime _lifetime, T _defaultValue = default)
   {
-    p_replaySubject = _lifetime.ToDisposeOnEnding(new ReplaySubject<T>(1));
-
-    Value = _defaultValue;
+    p_flow = _lifetime.ToDisposeOnEnded(new BehaviorSubject<T>(_defaultValue));
 
     _observable
-      .Subscribe(_x =>
-      {
-        Value = _x;
-        p_replaySubject.OnNext(_x);
-      }, _lifetime);
+      .Subscribe(_x => p_flow.OnNext(_x), _lifetime);
   }
 
-  public T? Value { get; private set; }
+  public T Value => p_flow.Value;
 
-  public IDisposable Subscribe(IObserver<T> _observer) => p_replaySubject.Subscribe(_observer);
+  public IDisposable Subscribe(IObserver<T> _observer) => p_flow.Subscribe(_observer);
 
 }

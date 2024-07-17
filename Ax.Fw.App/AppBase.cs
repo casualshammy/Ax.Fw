@@ -237,12 +237,16 @@ public class AppBase
   // ========= CONFIGS =========
   // ===========================
 
-  public AppBase UseConfigFile<T>(string _filePath, JsonSerializerContext? _jsonCtx)
-    where T : class
+  public AppBase UseConfigFile<TRaw, TOut>(
+    string _filePath,
+    JsonSerializerContext? _jsonCtx,
+    Func<TRaw?, TOut?> _transform)
+    where TRaw : class
+    where TOut : class
   {
     p_depMgr.AddSingleton(_ctx =>
     {
-      return _ctx.CreateInstance<IReadOnlyLifetime, IObservableConfig<T?>>((IReadOnlyLifetime _lifetime) =>
+      return _ctx.CreateInstance<IReadOnlyLifetime, IObservableConfig<TOut?>>((IReadOnlyLifetime _lifetime) =>
       {
         void tryLogDeserializationError(Exception _ex)
         {
@@ -250,11 +254,20 @@ public class AppBase
           log?.Warn($"Can't parse config file '{_filePath}': {_ex.Message}");
         }
 
-        return new ObservableConfig<T>(new JsonStorage<T>(_filePath, _jsonCtx, _lifetime, tryLogDeserializationError));
+        var observable = new JsonStorage<TRaw>(_filePath, _jsonCtx, _lifetime, tryLogDeserializationError)
+          .Select(_transform);
+
+        return new ObservableConfig<TOut>(observable);
       });
     });
 
     return this;
+  }
+
+  public AppBase UseConfigFile<T>(string _filePath, JsonSerializerContext? _jsonCtx)
+    where T : class
+  {
+    return UseConfigFile<T, T>(_filePath, _jsonCtx, _raw => _raw);
   }
 
   public AppBase UseConfigFile<T>()
