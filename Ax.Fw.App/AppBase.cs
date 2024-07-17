@@ -240,7 +240,7 @@ public class AppBase
   public AppBase UseConfigFile<TRaw, TOut>(
     string _filePath,
     JsonSerializerContext? _jsonCtx,
-    Func<TRaw?, TOut?> _transform)
+    Func<IAppDependencyCtx, TRaw?, TOut?> _transform)
     where TRaw : class
     where TOut : class
   {
@@ -255,7 +255,7 @@ public class AppBase
         }
 
         var observable = new JsonStorage<TRaw>(_filePath, _jsonCtx, _lifetime, tryLogDeserializationError)
-          .Select(_transform);
+          .Select(_ => _transform(_ctx, _));
 
         return new ObservableConfig<TOut>(observable);
       });
@@ -267,7 +267,7 @@ public class AppBase
   public AppBase UseConfigFile<T>(string _filePath, JsonSerializerContext? _jsonCtx)
     where T : class
   {
-    return UseConfigFile<T, T>(_filePath, _jsonCtx, _raw => _raw);
+    return UseConfigFile<T, T>(_filePath, _jsonCtx, (_, _raw) => _raw);
   }
 
   public AppBase UseConfigFile<T>()
