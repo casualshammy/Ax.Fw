@@ -47,9 +47,9 @@ public static class DictionaryExtensions
   }
 
   public static V AddOrUpdateValue<K, V>(
-    this IDictionary<K, V> _dictionary, 
+    this IDictionary<K, V> _dictionary,
     K _key,
-    V _value, 
+    V _value,
     Func<K, V, V> _updateFactory)
     where K : notnull
   {
@@ -62,5 +62,8 @@ public static class DictionaryExtensions
     _dictionary[_key] = result;
     return result;
   }
+
+  public static IReadOnlyDictionary<K, V> ToReadOnly<K, V>(this IDictionary<K, V> _dictionary)
+    => (IReadOnlyDictionary<K, V>)_dictionary;
 
 }

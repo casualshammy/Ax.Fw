@@ -232,7 +232,7 @@ public static class IObservableExtensions
           }
           finally
           {
-            Debug.WriteLine($"-counter: {Interlocked.Decrement(ref waitingNotificationsCount)}");
+            Interlocked.Decrement(ref waitingNotificationsCount);
           }
         }, _scheduler)
         .Subscribe();
@@ -248,7 +248,7 @@ public static class IObservableExtensions
             return;
 
           // посылаем уведомление
-          Debug.WriteLine($"+counter: {Interlocked.Increment(ref waitingNotificationsCount)}");
+          Interlocked.Increment(ref waitingNotificationsCount);
           notificationSubj.OnNext(Unit.Default);
         }, () =>
         {
