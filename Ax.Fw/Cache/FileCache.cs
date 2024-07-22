@@ -1,6 +1,9 @@
-﻿using Ax.Fw.Extensions;
+﻿using Ax.Fw.Cache.Parts;
+using Ax.Fw.Extensions;
+using Ax.Fw.SharedTypes.Data.Cache;
 using Ax.Fw.SharedTypes.Interfaces;
 using System;
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
@@ -91,22 +94,29 @@ public class FileCache
   public async Task StoreAsync(
     string _key,
     Stream _inStream,
+    string? _mime = null,
     bool _throwExceptions = false,
     CancellationToken _ct = default)
   {
     var folder = GetFolderForKey(_key, out var hash);
-    var file = Path.Combine(folder, hash);
-    var tmpFile = Path.Combine(folder, $"{hash}_{Random.Shared.Next():X}.tmp");
+
+    var filePath = Path.Combine(folder, hash);
+    var tmpFilePath = Path.Combine(folder, $"{hash}_{Random.Shared.Next():X}.tmp");
 
     try
     {
-      if (!Directory.Exists(folder))
-        Directory.CreateDirectory(folder);
+      Directory.CreateDirectory(folder);
 
-      using (var fileStream = File.Open(tmpFile, FileMode.Create, FileAccess.Write, FileShare.None))
+      using (var fileStream = File.Open(tmpFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
+      {
+        var header = new FileCacheEntryHeader() { Mime = _mime ?? MimeTypes.Bin };
+        var headerBytes = header.MarshalToByteArray();
+        await fileStream.WriteAsync(headerBytes, _ct);
+
         await _inStream.CopyToAsync(fileStream, _ct);
+      }
 
-      File.Move(tmpFile, file, true);
+      File.Move(tmpFilePath, filePath, true);
     }
     catch (Exception)
     {
@@ -115,44 +125,39 @@ public class FileCache
     }
     finally
     {
-      new FileInfo(tmpFile).TryDelete();
-    }
-  }
-
-  public Stream? Get(string _key)
-  {
-    if (!IsKeyExists(_key, out var path, out _))
-      return null;
-
-    try
-    {
-      return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-    }
-    catch
-    {
-      return null;
+      new FileInfo(tmpFilePath).TryDelete();
     }
   }
 
   public bool TryGet(
     string _key,
     [NotNullWhen(true)] out Stream? _stream,
-    [NotNullWhen(true)] out string? _filePath,
-    [NotNullWhen(true)] out string? _hash)
+    [NotNullWhen(true)] out FileCacheEntryMeta? _meta)
   {
     _stream = null;
-    _filePath = null;
-    _hash = null;
+    _meta = null;
 
     if (!IsKeyExists(_key, out var path, out var hash))
       return false;
 
     try
     {
-      _stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-      _filePath = path;
-      _hash = hash;
-      return true;
+      var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+      var headerBytes = ArrayPool<byte>.Shared.Rent(FileCacheEntryHeader.Size);
+      try
+      {
+        stream.ReadExactly(headerBytes.AsSpan()[..FileCacheEntryHeader.Size]);
+        var header = headerBytes.ToStruct<FileCacheEntryHeader>();
+
+        _stream = stream;
+        _meta = new FileCacheEntryMeta(path, hash, header.Mime);
+
+        return true;
+      }
+      finally
+      {
+        ArrayPool<byte>.Shared.Return(headerBytes);
+      }
     }
     catch
     {

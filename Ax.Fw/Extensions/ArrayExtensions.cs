@@ -1,12 +1,13 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 
 namespace Ax.Fw.Extensions;
 
 public static class ArrayExtensions
 {
   public static void Deconstruct<T>(
-    this T[] _array, 
-    out T _item0, 
+    this T[] _array,
+    out T _item0,
     out T _item1)
   {
     if (_array.Length < 2)
@@ -17,9 +18,9 @@ public static class ArrayExtensions
   }
 
   public static void Deconstruct<T>(
-    this T[] _array, 
-    out T _item0, 
-    out T _item1, 
+    this T[] _array,
+    out T _item0,
+    out T _item1,
     out T _item2)
   {
     if (_array.Length < 3)
@@ -31,10 +32,10 @@ public static class ArrayExtensions
   }
 
   public static void Deconstruct<T>(
-    this T[] _array, 
-    out T _item0, 
-    out T _item1, 
-    out T _item2, 
+    this T[] _array,
+    out T _item0,
+    out T _item1,
+    out T _item2,
     out T _item3)
   {
     if (_array.Length < 4)
@@ -47,11 +48,11 @@ public static class ArrayExtensions
   }
 
   public static void Deconstruct<T>(
-    this T[] _array, 
-    out T _item0, 
-    out T _item1, 
-    out T _item2, 
-    out T _item3, 
+    this T[] _array,
+    out T _item0,
+    out T _item1,
+    out T _item2,
+    out T _item3,
     out T _item4)
   {
     if (_array.Length < 5)
@@ -62,6 +63,34 @@ public static class ArrayExtensions
     _item2 = _array[2];
     _item3 = _array[3];
     _item4 = _array[4];
+  }
+
+  public static T ToStruct<T>(this byte[] _array)
+    where T : struct
+  {
+    var result = new T();
+    var size = Marshal.SizeOf(result);
+
+    var ptr = IntPtr.Zero;
+    try
+    {
+      ptr = Marshal.AllocHGlobal(size);
+      Marshal.Copy(_array, 0, ptr, size);
+      result = (T)Marshal.PtrToStructure(ptr, typeof(T))!;
+    }
+    finally
+    {
+      Marshal.FreeHGlobal(ptr);
+    }
+
+    return result;
+  }
+
+  public static T ToStruct<T>(this Span<byte> _span)
+    where T : struct
+  {
+    var result = MemoryMarshal.Read<T>(_span);
+    return result;
   }
 
 }
