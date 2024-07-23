@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -99,8 +100,9 @@ public class FileCache
     CancellationToken _ct = default)
   {
     var folder = GetFolderForKey(_key, out var hash);
+    var fileName = GetFileNameForHash(hash);
 
-    var filePath = Path.Combine(folder, hash);
+    var filePath = Path.Combine(folder, fileName);
     var tmpFilePath = Path.Combine(folder, $"{hash}_{Random.Shared.Next():X}.tmp");
 
     try
@@ -174,7 +176,9 @@ public class FileCache
     _hash = null;
 
     var folder = GetFolderForKey(_key, out var hash);
-    var file = new FileInfo(Path.Combine(folder, hash));
+    var fileName = GetFileNameForHash(hash);
+
+    var file = new FileInfo(Path.Combine(folder, fileName));
     if (!file.Exists)
       return false;
 
@@ -231,5 +235,8 @@ public class FileCache
     var folder = Path.Combine(p_folder, _hash[..2], _hash[2..4]);
     return folder;
   }
+
+  [MethodImpl(MethodImplOptions.AggressiveInlining)]
+  private static string GetFileNameForHash(string _hash) => $"{_hash}.v1";
 
 }

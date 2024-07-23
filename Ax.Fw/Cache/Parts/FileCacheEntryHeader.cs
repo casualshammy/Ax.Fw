@@ -8,8 +8,8 @@ namespace Ax.Fw.Cache.Parts;
   Pack = 1)]
 internal struct FileCacheEntryHeader
 {
-    public const int Size = 512;
+  public const int Size = 512;
 
-    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
-    public required string Mime;
+  [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+  public required string Mime;
 }
