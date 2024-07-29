@@ -2,6 +2,7 @@
 using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Data.Cache;
 using Ax.Fw.SharedTypes.Interfaces;
+using Ax.Fw.Streams;
 using System;
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
@@ -151,7 +152,7 @@ public class FileCache
         stream.ReadExactly(headerBytes.AsSpan()[..FileCacheEntryHeader.Size]);
         var header = headerBytes.ToStruct<FileCacheEntryHeader>();
 
-        _stream = stream;
+        _stream = new StreamWrapper(stream, stream.Length - FileCacheEntryHeader.Size, true);
         _meta = new FileCacheEntryMeta(path, hash, header.Mime);
 
         return true;

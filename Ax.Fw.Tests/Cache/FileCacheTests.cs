@@ -99,7 +99,7 @@ public class FileCacheTests
         var key = $"test-key-{i}";
         ms.Position = 0;
         await cache.StoreAsync(key, ms, null, true, lifetime.Token);
-        await Task.Delay(1000);
+        await Task.Delay(250);
       }
 
       await cache.CleanFilesWaitAsync(lifetime.Token);
@@ -145,6 +145,43 @@ public class FileCacheTests
         Assert.Fail();
 
       Assert.Equal(meta.Mime, _mime ?? MimeTypes.Bin);
+    }
+    finally
+    {
+      p_semaphore.Release();
+    }
+  }
+
+  [Fact(Timeout = 30000)]
+  public async Task CachedStreamLengthIsEqualToDataLengthAsync()
+  {
+    await p_semaphore.WaitAsync();
+    try
+    {
+      using var lifetime = new Lifetime();
+      var tempDir = Path.Combine(Path.GetTempPath(), Random.Shared.Next().ToString());
+      var cache = new FileCache(lifetime, tempDir, TimeSpan.FromDays(1), 1024 * 1024, TimeSpan.FromMinutes(10));
+
+      var data = new byte[1024];
+      Random.Shared.NextBytes(data);
+      using var ms = new MemoryStream();
+      await ms.WriteAsync(data, lifetime.Token);
+
+      ms.Position = 0;
+      await cache.StoreAsync("test-key", ms, null, true, lifetime.Token);
+
+      await cache.CleanFilesWaitAsync(lifetime.Token);
+
+      if (!cache.TryGet("test-key", out var cachedStream, out var meta))
+        Assert.Fail();
+
+      using (cachedStream)
+      {
+        Assert.Equal(data.Length, cachedStream.Length);
+        Assert.Equal(0, cachedStream.Position);
+      }
+
+      Assert.Throws<ObjectDisposedException>(() => cachedStream.Seek(5, SeekOrigin.Begin));
     }
     finally
     {
