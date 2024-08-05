@@ -1,6 +1,8 @@
 ﻿using Ax.Fw.Converters;
+using Ax.Fw.Extensions;
 using System;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
 namespace Ax.Fw;
@@ -39,6 +41,28 @@ public class SerializableVersion : IEquatable<SerializableVersion>, IComparable<
   public int Minor { get; }
 
   public int Build { get; }
+
+  public static bool TryParse(string? _string, [NotNullWhen(true)] out SerializableVersion? _value)
+  {
+    _value = null;
+
+    if (_string.IsNullOrWhiteSpace())
+      return false;
+
+    var split = _string.Split('.', StringSplitOptions.RemoveEmptyEntries);
+    if (split.Length != 3)
+      return false;
+
+    if (!int.TryParse(split[0], out var major))
+      return false;
+    if (!int.TryParse(split[1], out var minor))
+      return false;
+    if (!int.TryParse(split[2], out var build))
+      return false;
+
+    _value = new SerializableVersion(major, minor, build);
+    return true;
+  }
 
   public static bool operator ==(SerializableVersion? _a, SerializableVersion? _b)
   {
