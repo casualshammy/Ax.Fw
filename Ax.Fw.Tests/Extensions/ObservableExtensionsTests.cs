@@ -1,5 +1,6 @@
 ﻿using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Interfaces;
+using Ax.Fw.Tests.Tools;
 using System;
 using System.Diagnostics;
 using System.Reactive;
@@ -130,6 +131,42 @@ public class ObservableExtensionsTests
 
     Assert.True(completed);
     Assert.Equal(1L, Interlocked.Read(ref counter));
+
+  }
+
+  [Theory(Timeout = 5000)]
+  [Repeat(10)]
+  public async Task FirstOrDefaultAsync_BasicTestAsync(int _repeat)
+  {
+    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+
+    var data = _repeat * 100;
+
+    {
+      var result = await Observable
+        .Return(data)
+        .FirstOrDefaultAsync(cts.Token);
+
+      Assert.Equal(data, result);
+    }
+
+    {
+      var result = await Observable
+        .Timer(TimeSpan.FromSeconds(1))
+        .Select(_ => data)
+        .FirstOrDefaultAsync(cts.Token);
+
+      Assert.Equal(data, result);
+    }
+
+    {
+      var result = await Observable
+        .Timer(TimeSpan.FromSeconds(5))
+        .Select(_ => data)
+        .FirstOrDefaultAsync(cts.Token);
+
+      Assert.Equal(default, result);
+    }
 
   }
 
