@@ -264,6 +264,30 @@ public static class IObservableExtensions
     });
   }
 
+  public static async Task<T?> FirstOrDefaultAsync<T>(
+    this IObservable<T> _observable, 
+    CancellationToken _ct)
+  {
+    T? result = default;
+
+    using var cts = CancellationTokenSource.CreateLinkedTokenSource(_ct);
+
+    _observable
+      .Take(1)
+      .Subscribe(_ =>
+      {
+        result = _;
+        cts.Cancel();
+      }, cts.Token);
+
+    try
+    {
+      await Task.Delay(-1, cts.Token);
+    }
+    catch (OperationCanceledException) { }
+    
+    return result;
+  }
 
   static class ImmutableHashSetComparer<T>
   {
