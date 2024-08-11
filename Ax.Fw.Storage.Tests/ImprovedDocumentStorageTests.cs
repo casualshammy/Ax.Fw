@@ -103,7 +103,10 @@ public class ImprovedDocumentStorageTests
         dbFile,
         ImprovedDocumentStorageTestsV2JsonCtx.Default,
         null,
-        new StorageRetentionOptions(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(100), _deletedDocsMeta => counter += _deletedDocsMeta.Count));
+        new StorageRetentionOptions(
+          [StorageRetentionRule.CreateForType<DataRecord>(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1))],
+          TimeSpan.FromMilliseconds(100),
+          _deletedDocsMeta => counter += _deletedDocsMeta.Count));
 
       lifetime.ToDisposeOnEnding(storage);
 

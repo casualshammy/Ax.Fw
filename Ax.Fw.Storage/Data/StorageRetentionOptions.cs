@@ -1,9 +1,6 @@
-﻿using System.Collections.Immutable;
-
-namespace Ax.Fw.Storage.Data;
+﻿namespace Ax.Fw.Storage.Data;
 
 public record StorageRetentionOptions(
-  TimeSpan? DocumentMaxAgeFromCreation,
-  TimeSpan? DocumentMaxAgeFromLastChange,
+  IReadOnlyList<StorageRetentionRule> Rules,
   TimeSpan? ScanInterval,
   Action<IReadOnlySet<DocumentEntryMeta>>? OnDocsDeleteCallback = null);
