@@ -9,7 +9,7 @@ internal static class DocumentStorageExtensions
 {
   private static readonly ConcurrentDictionary<Type, string> p_namespacePerType = new();
 
-  internal static string GetNamespaceFromType(this Type _type)
+  public static string GetNamespaceFromType(this Type _type)
   {
     if (p_namespacePerType.TryGetValue(_type, out var ns))
       return ns;
@@ -29,7 +29,7 @@ internal static class DocumentStorageExtensions
     return ns;
   }
 
-  internal static SqliteParameter AddWithNullableValue(
+  public static SqliteParameter AddWithNullableValue(
     this SqliteParameterCollection _collection, 
     string _key, 
     object? _value)

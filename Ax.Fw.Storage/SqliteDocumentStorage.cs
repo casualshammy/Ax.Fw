@@ -1,11 +1,9 @@
 ﻿using Ax.Fw.Cache;
 using Ax.Fw.Extensions;
-using Ax.Fw.Pools;
 using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Extensions;
 using Ax.Fw.Storage.Interfaces;
 using Microsoft.Data.Sqlite;
-using System.Collections.Immutable;
 using System.Globalization;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
@@ -95,7 +93,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
 
     if (_retentionOptions != null)
     {
-      ToDisposeOnEnded(SharedPool<EventLoopScheduler>.Get(out var scheduler));
+      var scheduler = ToDisposeOnEnded(new EventLoopScheduler());
 
       var subs = Observable
         .Interval(_retentionOptions.ScanInterval ?? TimeSpan.FromMinutes(10), scheduler)
@@ -106,14 +104,17 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
           var now = DateTimeOffset.UtcNow;
           var docsToDelete = new HashSet<DocumentEntryMeta>();
 
-          foreach (var doc in ListDocumentsMeta((string?)null))
+          foreach (var rule in _retentionOptions.Rules)
           {
-            var docAge = now - doc.Created;
-            var docLastModifiedAge = now - doc.LastModified;
-            if (_retentionOptions.DocumentMaxAgeFromCreation != null && docAge > _retentionOptions.DocumentMaxAgeFromCreation)
-              docsToDelete.Add(doc);
-            else if (_retentionOptions.DocumentMaxAgeFromLastChange != null && docLastModifiedAge > _retentionOptions.DocumentMaxAgeFromLastChange)
-              docsToDelete.Add(doc);
+            foreach (var doc in ListDocumentsMeta(rule.Namespace))
+            {
+              var docAge = now - doc.Created;
+              var docLastModifiedAge = now - doc.LastModified;
+              if (rule.DocumentMaxAgeFromCreation != null && docAge > rule.DocumentMaxAgeFromCreation)
+                docsToDelete.Add(doc);
+              else if (rule.DocumentMaxAgeFromLastChange != null && docLastModifiedAge > rule.DocumentMaxAgeFromLastChange)
+                docsToDelete.Add(doc);
+            }
           }
 
           foreach (var doc in docsToDelete)
