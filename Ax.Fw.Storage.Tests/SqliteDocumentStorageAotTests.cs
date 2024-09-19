@@ -1,14 +1,11 @@
 using Ax.Fw.Extensions;
 using Ax.Fw.Storage.Data;
-using Ax.Fw.Storage.Extensions;
 using Ax.Fw.Storage.Interfaces;
 using Ax.Fw.Storage.Tests.Data;
 using Ax.Fw.Storage.Tests.JsonCtx;
 using Ax.Fw.Tests.Tools;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
 
 namespace Ax.Fw.Storage.Tests;
 
@@ -25,9 +22,9 @@ public class SqliteDocumentStorageAotTests
     try
     {
       var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, DocumentJsonCtx.Default));
-      var doc = storage.WriteSimpleDocument(_entryId: 123, _data: "test_data");
+      var doc = storage.WriteSimpleDocument(123, _data: "test_data");
 
-      var data0 = storage.ReadSimpleDocument<string>(_entryId: 123);
+      var data0 = storage.ReadSimpleDocument<string>(123);
 
       Assert.Equal("test_data", data0?.Data);
 
