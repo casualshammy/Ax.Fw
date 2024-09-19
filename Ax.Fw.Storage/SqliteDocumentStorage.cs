@@ -4,7 +4,6 @@ using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Extensions;
 using Ax.Fw.Storage.Interfaces;
 using Microsoft.Data.Sqlite;
-using System.Globalization;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Text.Json;
@@ -199,47 +198,24 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// </summary>
   public DocumentEntry<T> WriteDocument<T>(
     string _namespace,
-    string _key,
+    KeyAlike _key,
     T _data) where T : notnull
   {
-    var document = WriteDocumentInternal(_namespace, _key, _data);
-    p_cache?.Put(new CacheKey(_namespace, _key), document);
+    var document = WriteDocumentInternal(_namespace, _key.Key, _data);
+    p_cache?.Put(new CacheKey(_namespace, _key.Key), document);
     return document;
   }
 
   /// <summary>
   /// Upsert document to database
-  /// </summary>
-  public DocumentEntry<T> WriteDocument<T>(
-    string _namespace,
-    int _key,
-    T _data) where T : notnull
-  {
-    return WriteDocument(_namespace, _key.ToString(CultureInfo.InvariantCulture), _data);
-  }
-
-  /// <summary>
-  /// Upsert document to database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
   public DocumentEntry<T> WriteSimpleDocument<T>(
-    string _entryId,
+    KeyAlike _key,
     T _data) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
-    return WriteDocument(ns, _entryId, _data);
-  }
-
-  /// <summary>
-  /// Upsert document to database
-  /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
-  /// </summary>
-  public DocumentEntry<T> WriteSimpleDocument<T>(
-    int _entryId,
-    T _data) where T : notnull
-  {
-    var ns = typeof(T).GetNamespaceFromType();
-    return WriteDocument(ns, _entryId, _data);
+    return WriteDocument(ns, _key, _data);
   }
 
   /// <summary>
@@ -247,7 +223,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// </summary>
   public void DeleteDocuments(
     string _namespace,
-    string? _key,
+    KeyAlike? _key,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null)
   {
@@ -266,57 +242,27 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       using var cmd = connection.CreateCommand();
       cmd.CommandText = deleteSql;
       cmd.Parameters.AddWithValue("@namespace", _namespace);
-
-      if (_key != null)
-        cmd.Parameters.AddWithValue("@key", _key);
-      else
-        cmd.Parameters.AddWithValue("@key", DBNull.Value);
-
-      if (_from != null)
-        cmd.Parameters.AddWithValue("@from", _from.Value.UtcTicks);
-      else
-        cmd.Parameters.AddWithValue("@from", DBNull.Value);
-
-      if (_to != null)
-        cmd.Parameters.AddWithValue("@to", _to.Value.UtcTicks);
-      else
-        cmd.Parameters.AddWithValue("@to", DBNull.Value);
+      cmd.Parameters.AddWithNullableValue("@key", _key?.Key);
+      cmd.Parameters.AddWithNullableValue("@from", _from?.UtcTicks);
+      cmd.Parameters.AddWithNullableValue("@to", _to?.UtcTicks);
 
       cmd.ExecuteNonQuery();
     }
     finally
     {
-      RemoveEntriesFromCache(_namespace, _key);
+      RemoveEntriesFromCache(_namespace, _key?.Key);
     }
   }
 
-  public void DeleteDocuments(
-    string _namespace,
-    int? _key,
-    DateTimeOffset? _from = null,
-    DateTimeOffset? _to = null)
-  {
-    DeleteDocuments(_namespace, _key?.ToString(CultureInfo.InvariantCulture), _from, _to);
-  }
-
   /// <summary>
   /// Delete document from the database
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
-  public void DeleteSimpleDocument<T>(string _entryId) where T : notnull
+  public void DeleteSimpleDocument<T>(
+    KeyAlike _key) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
-    DeleteDocuments(ns, _entryId, null, null);
-  }
-
-  /// <summary>
-  /// Delete document from the database
-  /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
-  /// </summary>
-  public void DeleteSimpleDocument<T>(int _entryId) where T : notnull
-  {
-    var ns = typeof(T).GetNamespaceFromType();
-    DeleteDocuments(ns, _entryId, null, null);
+    DeleteDocuments(ns, _key, null, null);
   }
 
   /// <summary>
@@ -342,21 +288,9 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     cmd.CommandText = listSql;
 
     cmd.Parameters.AddWithNullableValue("@namespace", _namespace);
-
-    if (_keyLikeExpression != null)
-      cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression.Pattern);
-    else
-      cmd.Parameters.AddWithValue("@key_like", DBNull.Value);
-
-    if (_from != null)
-      cmd.Parameters.AddWithValue("@from", _from.Value.UtcTicks);
-    else
-      cmd.Parameters.AddWithValue("@from", DBNull.Value);
-
-    if (_to != null)
-      cmd.Parameters.AddWithValue("@to", _to.Value.UtcTicks);
-    else
-      cmd.Parameters.AddWithValue("@to", DBNull.Value);
+    cmd.Parameters.AddWithNullableValue("@key_like", _keyLikeExpression?.Pattern);
+    cmd.Parameters.AddWithNullableValue("@from", _from?.UtcTicks);
+    cmd.Parameters.AddWithNullableValue("@to", _to?.UtcTicks);
 
     using var reader = cmd.ExecuteReader();
     while (reader.Read())
@@ -393,25 +327,10 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     using var cmd = connection.CreateCommand();
     cmd.CommandText = listSql;
 
-    if (_namespaceLikeExpression != null)
-      cmd.Parameters.AddWithValue("@namespace_like", _namespaceLikeExpression.Pattern);
-    else
-      cmd.Parameters.AddWithValue("@namespace_like", DBNull.Value);
-
-    if (_keyLikeExpression != null)
-      cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression.Pattern);
-    else
-      cmd.Parameters.AddWithValue("@key_like", DBNull.Value);
-
-    if (_from != null)
-      cmd.Parameters.AddWithValue("@from", _from.Value.UtcTicks);
-    else
-      cmd.Parameters.AddWithValue("@from", DBNull.Value);
-
-    if (_to != null)
-      cmd.Parameters.AddWithValue("@to", _to.Value.UtcTicks);
-    else
-      cmd.Parameters.AddWithValue("@to", DBNull.Value);
+    cmd.Parameters.AddWithNullableValue("@namespace_like", _namespaceLikeExpression?.Pattern);
+    cmd.Parameters.AddWithNullableValue("@key_like", _keyLikeExpression?.Pattern);
+    cmd.Parameters.AddWithNullableValue("@from", _from?.UtcTicks);
+    cmd.Parameters.AddWithNullableValue("@to", _to?.UtcTicks);
 
     using var reader = cmd.ExecuteReader();
     while (reader.Read())
@@ -450,21 +369,9 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     cmd.CommandText = listSql;
 
     cmd.Parameters.AddWithValue("@namespace", _namespace);
-
-    if (_keyLikeExpression != null)
-      cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression.Pattern);
-    else
-      cmd.Parameters.AddWithValue("@key_like", DBNull.Value);
-
-    if (_from != null)
-      cmd.Parameters.AddWithValue("@from", _from.Value.UtcTicks);
-    else
-      cmd.Parameters.AddWithValue("@from", DBNull.Value);
-
-    if (_to != null)
-      cmd.Parameters.AddWithValue("@to", _to.Value.UtcTicks);
-    else
-      cmd.Parameters.AddWithValue("@to", DBNull.Value);
+    cmd.Parameters.AddWithNullableValue("@key_like", _keyLikeExpression?.Pattern);
+    cmd.Parameters.AddWithNullableValue("@from", _from?.UtcTicks);
+    cmd.Parameters.AddWithNullableValue("@to", _to?.UtcTicks);
 
     using var reader = cmd.ExecuteReader();
     while (reader.Read())
@@ -556,48 +463,28 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// </summary>
   public DocumentEntry<T>? ReadDocument<T>(
     string _namespace,
-    string _key)
+    KeyAlike _key)
   {
-    if (p_cache?.TryGet(new CacheKey(_namespace, _key), out var cachedValue) == true)
+    var key = _key.Key;
+    if (p_cache?.TryGet(new CacheKey(_namespace, key), out var cachedValue) == true)
       return cachedValue as DocumentEntry<T>;
 
-    var result = ReadDocumentInternal<T>(_namespace, _key);
+    var result = ReadDocumentInternal<T>(_namespace, key);
 
-    p_cache?.Put(new CacheKey(_namespace, _key), result);
+    p_cache?.Put(new CacheKey(_namespace, key), result);
 
     return result;
   }
 
   /// <summary>
-  /// Read document from the database
-  /// </summary>
-  public DocumentEntry<T>? ReadDocument<T>(
-    string _namespace,
-    int _key)
-  {
-    return ReadDocument<T>(_namespace, _key.ToString(CultureInfo.InvariantCulture));
-  }
-
-  /// <summary>
   /// Read document from the database and deserialize data
   /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
   /// </summary>
   public DocumentEntry<T>? ReadSimpleDocument<T>(
-    string _entryId) where T : notnull
+    KeyAlike _key) where T : notnull
   {
     var ns = typeof(T).GetNamespaceFromType();
-    return ReadDocument<T>(ns, _entryId);
-  }
-
-  /// <summary>
-  /// Read document from the database and deserialize data
-  /// <para>PAY ATTENTION: If type <see cref="T"/> has not <see cref="SimpleDocumentAttribute"/>, namespace is determined by full name of type <see cref="T"/></para>
-  /// </summary>
-  public DocumentEntry<T>? ReadSimpleDocument<T>(
-    int _entryId) where T : notnull
-  {
-    var ns = typeof(T).GetNamespaceFromType();
-    return ReadDocument<T>(ns, _entryId);
+    return ReadDocument<T>(ns, _key);
   }
 
   /// <summary>
@@ -643,15 +530,8 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     using var cmd = connection.CreateCommand();
     cmd.CommandText = readSql;
 
-    if (_namespace != null)
-      cmd.Parameters.AddWithValue("@namespace", _namespace);
-    else
-      cmd.Parameters.AddWithValue("@namespace", DBNull.Value);
-
-    if (_keyLikeExpression != null)
-      cmd.Parameters.AddWithValue("@key_like", _keyLikeExpression.Pattern);
-    else
-      cmd.Parameters.AddWithValue("@key_like", DBNull.Value);
+    cmd.Parameters.AddWithNullableValue("@namespace", _namespace);
+    cmd.Parameters.AddWithNullableValue("@key_like", _keyLikeExpression?.Pattern);
 
     using var reader = cmd.ExecuteReader();
     if (reader.Read())
