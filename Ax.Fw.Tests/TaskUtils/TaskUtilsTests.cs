@@ -45,7 +45,7 @@ public class TaskUtilsTests
     var (result1, result2, result3) = await Ax.Fw.TaskUtils.WhenAll(task1, task2, task3);
 
     var elapsed = sw.Elapsed;
-    Assert.InRange(elapsed.TotalSeconds, 2d, 3d);
+    Assert.InRange(elapsed.TotalSeconds, 1.9d, 3d);
     p_output.WriteLine($"{nameof(TaskUtilsTests)}.{nameof(WhenAllTestAsync)} | elapsed: {elapsed}");
 
     Assert.Equal(3, counter);

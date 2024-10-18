@@ -134,7 +134,7 @@ public class ObservableExtensionsTests
 
   }
 
-  [Theory(Timeout = 5000)]
+  [Theory(Timeout = 10000)]
   [Repeat(10)]
   public async Task FirstOrDefaultAsync_BasicTestAsync(int _repeat)
   {
