@@ -19,6 +19,7 @@
 				<PackageTags>nosql;no sql;no-sql;sqlite;document;db;database</PackageTags>
 		</PropertyGroup>
 		<ItemGroup>
+				<PackageReference Include="AWSSDK.S3" Version="3.7.405" />
 				<PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.4" />
 		</ItemGroup>
 		<ItemGroup>
