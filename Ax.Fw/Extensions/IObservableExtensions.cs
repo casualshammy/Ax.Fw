@@ -161,18 +161,17 @@ public static class IObservableExtensions
   public static IObservable<ImmutableHashSet<T>> DistinctUntilHashSetChanged<T>(this IObservable<ImmutableHashSet<T>> _observable)
       => _observable.DistinctUntilChanged(ImmutableHashSetComparer<T>.Default);
 
-  public static void HotAlive<T>(this IObservable<T> _this, IReadOnlyLifetime _lifetime, Action<T, IReadOnlyLifetime> _functor)
+  public static void HotAlive<T>(
+    this IObservable<T> _this, 
+    IReadOnlyLifetime _lifetime, 
+    IScheduler? _scheduler,
+    Action<T, IReadOnlyLifetime> _functor)
   {
     _this
-      .Scan((ILifetime?)null, (_acc, _entry) =>
+      .Alive(_lifetime, _scheduler, (_entry, _life) =>
       {
-        _acc?.End();
-        var life = _lifetime.GetChildLifetime();
-        if (life == null)
-          return null;
-
-        _functor.Invoke(_entry, life);
-        return life;
+        _functor(_entry, _life);
+        return Unit.Default;
       })
       .Subscribe(_lifetime);
   }
@@ -180,9 +179,16 @@ public static class IObservableExtensions
   public static IObservable<TOut?> Alive<TIn, TOut>(
     this IObservable<TIn> _this,
     IReadOnlyLifetime _lifetime,
+    IScheduler? _scheduler,
     Func<TIn, IReadOnlyLifetime, TOut> _functor)
   {
-    return _this
+    IObservable<TIn> observable;
+    if (_scheduler == null)
+      observable = _this;
+    else
+      observable = _this.ObserveOn(_scheduler);
+
+    return observable
       .Scan(new AliveCtx<TOut>(null, default), (_acc, _entry) =>
       {
         _acc.Lifetime?.End();

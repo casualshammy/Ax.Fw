@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,44 +17,44 @@ namespace Ax.Fw;
 public static class Compress
 {
   public static async Task CompressDirectoryToZipFileAsync(
-      string _directory,
-      string _zipPath,
-      Action<TypedProgress<FileSystemInfo>>? _progressReport,
-      CancellationToken _ct)
+    string _directory,
+    string _zipPath,
+    Action<TypedProgress<FileSystemInfo>>? _progressReport,
+    CancellationToken _ct)
   {
     var directory = new DirectoryInfo(_directory);
     if (!directory.Exists)
       throw new DirectoryNotFoundException();
 
     var filesRelativePaths = directory
-        .GetFiles("*.*", SearchOption.AllDirectories)
-        .ToDictionary(_x => _x, _x => _x.FullName[directory.FullName.Length..].TrimStart('\\', '/'));
+      .GetFiles("*.*", SearchOption.AllDirectories)
+      .ToDictionary(_x => _x, _x => _x.FullName[directory.FullName.Length..].TrimStart('\\', '/'));
 
     await CompressListOfFilesAsync(filesRelativePaths, _zipPath, _progressReport, _ct);
   }
 
   public static async Task CompressDirectoryToZipFileAsync(
-      string _directory,
-      Stream _outputStream,
-      Action<TypedProgress<FileSystemInfo>>? _progressReport,
-      CancellationToken _ct)
+    string _directory,
+    Stream _outputStream,
+    Action<TypedProgress<FileSystemInfo>>? _progressReport,
+    CancellationToken _ct)
   {
     var directory = new DirectoryInfo(_directory);
     if (!directory.Exists)
       throw new DirectoryNotFoundException();
 
     var filesRelativePaths = directory
-        .GetFiles("*.*", SearchOption.AllDirectories)
-        .ToDictionary(_x => _x, _x => _x.FullName[directory.FullName.Length..].TrimStart('\\', '/'));
+      .GetFiles("*.*", SearchOption.AllDirectories)
+      .ToDictionary(_x => _x, _x => _x.FullName[directory.FullName.Length..].TrimStart('\\', '/'));
 
     await CompressListOfFilesAsync(filesRelativePaths, _outputStream, _progressReport, _ct);
   }
 
   public static async Task CompressListOfFilesAsync(
-      IReadOnlyDictionary<FileInfo, string> _realPathWithRelativePath,
-      string _zipPath,
-      Action<TypedProgress<FileSystemInfo>>? _progressReport,
-      CancellationToken _ct)
+    IReadOnlyDictionary<FileInfo, string> _realPathWithRelativePath,
+    string _zipPath,
+    Action<TypedProgress<FileSystemInfo>>? _progressReport,
+    CancellationToken _ct)
   {
     var tmpFile = $"{_zipPath}-{Random.Shared.Next()}.zip";
 
@@ -74,10 +75,10 @@ public static class Compress
   }
 
   public static async Task CompressListOfFilesAsync(
-      IReadOnlyDictionary<FileInfo, string> _realPathWithRelativePath,
-      Stream _outputStream,
-      Action<TypedProgress<FileSystemInfo>>? _progressReport,
-      CancellationToken _ct)
+    IReadOnlyDictionary<FileInfo, string> _realPathWithRelativePath,
+    Stream _outputStream,
+    Action<TypedProgress<FileSystemInfo>>? _progressReport,
+    CancellationToken _ct)
   {
     if (!_outputStream.CanWrite)
       throw new ArgumentException($"'{nameof(_outputStream)}' must be writable!");
@@ -107,10 +108,10 @@ public static class Compress
   }
 
   public static async Task DecompressZipFileAsync(
-      string _outputDirectory,
-      string _zipPath,
-      Action<TypedProgress<FileSystemInfo>>? _progressReport,
-      CancellationToken _ct)
+    string _outputDirectory,
+    string _zipPath,
+    Action<TypedProgress<FileSystemInfo>>? _progressReport,
+    CancellationToken _ct)
   {
     if (!File.Exists(_zipPath))
       throw new FileNotFoundException();
@@ -120,10 +121,10 @@ public static class Compress
   }
 
   public static async Task DecompressZipFileAsync(
-      string _outputDirectory,
-      Stream _inputStream,
-      Action<TypedProgress<FileSystemInfo>>? _progressReport,
-      CancellationToken _ct)
+    string _outputDirectory,
+    Stream _inputStream,
+    Action<TypedProgress<FileSystemInfo>>? _progressReport,
+    CancellationToken _ct)
   {
     if (!_inputStream.CanRead)
       throw new ArgumentException($"Can't read from stream '{nameof(_inputStream)}'!");
@@ -169,24 +170,33 @@ public static class Compress
   /// <summary>
   /// Serialize to JSON and then gzip to byte array
   /// </summary>
-  public static async Task<byte[]> CompressToGzippedJsonAsync<T>(T _serializableObject, CancellationToken _ct)
+  public static async Task<byte[]> CompressToGzippedJsonAsync<T>(
+    T _serializableObject,
+    JsonSerializerContext _jsonCtx,
+    CancellationToken _ct)
+    where T : notnull
   {
     using var ms = new MemoryStream();
-    await CompressToGzippedJsonAsync(_serializableObject, ms, _ct);
+    await CompressToGzippedJsonAsync(_serializableObject, ms, _jsonCtx, _ct);
     return ms.ToArray();
   }
 
   /// <summary>
   /// Serialize to JSON and then gzip to output stream
   /// </summary>
-  public static async Task CompressToGzippedJsonAsync<T>(T _serializableObject, Stream _outputStream, CancellationToken _ct)
+  public static async Task CompressToGzippedJsonAsync<T>(
+    T _serializableObject, 
+    Stream _outputStream,
+    JsonSerializerContext _jsonCtx,
+    CancellationToken _ct)
+    where T : notnull
   {
     if (!_outputStream.CanWrite)
       throw new ArgumentException($"Stream must be writable", nameof(_outputStream));
 
     using (var sourceStream = new MemoryStream())
     {
-      await JsonSerializer.SerializeAsync(sourceStream, _serializableObject, cancellationToken: _ct);
+      await JsonSerializer.SerializeAsync(sourceStream, _serializableObject, typeof(T), _jsonCtx, cancellationToken: _ct);
 
       sourceStream.Position = 0;
 
@@ -198,17 +208,25 @@ public static class Compress
   /// <summary>
   /// Un-gzip JSON from <see cref="byte[]"/> and then deserialize
   /// </summary>
-  public static async Task<T?> DecompressGzippedJsonAsync<T>(byte[] _compressedBytes, CancellationToken _ct)
+  public static async Task<T?> DecompressGzippedJsonAsync<T>(
+    byte[] _compressedBytes,
+    JsonSerializerContext _jsonCtx,
+    CancellationToken _ct)
+    where T : notnull
   {
     using var ms = new MemoryStream(_compressedBytes);
-    var result = await DecompressGzippedJsonAsync<T>(ms, _ct);
+    var result = await DecompressGzippedJsonAsync<T>(ms, _jsonCtx, _ct);
     return result;
   }
 
   /// <summary>
   /// Un-gzip JSON from <see cref="Stream"/> and then deserialize
   /// </summary>
-  public static async Task<T?> DecompressGzippedJsonAsync<T>(Stream _compressedStream, CancellationToken _ct)
+  public static async Task<T> DecompressGzippedJsonAsync<T>(
+    Stream _compressedStream,
+    JsonSerializerContext _jsonCtx,
+    CancellationToken _ct)
+    where T : notnull
   {
     using (var targetStream = new MemoryStream())
     {
@@ -217,7 +235,8 @@ public static class Compress
 
       targetStream.Position = 0;
 
-      return await JsonSerializer.DeserializeAsync<T>(targetStream, cancellationToken: _ct);
+      var obj = await JsonSerializer.DeserializeAsync(targetStream, typeof(T), _jsonCtx, cancellationToken: _ct);
+      return (T)obj!;
     }
   }
 

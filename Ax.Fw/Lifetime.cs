@@ -26,12 +26,14 @@ public class Lifetime : ILifetime
   {
     OnEnding = p_onEnding;
     OnEnd = p_onEnd;
+    Guid = Guid.NewGuid();
   }
 
   public CancellationToken Token => p_cts.Token;
   public bool IsCancellationRequested => p_cts.Token.IsCancellationRequested;
   public IObservable<Unit> OnEnding { get; }
   public IObservable<Unit> OnEnd { get; }
+  public Guid Guid { get; }
 
   [return: NotNullIfNotNull(parameterName: nameof(_instance))]
   public T? ToDisposeOnEnding<T>(T? _instance) where T : IDisposable

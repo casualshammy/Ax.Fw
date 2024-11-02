@@ -16,6 +16,7 @@ public interface IReadOnlyLifetime
   /// </summary>
   IObservable<Unit> OnEnding { get; }
   IObservable<Unit> OnEnd { get; }
+  Guid Guid { get; }
 
   [return: NotNullIfNotNull(parameterName: "_instance")]
   T? ToDisposeAsyncOnEnding<T>(T? _instance) where T : IAsyncDisposable;
