@@ -5,6 +5,7 @@ using Ax.Fw.JsonStorages;
 using Ax.Fw.Log;
 using Ax.Fw.SharedTypes.Data.Log;
 using Ax.Fw.SharedTypes.Interfaces;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -218,8 +219,10 @@ public class AppBase
     p_depMgr
       .ActivateOnStart((IObservableConfig<T?> _confFlow, IReadOnlyLifetime _lifetime) =>
       {
+        var scheduler = new EventLoopScheduler();
+
         _confFlow
-          .HotAlive(_lifetime, (_conf, _life) =>
+          .HotAlive(_lifetime, scheduler, (_conf, _life) =>
           {
             var desc = _factory.Invoke(_conf);
             if (desc == null)

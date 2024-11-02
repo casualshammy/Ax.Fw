@@ -100,6 +100,8 @@ public class S3Client
     var res = await p_s3Client.ListObjectsV2Async(req, _ct).ConfigureAwait(false);
     foreach (var obj in res.S3Objects)
     {
+      if (obj.Key.EndsWith('/'))
+        continue;
       if (objCounter++ > _limit)
         yield break;
 
@@ -119,6 +121,8 @@ public class S3Client
       res = await p_s3Client.ListObjectsV2Async(req, _ct).ConfigureAwait(false);
       foreach (var obj in res.S3Objects)
       {
+        if (obj.Key.EndsWith('/'))
+          continue;
         if (objCounter++ > _limit)
           yield break;
 
