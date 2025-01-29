@@ -137,9 +137,14 @@ public static class IObservableExtensions
     _lifetime.ToDisposeOnEnding(_observable.Subscribe());
   }
 
-  public static IRxProperty<T> ToProperty<T>(this IObservable<T> _observable, IReadOnlyLifetime _lifetime, T? _defaultValue = default)
+  public static IRxProperty<T> ToProperty<T>(this IObservable<T> _observable, IReadOnlyLifetime _lifetime, T _defaultValue) where T: notnull
   {
     return new RxProperty<T>(_observable, _lifetime, _defaultValue);
+  }
+
+  public static IRxProperty<T?> ToNullableProperty<T>(this IObservable<T> _observable, IReadOnlyLifetime _lifetime, T? _defaultValue = default)
+  {
+    return new RxProperty<T?>(_observable, _lifetime, _defaultValue);
   }
 
   public static IObservable<TResult> ScanAsync<T, TResult>(this IObservable<T> _observable, TResult _seed, Func<TResult, T, Task<TResult>> _functor)

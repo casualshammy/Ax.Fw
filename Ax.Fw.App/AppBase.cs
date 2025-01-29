@@ -8,7 +8,6 @@ using Ax.Fw.SharedTypes.Interfaces;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 
 namespace Ax.Fw.App;
 
@@ -27,7 +26,7 @@ public class AppBase
     p_depMgr.AddSingleton<ILifetime>(lifetime);
     p_depMgr.AddSingleton<IReadOnlyLifetime>(lifetime);
 
-    var log = lifetime.ToDisposeOnEnded(new GenericLog(null));
+    var log = lifetime.ToDisposeOnEnded(new GenericLog());
     p_depMgr.AddSingleton<ILog>(log);
   }
 
