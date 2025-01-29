@@ -44,7 +44,7 @@ public class StreamWithProgressCallback : Stream
 
     int bytesRead = p_underlyingStream.Read(_buffer, _offset, _count);
     p_position += bytesRead;
-    p_progress?.Invoke(p_position / (double)p_length * 100);
+    p_progress?.Invoke(p_position / (double)p_length);
     return bytesRead;
   }
 
@@ -57,7 +57,7 @@ public class StreamWithProgressCallback : Stream
 
     int bytesRead = await p_underlyingStream.ReadAsync(_buffer.AsMemory(_offset, _count), _token);
     p_position += bytesRead;
-    p_progress?.Invoke(p_position / (double)p_length * 100);
+    p_progress?.Invoke(p_position / (double)p_length);
     return bytesRead;
   }
 
@@ -74,7 +74,7 @@ public class StreamWithProgressCallback : Stream
 
     p_underlyingStream.Write(_buffer, _offset, _count);
     p_position += _count;
-    p_progress?.Invoke(p_position / (double)p_length * 100);
+    p_progress?.Invoke(p_position / (double)p_length);
   }
 
   public override async Task WriteAsync(byte[] _buffer, int _offset, int _count, CancellationToken _ct)
@@ -86,7 +86,7 @@ public class StreamWithProgressCallback : Stream
 
     await p_underlyingStream.WriteAsync(_buffer.AsMemory(_offset, _count), _ct);
     p_position += _count;
-    p_progress?.Invoke(p_position / (double)p_length * 100);
+    p_progress?.Invoke(p_position / (double)p_length);
   }
 
 }
