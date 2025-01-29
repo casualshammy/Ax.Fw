@@ -16,7 +16,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   record CacheKey(string Namespace, string Key);
 
   private readonly string p_dbFilePath;
-  private readonly JsonSerializerContext? p_jsonCtx;
+  private readonly JsonSerializerContext p_jsonCtx;
   private readonly SemaphoreSlim p_writeSemaphore;
   private readonly SyncCache<CacheKey, object>? p_cache;
   private long p_documentsCounter = 0;
@@ -28,10 +28,12 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   /// <param name="_jsonCtx">Serialization context that will be used for internal (de-)serialization</param>
   public SqliteDocumentStorage(
     string _dbFilePath,
-    JsonSerializerContext? _jsonCtx,
+    JsonSerializerContext _jsonCtx,
     StorageCacheOptions? _cacheOptions = null,
     StorageRetentionOptions? _retentionOptions = null)
   {
+    ArgumentNullException.ThrowIfNull(_jsonCtx, nameof(_jsonCtx));
+
     p_dbFilePath = _dbFilePath;
     p_jsonCtx = _jsonCtx;
     p_writeSemaphore = ToDisposeOnEnded(new SemaphoreSlim(1, 1));
@@ -142,15 +144,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     T _data)
   {
     var now = DateTimeOffset.UtcNow;
-    string json;
-    if (p_jsonCtx != null)
-      json = JsonSerializer.Serialize(_data, typeof(T), p_jsonCtx);
-    else
-#pragma warning disable IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
-#pragma warning disable IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.
-      json = JsonSerializer.Serialize(_data);
-#pragma warning restore IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.
-#pragma warning restore IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
+    var json = JsonSerializer.Serialize(_data, typeof(T), p_jsonCtx);
 
     const string insertSql =
       $"INSERT OR REPLACE INTO document_data (doc_id, namespace, key, last_modified, created, version, data) " +
@@ -382,16 +376,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       var created = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
       var version = reader.GetInt64(4);
 
-      T? data;
-      if (p_jsonCtx != null)
-        data = (T?)JsonSerializer.Deserialize(reader.GetString(5), typeof(T), p_jsonCtx);
-      else
-#pragma warning disable IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
-#pragma warning disable IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.
-        data = JsonSerializer.Deserialize<T>(reader.GetString(5));
-#pragma warning restore IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.
-#pragma warning restore IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
-
+      T? data = (T?)JsonSerializer.Deserialize(reader.GetString(5), typeof(T), p_jsonCtx);
       if (data == null)
         throw new FormatException($"Data of document '{docId}' is malformed!");
 
@@ -439,16 +424,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       var version = reader.GetInt64(4);
       var json = reader.GetString(5);
 
-      T? data;
-      if (p_jsonCtx != null)
-        data = (T?)JsonSerializer.Deserialize(json, typeof(T), p_jsonCtx);
-      else
-#pragma warning disable IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
-#pragma warning disable IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.
-        data = JsonSerializer.Deserialize<T>(json);
-#pragma warning restore IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.
-#pragma warning restore IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
-
+      T? data = (T?)JsonSerializer.Deserialize(json, typeof(T), p_jsonCtx);
       if (data == null)
         throw new FormatException($"Data of document '{docId}' is malformed!");
 

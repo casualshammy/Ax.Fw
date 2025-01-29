@@ -3,8 +3,6 @@ using Ax.Fw.SharedTypes.Data.Log;
 using Ax.Fw.SharedTypes.Interfaces;
 using System.Collections.Concurrent;
 using System.Reactive.Subjects;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Ax.Fw.Log;
 
@@ -14,11 +12,9 @@ public class GenericLog : DisposableStack, ILog
   private readonly ConcurrentDictionary<LogEntryType, long> p_stats;
   private readonly ConcurrentStack<Action> p_endActions;
   private readonly string p_scopeSeparator;
-  private JsonSerializerContext? p_jsonCtx;
 
-  public GenericLog(JsonSerializerContext? _jsonCtx, string _scopeSeparator = "/")
+  public GenericLog(string _scopeSeparator = "/")
   {
-    p_jsonCtx = _jsonCtx;
     p_scopeSeparator = _scopeSeparator;
     p_stats = new();
     p_endActions = new();
@@ -37,7 +33,6 @@ public class GenericLog : DisposableStack, ILog
 
   internal GenericLog(GenericLog _parentLog, string _scope)
   {
-    p_jsonCtx = _parentLog.p_jsonCtx;
     p_scopeSeparator = _parentLog.p_scopeSeparator;
     p_stats = _parentLog.p_stats;
     p_endActions = _parentLog.p_endActions;
@@ -61,32 +56,10 @@ public class GenericLog : DisposableStack, ILog
     OnNewLogEntry(logEntry);
   }
 
-  public void InfoJson<T>(string _text, T _object) where T : notnull
-  {
-    string json;
-    if (p_jsonCtx != null)
-      json = JsonSerializer.Serialize(_object, typeof(T), p_jsonCtx);
-    else
-      json = JsonSerializer.Serialize(_object);
-
-    Info($"{_text}{Environment.NewLine}{json}");
-  }
-
   public void Warn(string _text)
   {
     var logEntry = new LogEntry(LogEntryType.WARN, _text, DateTimeOffset.UtcNow, Scope);
     OnNewLogEntry(logEntry);
-  }
-
-  public void WarnJson<T>(string _text, T _object) where T : notnull
-  {
-    string json;
-    if (p_jsonCtx != null)
-      json = JsonSerializer.Serialize(_object, typeof(T), p_jsonCtx);
-    else
-      json = JsonSerializer.Serialize(_object);
-
-    Warn($"{_text}{Environment.NewLine}{json}");
   }
 
   public void Error(string _text, Exception? _ex = null)
@@ -100,20 +73,7 @@ public class GenericLog : DisposableStack, ILog
     OnNewLogEntry(logEntry);
   }
 
-  public void ErrorJson<T>(string _text, T _object) where T : notnull
-  {
-    string json;
-    if (p_jsonCtx != null)
-      json = JsonSerializer.Serialize(_object, typeof(T), p_jsonCtx);
-    else
-      json = JsonSerializer.Serialize(_object);
-
-    Error($"{_text}{Environment.NewLine}{json}");
-  }
-
   public long GetEntriesCount(LogEntryType _type) => p_stats.GetValueOrDefault(_type);
-
-  public void SetJsonCtx(JsonSerializerContext? _jsonCtx) => p_jsonCtx = _jsonCtx;
 
   public void AddEndAction(Action _action) => p_endActions.Push(_action);
 

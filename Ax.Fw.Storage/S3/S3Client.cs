@@ -1,5 +1,6 @@
 ﻿using Amazon.S3;
 using Amazon.S3.Model;
+using Ax.Fw.Extensions;
 using System.Runtime.CompilerServices;
 
 namespace Ax.Fw.Storage.S3;
@@ -11,30 +12,10 @@ public class S3Client
 
   internal S3Client(
     AmazonS3Client _client,
-    string _bucket,
-    string _path)
+    string _bucket)
   {
     p_s3Client = _client;
     p_bucket = _bucket;
-    FolderPath = _path.Trim('/');
-  }
-
-  public string FolderPath { get; }
-
-  public async Task PullAsync(
-    string _key,
-    Stream _outputStream,
-    CancellationToken _ct)
-  {
-    var request = new GetObjectRequest
-    {
-      BucketName = p_bucket,
-      Key = _key
-    };
-
-    using (var res = await p_s3Client.GetObjectAsync(request, _ct).ConfigureAwait(false))
-    using (var resStream = res.ResponseStream)
-      await resStream.CopyToAsync(_outputStream, _ct).ConfigureAwait(false);
   }
 
   public async Task PutAsync(
@@ -56,17 +37,33 @@ public class S3Client
 
   public async Task PutAsync(
     string _key,
-    string _inputFilePath,
+    string _filePath,
     CancellationToken _ct)
   {
     var req = new PutObjectRequest
     {
       BucketName = p_bucket,
       Key = _key,
-      FilePath = _inputFilePath,
+      FilePath = _filePath,
     };
 
     _ = await p_s3Client.PutObjectAsync(req, _ct).ConfigureAwait(false);
+  }
+
+  public async Task PullAsync(
+    string _key,
+    Stream _outputStream,
+    CancellationToken _ct)
+  {
+    var request = new GetObjectRequest
+    {
+      BucketName = p_bucket,
+      Key = _key
+    };
+
+    using (var res = await p_s3Client.GetObjectAsync(request, _ct).ConfigureAwait(false))
+    using (var resStream = res.ResponseStream)
+      await resStream.CopyToAsync(_outputStream, _ct).ConfigureAwait(false);
   }
 
   public async Task<GetObjectMetadataResponse?> GetMetaAsync(
@@ -78,7 +75,7 @@ public class S3Client
       var result = await p_s3Client.GetObjectMetadataAsync(p_bucket, _key, _ct).ConfigureAwait(false);
       return result;
     }
-    catch
+    catch (Exception)
     {
       return null;
     }
@@ -91,17 +88,15 @@ public class S3Client
   {
     var objCounter = 0;
 
-    var req = new ListObjectsV2Request
+    var request = new ListObjectsV2Request
     {
       BucketName = p_bucket,
       Prefix = _prefix ?? default,
     };
 
-    var res = await p_s3Client.ListObjectsV2Async(req, _ct).ConfigureAwait(false);
+    var res = await p_s3Client.ListObjectsV2Async(request, _ct).ConfigureAwait(false);
     foreach (var obj in res.S3Objects)
     {
-      if (obj.Key.EndsWith('/'))
-        continue;
       if (objCounter++ > _limit)
         yield break;
 
@@ -111,18 +106,16 @@ public class S3Client
     while (res?.IsTruncated == true)
     {
       _ct.ThrowIfCancellationRequested();
-      req = new ListObjectsV2Request
+      request = new ListObjectsV2Request
       {
         BucketName = p_bucket,
         Prefix = _prefix ?? default,
         ContinuationToken = res.NextContinuationToken
       };
 
-      res = await p_s3Client.ListObjectsV2Async(req, _ct).ConfigureAwait(false);
+      res = await p_s3Client.ListObjectsV2Async(request, _ct).ConfigureAwait(false);
       foreach (var obj in res.S3Objects)
       {
-        if (obj.Key.EndsWith('/'))
-          continue;
         if (objCounter++ > _limit)
           yield break;
 
@@ -144,21 +137,29 @@ public class S3Client
     _ = await p_s3Client.DeleteObjectAsync(req, _ct).ConfigureAwait(false);
   }
 
-  public async Task<string> GetPublicLinkAsync(
+  public string GetPublicLink(
     string _key,
-    DateTime? _expiration = null,
-    CancellationToken _ct = default)
+    TimeSpan? _urlLifespan,
+    string? _contentDispositionFilename)
   {
     var req = new GetPreSignedUrlRequest
     {
       BucketName = p_bucket,
       Key = _key,
-      Expires = _expiration ?? DateTime.Now + TimeSpan.FromDays(6),
+      Expires = DateTime.Now + (_urlLifespan ?? TimeSpan.FromDays(6)),
       Protocol = Protocol.HTTPS,
-      Verb = HttpVerb.GET
+      Verb = HttpVerb.GET,
     };
 
-    var url = await p_s3Client.GetPreSignedURLAsync(req).ConfigureAwait(false);
+    if (!_contentDispositionFilename.IsNullOrWhiteSpace())
+    {
+      req.ResponseHeaderOverrides = new ResponseHeaderOverrides()
+      {
+        ContentDisposition = $"attachment; filename=\"{_contentDispositionFilename}\""
+      };
+    }
+
+    var url = p_s3Client.GetPreSignedURL(req);
     return url;
   }
 
