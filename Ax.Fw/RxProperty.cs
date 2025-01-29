@@ -13,7 +13,7 @@ public class RxProperty<T> : IRxProperty<T>
 {
   private readonly BehaviorSubject<T> p_flow;
 
-  public RxProperty(IObservable<T> _observable, IReadOnlyLifetime _lifetime, T _defaultValue = default)
+  public RxProperty(IObservable<T> _observable, IReadOnlyLifetime _lifetime, T _defaultValue)
   {
     p_flow = _lifetime.ToDisposeOnEnded(new BehaviorSubject<T>(_defaultValue));
 

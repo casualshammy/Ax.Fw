@@ -26,7 +26,7 @@ public class RxPropertyTests
         .Return(100)
         .Concat(Observable.Return(200))
         .Concat(Observable.Return(300))
-        .ToProperty(lifetime);
+        .ToProperty(lifetime, 0);
 
       Assert.Equal(300, rxProp.Value);
     }
@@ -43,9 +43,9 @@ public class RxPropertyTests
     try
     {
       var rxProp = Observable
-          .Interval(TimeSpan.FromMilliseconds(250))
-          .Select(_x => (long?)_x)
-          .ToProperty(lifetime);
+        .Interval(TimeSpan.FromMilliseconds(250))
+        .Select(_x => (long?)_x)
+        .ToNullableProperty(lifetime, null);
 
       Assert.Null(rxProp.Value);
     }
