@@ -3,7 +3,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 
-namespace Ax.Fw.Extensions;
+namespace Ax.Fw.Streams;
 
 public class StreamWithHeaders
 {

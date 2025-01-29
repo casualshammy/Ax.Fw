@@ -1,5 +1,8 @@
+using Ax.Fw.Storage.JsonConverters;
 using System.Globalization;
+using System.Text.Json.Serialization;
 
+[JsonConverter(typeof(KeyAlikeJsonConverter))]
 public class KeyAlike
 {
   public KeyAlike(string _key)

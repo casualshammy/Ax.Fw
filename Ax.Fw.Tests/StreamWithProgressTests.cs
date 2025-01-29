@@ -28,10 +28,10 @@ public class StreamWithProgressTests
       Random.Shared.NextBytes(data);
       using (var outputMs = new MemoryStream(data))
       using (var inputMs = new MemoryStream())
-      using (var stream = new StreamWithProgress(data.Length, outputMs, onProgress))
+      using (var stream = outputMs.WithProgress(data.Length, onProgress))
         stream.CopyToAsync(inputMs);
 
-      Assert.Equal(100d, progress);
+      Assert.Equal(1d, progress);
     }
     finally
     {
@@ -52,10 +52,10 @@ public class StreamWithProgressTests
       Random.Shared.NextBytes(data);
       using (var outputMs = new MemoryStream(data))
       using (var inputMs = new MemoryStream())
-      using (var stream = new StreamWithProgress(data.Length, inputMs, onProgress))
+      using (var stream = inputMs.WithProgress(data.Length, onProgress))
         outputMs.CopyToAsync(stream);
 
-      Assert.Equal(100d, progress);
+      Assert.Equal(1d, progress);
     }
     finally
     {
