@@ -8,7 +8,7 @@ public static class StreamExtensions
 {
   public static StreamWithProgressCallback WithProgress(this Stream _stream, long _streamLength, Action<double> _onProgressChanged)
   {
-    return new StreamWithProgressCallback(_streamLength, _stream, _ => _onProgressChanged(_ / 100));
+    return new StreamWithProgressCallback(_streamLength, _stream, _onProgressChanged);
   }
 
 }
