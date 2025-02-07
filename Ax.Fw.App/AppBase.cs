@@ -187,7 +187,7 @@ public class AppBase
     if (confFlow == null)
       throw new InvalidOperationException($"Can't get the instance of {typeof(IObservableConfig<T?>)}!");
 
-    var confProp = confFlow.ToProperty(lifetime, null);
+    var confProp = confFlow.ToNullableProperty(lifetime, null);
 
     string? factory()
     {

@@ -1,6 +1,7 @@
 ﻿using Ax.Fw.Extensions;
 using Ax.Fw.Log.Data;
 using Ax.Fw.SharedTypes.Data.Log;
+using Ax.Fw.SharedTypes.Interfaces;
 using System.Collections.Concurrent;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
@@ -184,6 +185,21 @@ public static class GenericLogExtensions
         lock (consoleLock)
           writeInConsole(_);
       });
+    _log.AddEndAction(() => writerSubs.Dispose());
+
+    return _log;
+  }
+
+  public static GenericLog AttachCustomLog(
+    this GenericLog _log, 
+    Action<LogEntry> _onEntryHandler)
+  {
+    var scheduler = new EventLoopScheduler();
+    _log.AddEndAction(() => scheduler.Dispose());
+
+    var writerSubs = _log.LogEntries
+      .ObserveOn(scheduler)
+      .Subscribe(_ => _onEntryHandler(_));
     _log.AddEndAction(() => writerSubs.Dispose());
 
     return _log;
