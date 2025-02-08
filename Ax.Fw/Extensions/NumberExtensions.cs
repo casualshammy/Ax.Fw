@@ -12,8 +12,9 @@ public static class NumberExtensions
     return _value;
   }
 
-
-  public static string ToHumanBytes(this long _value, int _fractions = 0)
+  public static string ToHumanBytes(
+    this long _value, 
+    int _fractions = 0)
   {
     if (_value > 1024 * 1024 * 1024)
       return (_value / 1024f / 1024f / 1024f).ToString($"F{_fractions}") + " GB";
@@ -25,20 +26,27 @@ public static class NumberExtensions
     return $"{_value} B";
   }
 
-  public static string BytesPerSecondToString(this double _bytesPerSecond)
+  public static string BytesPerSecondToString(
+    this double _bytesPerSecond,
+    int _fractions)
   {
     var bitsPerSecond = _bytesPerSecond * 8;
 
     if (bitsPerSecond > 1024UL * 1024 * 1024 * 1024)
-      return $"{bitsPerSecond / (1024UL * 1024 * 1024 * 1024):F2} Tbps";
+      return $"{(bitsPerSecond / (1024UL * 1024 * 1024 * 1024)).ToString($"F{_fractions}")} Tbps";
     if (bitsPerSecond > 1024 * 1024 * 1024)
-      return $"{bitsPerSecond / (1024 * 1024 * 1024):F2} Gbps";
+      return $"{(bitsPerSecond / (1024 * 1024 * 1024)).ToString($"F{_fractions}")} Gbps";
     if (bitsPerSecond > 1024 * 1024)
-      return $"{bitsPerSecond / (1024 * 1024):F2} Mbps";
+      return $"{(bitsPerSecond / (1024 * 1024)).ToString($"F{_fractions}")} Mbps";
     if (bitsPerSecond > 1024)
-      return $"{bitsPerSecond / 1024:F2} Kbps";
+      return $"{(bitsPerSecond / 1024).ToString($"F{_fractions}")} Kbps";
 
-    return $"{bitsPerSecond:F2} bps";
+    return $"{bitsPerSecond.ToString($"F{_fractions}")} bps";
   }
+
+  public static string BytesPerSecondToString(
+    this long _bytesPerSecond,
+    int _fractions)
+    => BytesPerSecondToString((double)_bytesPerSecond, _fractions);
 
 }
