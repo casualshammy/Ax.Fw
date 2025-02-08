@@ -72,12 +72,12 @@ public static class StringExtensions
   /// <param name="_input">The input string to be converted to a hexadecimal color code.</param>
   /// <param name="_withAlpha">Optional parameter to include alpha channel in the color code. Default is false.</param>
   /// <returns>A hexadecimal color code derived from the MD5 hash of the input string.</returns>
-  public static string ExpressStringAsHexColor(
+  public static string ExpressAsRgba(
     this string _input, 
     bool _withAlpha = false)
   {
     var hash = MD5.HashData(Encoding.UTF8.GetBytes(_input));
-    var result = Convert.ToHexString(hash)[..(_withAlpha ? 4 : 3)];
+    var result = Convert.ToHexString(hash[..(_withAlpha ? 4 : 3)]);
     return result;
   }
 
@@ -87,7 +87,7 @@ public static class StringExtensions
   /// <param name="_input">The input string to be converted to a color.</param>
   /// <param name="_withAlpha">Optional parameter to include alpha channel in the color. Default is false.</param>
   /// <returns>A Color object derived from the MD5 hash of the input string.</returns>
-  public static Color ExpressStringAsColor(
+  public static Color ExpressAsColor(
     this string _input,
     bool _withAlpha = false)
   {
