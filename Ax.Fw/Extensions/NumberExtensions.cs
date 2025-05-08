@@ -1,4 +1,7 @@
-﻿namespace Ax.Fw.Extensions;
+﻿using System.Globalization;
+using System.Numerics;
+
+namespace Ax.Fw.Extensions;
 
 public static class NumberExtensions
 {
@@ -48,5 +51,15 @@ public static class NumberExtensions
     this long _bytesPerSecond,
     int _fractions)
     => BytesPerSecondToString((double)_bytesPerSecond, _fractions);
+
+  /// <summary>
+  /// Converts the given number to its string representation using the invariant culture.
+  /// </summary>
+  /// <typeparam name="T">The type of the number, which must implement INumber&lt;T&gt;.</typeparam>
+  /// <param name="_number">The number to convert to a string.</param>
+  /// <returns>The string representation of the number using the invariant culture.</returns>
+  public static string ToInvariantString<T>(this T _number)
+      where T : INumber<T>
+      => _number.ToString(null, CultureInfo.InvariantCulture);
 
 }
