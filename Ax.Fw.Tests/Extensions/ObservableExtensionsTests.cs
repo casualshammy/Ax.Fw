@@ -3,6 +3,7 @@ using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Tests.Tools;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Concurrency;
@@ -208,4 +209,143 @@ public class ObservableExtensionsTests
 
   }
 
+  [Fact]
+  public void DistinctUntilArrayChanged_ReturnsDistinctArrays()
+  {
+    var source = new[] {
+      [1, 2, 3],
+      [1, 2, 3],
+      new[] { 4, 5, 6 }
+    }.ToObservable();
+
+    var result = source.DistinctUntilArrayChanged().ToEnumerable();
+
+    Assert.Collection(result,
+      _array => Assert.Equal(new[] { 1, 2, 3 }, _array),
+      _array => Assert.Equal(new[] { 4, 5, 6 }, _array));
+  }
+
+  [Fact]
+  public void DistinctUntilArrayChanged_HandlesNullArrays()
+  {
+    var source = new[]
+    {
+      null,
+      null,
+      new[] { 1, 2, 3 },
+      null
+    }.ToObservable();
+
+    var result = source.DistinctUntilNullableArrayChanged().ToEnumerable();
+
+    Assert.Collection(result,
+      Assert.Null,
+      _array => Assert.Equal(new[] { 1, 2, 3 }, _array),
+      Assert.Null);
+  }
+
+  [Fact]
+  public void DistinctUntilArrayChanged_HandlesEmptyArrays()
+  {
+    var source = new[]
+    {
+      Array.Empty<int>(),
+      Array.Empty<int>(),
+      new[] { 1, 2 },
+      Array.Empty<int>()
+    }.ToObservable();
+
+    var result = source.DistinctUntilArrayChanged().ToEnumerable();
+
+    Assert.Collection(result,
+      Assert.Empty,
+      _array => Assert.Equal(new[] { 1, 2 }, _array),
+      Assert.Empty);
+  }
+
+  [Fact]
+  public void DistinctUntilArrayChanged_UsesCustomComparer()
+  {
+    var source = new[]
+    {
+      new[] { 1, 2 },
+      new[] { 2, 1 },
+      new[] { 30, 40 }
+    }.ToObservable();
+
+    var comparer = new CustomArrayComparer();
+
+    var result = source.DistinctUntilArrayChanged(comparer).ToEnumerable();
+
+    Assert.Collection(result,
+      _array => Assert.Equal(new[] { 1, 2 }, _array),
+      _array => Assert.Equal(new[] { 30, 40 }, _array));
+  }
+
+  [Fact]
+  public void DistinctUntilArrayChanged_HandlesDifferentLengths()
+  {
+    var source = new[]
+    {
+      new[] { 1, 2 },
+      new[] { 1, 2, 3 },
+      new[] { 1, 2 }
+    }.ToObservable();
+
+    var result = source.DistinctUntilArrayChanged().ToEnumerable();
+
+    Assert.Collection(result,
+      _array => Assert.Equal(new[] { 1, 2 }, _array),
+      _array => Assert.Equal(new[] { 1, 2, 3 }, _array),
+      _array => Assert.Equal(new[] { 1, 2 }, _array));
+  }
+
+  [Fact]
+  public void DistinctUntilArrayChanged_EmitsAllWhenNoDuplicates()
+  {
+    var source = new[]
+    {
+      new[] { 1, 2 },
+      new[] { 3, 4 },
+      new[] { 5, 6 }
+    }.ToObservable();
+
+    var result = source.DistinctUntilArrayChanged().ToEnumerable();
+
+    Assert.Collection(result,
+      _array => Assert.Equal(new[] { 1, 2 }, _array),
+      _array => Assert.Equal(new[] { 3, 4 }, _array),
+      _array => Assert.Equal(new[] { 5, 6 }, _array));
+  }
+
+  [Fact]
+  public void DistinctUntilArrayChanged_HandlesSingleElement()
+  {
+    var source = new[]
+    {
+      new[] { 1, 2, 3 }
+    }.ToObservable();
+
+    var result = source.DistinctUntilArrayChanged().ToEnumerable();
+
+    Assert.Collection(result,
+      _array => Assert.Equal(new[] { 1, 2, 3 }, _array));
+  }
+
+  [Fact]
+  public void DistinctUntilArrayChanged_HandlesEmptySequence()
+  {
+    var source = Array.Empty<int[]>().ToObservable();
+
+    var result = source.DistinctUntilArrayChanged().ToEnumerable();
+
+    Assert.Empty(result);
+  }
+
+  private class CustomArrayComparer : IEqualityComparer<int>
+  {
+    public bool Equals(int _x, int _y) => Math.Abs(_x - _y) < 10;
+
+    public int GetHashCode(int _obj) => _obj;
+  }
 }
