@@ -137,7 +137,7 @@ public static class IObservableExtensions
     _lifetime.ToDisposeOnEnding(_observable.Subscribe());
   }
 
-  public static IRxProperty<T> ToProperty<T>(this IObservable<T> _observable, IReadOnlyLifetime _lifetime, T _defaultValue) where T: notnull
+  public static IRxProperty<T> ToProperty<T>(this IObservable<T> _observable, IReadOnlyLifetime _lifetime, T _defaultValue) where T : notnull
   {
     return new RxProperty<T>(_observable, _lifetime, _defaultValue);
   }
@@ -166,9 +166,61 @@ public static class IObservableExtensions
   public static IObservable<ImmutableHashSet<T>> DistinctUntilHashSetChanged<T>(this IObservable<ImmutableHashSet<T>> _observable)
       => _observable.DistinctUntilChanged(ImmutableHashSetComparer<T>.Default);
 
+  public static IObservable<T[]> DistinctUntilArrayChanged<T>(
+    this IObservable<T[]> _observable,
+    IEqualityComparer<T>? _entryComparer = null)
+  {
+    var comparer = _entryComparer ?? EqualityComparer<T>.Default;
+
+    return _observable
+      .DistinctUntilChanged(Utilities.CreateEqualityComparer<T[]>((_a, _b) =>
+      {
+        if (_a == null && _b == null)
+          return true;
+
+        if (_a == null || _b == null)
+          return false;
+
+        if (_a.Length != _b.Length)
+          return false;
+
+        for (var i = 0; i < _a.Length; i++)
+          if (!comparer.Equals(_a[i], _b[i]))
+            return false;
+
+        return true;
+      }));
+  }
+
+  public static IObservable<T[]?> DistinctUntilNullableArrayChanged<T>(
+    this IObservable<T[]?> _observable,
+    IEqualityComparer<T>? _entryComparer = null)
+  {
+    var comparer = _entryComparer ?? EqualityComparer<T>.Default;
+
+    return _observable
+      .DistinctUntilChanged(Utilities.CreateEqualityComparer<T[]?>((_a, _b) =>
+      {
+        if (_a == null && _b == null)
+          return true;
+
+        if (_a == null || _b == null)
+          return false;
+
+        if (_a.Length != _b.Length)
+          return false;
+
+        for (var i = 0; i < _a.Length; i++)
+          if (!comparer.Equals(_a[i], _b[i]))
+            return false;
+
+        return true;
+      }));
+  }
+
   public static void HotAlive<T>(
-    this IObservable<T> _this, 
-    IReadOnlyLifetime _lifetime, 
+    this IObservable<T> _this,
+    IReadOnlyLifetime _lifetime,
     IScheduler? _scheduler,
     Action<T, IReadOnlyLifetime> _functor)
   {
@@ -276,7 +328,7 @@ public static class IObservableExtensions
   }
 
   public static async Task<T?> FirstOrDefaultAsync<T>(
-    this IObservable<T> _observable, 
+    this IObservable<T> _observable,
     CancellationToken _ct)
   {
     T? result = default;
@@ -296,7 +348,7 @@ public static class IObservableExtensions
       await Task.Delay(-1, cts.Token);
     }
     catch (OperationCanceledException) { }
-    
+
     return result;
   }
 
