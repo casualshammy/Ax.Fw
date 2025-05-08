@@ -13,19 +13,17 @@ public static class S3ClientFactory
   /// <summary>
   /// Creates s3 client from string
   /// 
-  /// Format: http(s)://<s3-host>/<bucket>/?api-key=<api-key>&secret-key=<secret-key>&auth-region=<auth-region>
+  /// Format: http(s)://<s3-host>/<bucket>/<optional-folder-path>/?api-key=<api-key>&secret-key=<secret-key>&auth-region=<auth-region>
   /// </summary>
   /// <exception cref="UriFormatException"></exception>
   public static S3Client FromString(string _connectionString)
   {
-    ArgumentNullException.ThrowIfNullOrWhiteSpace(_connectionString);
-
     return p_cachedS3Clients.GetOrAdd(_connectionString, _connStr =>
     {
       var url = new Uri(_connectionString);
       var query = HttpUtility.ParseQueryString(url.Query);
-      var bucketPath = url.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-      if (bucketPath.Length == 0)
+      var path = url.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+      if (path.Length == 0)
         throw new UriFormatException("Bucket is empty");
 
       var scheme = url.Scheme;
@@ -36,7 +34,8 @@ public static class S3ClientFactory
       if (!host.StartsWith("https://") && !host.StartsWith("http://"))
         host = $"https://{host}";
 
-      var bucket = bucketPath[0];
+      var bucket = path[0];
+      var folder = string.Join("/", path.Skip(1));
 
       var config = new AmazonS3Config()
       {
@@ -46,7 +45,10 @@ public static class S3ClientFactory
         config.AuthenticationRegion = authRegion;
 
       var s3Client = new AmazonS3Client(apiKey, secret, config);
-      return new S3Client(s3Client, bucket);
+      return new S3Client(
+        s3Client,
+        bucket,
+        !folder.IsNullOrWhiteSpace() ? folder : null);
     });
   }
 

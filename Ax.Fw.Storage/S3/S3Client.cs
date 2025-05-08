@@ -12,11 +12,24 @@ public class S3Client
 
   internal S3Client(
     AmazonS3Client _client,
-    string _bucket)
+    string _bucket,
+    string? _folderPath)
   {
     p_s3Client = _client;
     p_bucket = _bucket;
+    Bucket = _bucket;
+    FolderPath = _folderPath;
   }
+
+  /// <summary>
+  /// Bucket that will be used for all operations.
+  /// </summary>
+  public string Bucket { get; }
+
+  /// <summary>
+  /// Optional folder path after bucket name.
+  /// </summary>
+  public string? FolderPath { get; }
 
   public async Task PutAsync(
     string _key,
