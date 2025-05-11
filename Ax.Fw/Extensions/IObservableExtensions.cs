@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
@@ -166,14 +167,15 @@ public static class IObservableExtensions
   public static IObservable<ImmutableHashSet<T>> DistinctUntilHashSetChanged<T>(this IObservable<ImmutableHashSet<T>> _observable)
       => _observable.DistinctUntilChanged(ImmutableHashSetComparer<T>.Default);
 
-  public static IObservable<T[]> DistinctUntilArrayChanged<T>(
-    this IObservable<T[]> _observable,
+  public static IObservable<A> DistinctUntilArrayChanged<A, T>(
+    this IObservable<A> _observable,
     IEqualityComparer<T>? _entryComparer = null)
+    where A : IList<T>?
   {
     var comparer = _entryComparer ?? EqualityComparer<T>.Default;
 
     return _observable
-      .DistinctUntilChanged(Utilities.CreateEqualityComparer<T[]>((_a, _b) =>
+      .DistinctUntilChanged(Utilities.CreateEqualityComparer<A>((_a, _b) =>
       {
         if (_a == null && _b == null)
           return true;
@@ -181,36 +183,10 @@ public static class IObservableExtensions
         if (_a == null || _b == null)
           return false;
 
-        if (_a.Length != _b.Length)
+        if (_a.Count != _b.Count)
           return false;
 
-        for (var i = 0; i < _a.Length; i++)
-          if (!comparer.Equals(_a[i], _b[i]))
-            return false;
-
-        return true;
-      }));
-  }
-
-  public static IObservable<T[]?> DistinctUntilNullableArrayChanged<T>(
-    this IObservable<T[]?> _observable,
-    IEqualityComparer<T>? _entryComparer = null)
-  {
-    var comparer = _entryComparer ?? EqualityComparer<T>.Default;
-
-    return _observable
-      .DistinctUntilChanged(Utilities.CreateEqualityComparer<T[]?>((_a, _b) =>
-      {
-        if (_a == null && _b == null)
-          return true;
-
-        if (_a == null || _b == null)
-          return false;
-
-        if (_a.Length != _b.Length)
-          return false;
-
-        for (var i = 0; i < _a.Length; i++)
+        for (var i = 0; i < _a.Count; i++)
           if (!comparer.Equals(_a[i], _b[i]))
             return false;
 

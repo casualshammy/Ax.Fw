@@ -218,7 +218,7 @@ public class ObservableExtensionsTests
       new[] { 4, 5, 6 }
     }.ToObservable();
 
-    var result = source.DistinctUntilArrayChanged().ToEnumerable();
+    var result = source.DistinctUntilArrayChanged<int[], int>().ToEnumerable();
 
     Assert.Collection(result,
       _array => Assert.Equal(new[] { 1, 2, 3 }, _array),
@@ -236,7 +236,7 @@ public class ObservableExtensionsTests
       null
     }.ToObservable();
 
-    var result = source.DistinctUntilNullableArrayChanged().ToEnumerable();
+    var result = source.DistinctUntilArrayChanged<int[]?, int>().ToEnumerable();
 
     Assert.Collection(result,
       Assert.Null,
@@ -255,7 +255,7 @@ public class ObservableExtensionsTests
       Array.Empty<int>()
     }.ToObservable();
 
-    var result = source.DistinctUntilArrayChanged().ToEnumerable();
+    var result = source.DistinctUntilArrayChanged<int[], int>().ToEnumerable();
 
     Assert.Collection(result,
       Assert.Empty,
@@ -275,7 +275,7 @@ public class ObservableExtensionsTests
 
     var comparer = new CustomArrayComparer();
 
-    var result = source.DistinctUntilArrayChanged(comparer).ToEnumerable();
+    var result = source.DistinctUntilArrayChanged<int[], int>(comparer).ToEnumerable();
 
     Assert.Collection(result,
       _array => Assert.Equal(new[] { 1, 2 }, _array),
@@ -292,7 +292,7 @@ public class ObservableExtensionsTests
       new[] { 1, 2 }
     }.ToObservable();
 
-    var result = source.DistinctUntilArrayChanged().ToEnumerable();
+    var result = source.DistinctUntilArrayChanged<int[], int>().ToEnumerable();
 
     Assert.Collection(result,
       _array => Assert.Equal(new[] { 1, 2 }, _array),
@@ -310,7 +310,7 @@ public class ObservableExtensionsTests
       new[] { 5, 6 }
     }.ToObservable();
 
-    var result = source.DistinctUntilArrayChanged().ToEnumerable();
+    var result = source.DistinctUntilArrayChanged<int[], int>().ToEnumerable();
 
     Assert.Collection(result,
       _array => Assert.Equal(new[] { 1, 2 }, _array),
@@ -326,7 +326,7 @@ public class ObservableExtensionsTests
       new[] { 1, 2, 3 }
     }.ToObservable();
 
-    var result = source.DistinctUntilArrayChanged().ToEnumerable();
+    var result = source.DistinctUntilArrayChanged<int[], int>().ToEnumerable();
 
     Assert.Collection(result,
       _array => Assert.Equal(new[] { 1, 2, 3 }, _array));
@@ -337,7 +337,7 @@ public class ObservableExtensionsTests
   {
     var source = Array.Empty<int[]>().ToObservable();
 
-    var result = source.DistinctUntilArrayChanged().ToEnumerable();
+    var result = source.DistinctUntilArrayChanged<int[], int>().ToEnumerable();
 
     Assert.Empty(result);
   }
