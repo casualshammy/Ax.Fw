@@ -88,12 +88,13 @@ public class SyncCache<TKey, TValue> : ISyncCache<TKey, TValue> where TKey : not
       lock (p_addRemoveLock)
         if (p_table.Count > capacity + overhead)
         {
-          var list = p_table.ToList();
-          list.Sort((a, b) => a.Value.ValidUntil.CompareTo(b.Value.ValidUntil));
-          int howManyToDelete = p_table.Count - capacity;
-          for (int i = 0; i < howManyToDelete; i++)
-            if (!p_table.TryRemove(list[i].Key, out _))
-              throw new Exception($"{nameof(SyncCache<TKey, TValue>)}.{nameof(Put)}(): can't remove value from dictionary");
+          var counter = 0;
+          foreach (var pair in p_table.OrderByDescending(_ => _.Value.ValidUntil))
+          {
+            if (++counter > capacity)
+              if (!p_table.TryRemove(pair.Key, out _))
+                throw new Exception($"{nameof(SyncCache<TKey, TValue>)}.{nameof(Put)}(): can't remove value from dictionary");
+          }
         }
   }
 
