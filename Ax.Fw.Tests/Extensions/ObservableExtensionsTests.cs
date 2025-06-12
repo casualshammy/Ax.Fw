@@ -78,7 +78,7 @@ public class ObservableExtensionsTests
       {
         lifetimeQueue.Enqueue(_life);
 
-        Thread.Sleep(250);
+        //Thread.Sleep(250);
       });
 
     await Task.Delay(5000);

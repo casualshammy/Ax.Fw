@@ -10,6 +10,6 @@ internal class SyncCacheEntry<TValue>
     Data = _data;
   }
 
-  public DateTimeOffset ValidUntil { get; set; }
-  public TValue Data { get; set; }
+  public DateTimeOffset ValidUntil { get; }
+  public TValue Data { get; }
 }
