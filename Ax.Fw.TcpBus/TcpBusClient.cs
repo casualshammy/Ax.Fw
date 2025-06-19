@@ -29,11 +29,12 @@ public static class TcpBusClientFactory
 {
   public static IDisposable Create(
       int _port,
+      IReadOnlyList<Type> _types,
       out TcpBusClient _serverInstance)
   {
     var lifetime = new Lifetime();
 
-    _serverInstance = new TcpBusClient(lifetime, _port);
+    _serverInstance = new TcpBusClient(lifetime, _types, _port);
 
     return Disposable.Create(lifetime.End);
   }
@@ -41,11 +42,12 @@ public static class TcpBusClientFactory
   public static IDisposable Create(
       int _port,
       string _host,
+      IReadOnlyList<Type> _types,
       out TcpBusClient _serverInstance)
   {
     var lifetime = new Lifetime();
 
-    _serverInstance = new TcpBusClient(lifetime, _port, _host);
+    _serverInstance = new TcpBusClient(lifetime, _types, _port, _host);
 
     return Disposable.Create(lifetime.End);
   }
@@ -53,11 +55,12 @@ public static class TcpBusClientFactory
   public static IDisposable Create(
       int _port,
       IScheduler _scheduler,
+      IReadOnlyList<Type> _types,
       out TcpBusClient _serverInstance)
   {
     var lifetime = new Lifetime();
 
-    _serverInstance = new TcpBusClient(lifetime, _scheduler, _port);
+    _serverInstance = new TcpBusClient(lifetime, _scheduler, _types, _port);
 
     return Disposable.Create(lifetime.End);
   }
@@ -66,11 +69,12 @@ public static class TcpBusClientFactory
       int _port,
       string _host,
       IScheduler _scheduler,
+      IReadOnlyList<Type> _types,
       out TcpBusClient _serverInstance)
   {
     var lifetime = new Lifetime();
 
-    _serverInstance = new TcpBusClient(lifetime, _scheduler, _port, _host);
+    _serverInstance = new TcpBusClient(lifetime, _scheduler, _types, _port, _host);
 
     return Disposable.Create(lifetime.End);
   }
@@ -90,11 +94,17 @@ public class TcpBusClient : ITcpBusClient
   private readonly Subject<byte[]> p_failedTcpMsgFlow = new();
   private readonly Subject<byte[]> p_incomingMsgFlow = new();
 
-  public TcpBusClient(IReadOnlyLifetime _lifetime, IScheduler _scheduler, int _port, string _host = "127.0.0.1", string? _password = null)
+  public TcpBusClient(
+    IReadOnlyLifetime _lifetime,
+    IScheduler _scheduler,
+    IReadOnlyList<Type> _types,
+    int _port,
+    string _host = "127.0.0.1",
+    string? _password = null)
   {
     var typesCache = new Dictionary<string, Type>();
     var typesCacheReverse = new Dictionary<Type, string>();
-    foreach (var type in Utilities.GetTypesWithAttr<TcpMsgTypeAttribute>(true))
+    foreach (var type in _types)
     {
       var attr = Utilities.GetAttribute<TcpMsgTypeAttribute>(type);
       if (attr != null)
@@ -158,7 +168,13 @@ public class TcpBusClient : ITcpBusClient
       p_client.Connect();
   }
 
-  public TcpBusClient(IReadOnlyLifetime _lifetime, int _port, string _host = "127.0.0.1", string? _password = null) : this(_lifetime, ThreadPoolScheduler.Instance, _port, _host, _password)
+  public TcpBusClient(
+    IReadOnlyLifetime _lifetime,
+    IReadOnlyList<Type> _types,
+    int _port,
+    string _host = "127.0.0.1",
+    string? _password = null)
+    : this(_lifetime, ThreadPoolScheduler.Instance, _types, _port, _host, _password)
   { }
 
   public bool Connected => p_client.Connected;

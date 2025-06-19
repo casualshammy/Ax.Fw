@@ -65,32 +65,4 @@ public static class ArrayExtensions
     _item4 = _array[4];
   }
 
-  public static T ToStruct<T>(this byte[] _array)
-    where T : struct
-  {
-    var result = new T();
-    var size = Marshal.SizeOf(result);
-
-    var ptr = IntPtr.Zero;
-    try
-    {
-      ptr = Marshal.AllocHGlobal(size);
-      Marshal.Copy(_array, 0, ptr, size);
-      result = (T)Marshal.PtrToStructure(ptr, typeof(T))!;
-    }
-    finally
-    {
-      Marshal.FreeHGlobal(ptr);
-    }
-
-    return result;
-  }
-
-  public static T ToStruct<T>(this Span<byte> _span)
-    where T : struct
-  {
-    var result = MemoryMarshal.Read<T>(_span);
-    return result;
-  }
-
 }

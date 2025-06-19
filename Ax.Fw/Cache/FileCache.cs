@@ -12,6 +12,7 @@ using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -19,6 +20,7 @@ namespace Ax.Fw.Cache;
 
 public class FileCache
 {
+  private const int HEADER_SIZE = 512;
   private readonly Subject<SemaphoreSlim?> p_cleanReqFlow;
   private readonly IReadOnlyLifetime p_lifetime;
   private readonly string p_folder;
@@ -112,9 +114,12 @@ public class FileCache
 
       using (var fileStream = File.Open(tmpFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
       {
-        var header = new FileCacheEntryHeader() { Mime = _mime ?? MimeTypes.Bin };
-        var headerBytes = header.MarshalToByteArray();
-        await fileStream.WriteAsync(headerBytes, _ct);
+        Span<byte> headerBytes = new byte[HEADER_SIZE];
+        var stringLength = Encoding.UTF8.GetBytes(_mime ?? MimeTypes.Bin, headerBytes[2..]);
+        if (!BitConverter.TryWriteBytes(headerBytes, (ushort)stringLength))
+          throw new InvalidOperationException("Failed to write MIME length to header.");
+
+        await fileStream.WriteAsync(headerBytes.ToArray(), _ct);
 
         await _inStream.CopyToAsync(fileStream, _ct);
       }
@@ -146,14 +151,15 @@ public class FileCache
     try
     {
       var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-      var headerBytes = ArrayPool<byte>.Shared.Rent(FileCacheEntryHeader.Size);
+      var headerBytes = ArrayPool<byte>.Shared.Rent(HEADER_SIZE);
       try
       {
-        stream.ReadExactly(headerBytes.AsSpan()[..FileCacheEntryHeader.Size]);
-        var header = headerBytes.ToStruct<FileCacheEntryHeader>();
+        stream.ReadExactly(headerBytes, 0, HEADER_SIZE);
+        var stringLength = BitConverter.ToUInt16(headerBytes, 0);
+        var mime = Encoding.UTF8.GetString(headerBytes, 2, stringLength);
 
-        _stream = new StreamWrapper(stream, stream.Length - FileCacheEntryHeader.Size, true);
-        _meta = new FileCacheEntryMeta(path, hash, header.Mime);
+        _stream = new StreamWrapper(stream, stream.Length - HEADER_SIZE, true);
+        _meta = new FileCacheEntryMeta(path, hash, mime);
 
         return true;
       }
@@ -238,6 +244,6 @@ public class FileCache
   }
 
   [MethodImpl(MethodImplOptions.AggressiveInlining)]
-  private static string GetFileNameForHash(string _hash) => $"{_hash}.v1";
+  private static string GetFileNameForHash(string _hash) => $"{_hash}.v2";
 
 }

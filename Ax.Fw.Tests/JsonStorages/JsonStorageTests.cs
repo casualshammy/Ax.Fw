@@ -1,23 +1,23 @@
 ﻿#nullable enable
 using Ax.Fw.Extensions;
 using Ax.Fw.JsonStorages;
-using Ax.Fw.SharedTypes.Data;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reactive.Linq;
-using System.Threading;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Ax.Fw.Tests;
+namespace Ax.Fw.Tests.JsonStorages;
+
+internal record Sample(int Number, string Message);
+
+[JsonSerializable(typeof(Sample))]
+internal partial class JsonStorageTestsJsonCtx : JsonSerializerContext { }
 
 public class JsonStorageTests
 {
-  record Sample(int Number, string Message);
-
   private readonly ITestOutputHelper p_output;
 
   public JsonStorageTests(ITestOutputHelper _output)
@@ -31,7 +31,7 @@ public class JsonStorageTests
     var lifetime = new Lifetime();
     var tempFile = Path.GetTempFileName();
 
-    var jsonStorage = new JsonStorage<Sample>(tempFile, null, lifetime);
+    var jsonStorage = new JsonStorage<Sample>(tempFile, JsonStorageTestsJsonCtx.Default, lifetime);
     var result = jsonStorage.Read(() => new Sample(0, string.Empty));
     Assert.Equal(0, result!.Number);
     Assert.Equal(string.Empty, result!.Message);
@@ -57,7 +57,7 @@ public class JsonStorageTests
     var emptyData = new Sample(0, string.Empty);
     Sample? nullData = null;
 
-    var jsonStorage = new JsonStorage<Sample>(tempFile, null, lifetime);
+    var jsonStorage = new JsonStorage<Sample>(tempFile, JsonStorageTestsJsonCtx.Default, lifetime);
     jsonStorage.Subscribe(_v =>
     {
       if (_v == data)
@@ -81,6 +81,5 @@ public class JsonStorageTests
     Assert.NotEqual(0, emptyDataCounter);
     Assert.NotEqual(0, nullDataCounter);
   }
-
 
 }
