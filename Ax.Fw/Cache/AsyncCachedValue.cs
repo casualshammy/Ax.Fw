@@ -7,7 +7,15 @@ namespace Ax.Fw.Cache;
 
 public class AsyncCachedValue<T> : DisposableStack
 {
-  private static readonly Pool<SemaphoreSlim> p_writeSemaphorePool = new(() => new SemaphoreSlim(1, 1), null);
+  private static readonly Pool<SemaphoreSlim> p_writeSemaphorePool = new(() => new SemaphoreSlim(1, 1), _s =>
+  {
+    try
+    {
+      _s.Release();
+    }
+    catch (SemaphoreFullException)
+    { }
+  });
   private readonly long p_ttlMs;
   private readonly Func<CancellationToken, Task<T?>> p_factory;
   private readonly SemaphoreSlim p_writeSemaphore;
@@ -42,7 +50,12 @@ public class AsyncCachedValue<T> : DisposableStack
     }
     finally
     {
-      p_writeSemaphore.Release();
+      try
+      {
+        p_writeSemaphore.Release();
+      }
+      catch (SemaphoreFullException)
+      { }
     }
   }
 

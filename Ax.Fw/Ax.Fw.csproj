@@ -1,31 +1,32 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
-		<PackageId>$(AssemblyName)</PackageId>
-		<PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
-		<Description>A set of useful tools</Description>
-		<Version>$(Version)</Version>
-		<Authors>Axio</Authors>
-		<Company>$(Authors)</Company>
-		<LangVersion>latest</LangVersion>
-		<Copyright>Axio</Copyright>
-		<PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
-		<Nullable>enable</Nullable>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	</PropertyGroup>
+		<PropertyGroup>
+				<TargetFramework>net8.0</TargetFramework>
+				<PackageId>$(AssemblyName)</PackageId>
+				<PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
+				<Description>A set of useful tools</Description>
+				<Version>$(Version)</Version>
+				<Authors>Axio</Authors>
+				<Company>$(Authors)</Company>
+				<LangVersion>latest</LangVersion>
+				<Copyright>Axio</Copyright>
+				<PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
+				<Nullable>enable</Nullable>
+				<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+				<IsAotCompatible>true</IsAotCompatible>
+		</PropertyGroup>
 
-	<ItemGroup>
-		<None Include="..\.editorconfig" Link=".editorconfig" />
-	</ItemGroup>
+		<ItemGroup>
+				<None Include="..\.editorconfig" Link=".editorconfig" />
+		</ItemGroup>
 
-	<ItemGroup>
-		<PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
-	</ItemGroup>
+		<ItemGroup>
+				<PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
+		</ItemGroup>
 
-	<ItemGroup>
-	  <ProjectReference Include="..\Ax.Fw.Interfaces\Ax.Fw.SharedTypes.csproj" />
-	</ItemGroup>
+		<ItemGroup>
+				<ProjectReference Include="..\Ax.Fw.Interfaces\Ax.Fw.SharedTypes.csproj" />
+		</ItemGroup>
 </Project>
 
 

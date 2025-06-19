@@ -52,4 +52,25 @@ public class AsyncCacheTests
     Assert.NotEqual(v0, v1);
     Assert.Equal("2", v1);
   }
+
+  [Fact(Timeout = 30000)]
+  public async Task ResultIsReturnedEvenIfCacheIsDisposed()
+  {
+    using var lifetime = new Lifetime();
+
+    var cachedValue = new AsyncCachedValue<int>(TimeSpan.FromMinutes(1), async _c =>
+    {
+      await Task.Delay(1000, _c);
+      return 999;
+    });
+
+    var task = cachedValue.GetValueAsync(lifetime.Token);
+    cachedValue.Dispose();
+
+    Assert.False(task.IsCompleted);
+
+    var taskResult = await task;
+    Assert.Equal(999, taskResult);
+  }
+
 }
