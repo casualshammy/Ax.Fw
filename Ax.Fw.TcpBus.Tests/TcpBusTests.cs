@@ -1,7 +1,6 @@
 ﻿#nullable enable
 using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Attributes;
-using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.TcpBus.Tests.Attributes;
 using System;
 using System.Collections.Concurrent;
@@ -19,8 +18,13 @@ namespace Ax.Fw.TcpBus.Tests;
 public class TcpBusTests
 {
   private static SemaphoreSlim p_semaphore = new(1, 1);
+  private static readonly Type[] p_types =
+  [
+    typeof(SimpleMsgReq),
+    typeof(SimpleMsgRes)
+  ];
 
-  private readonly ITestOutputHelper p_output;
+private readonly ITestOutputHelper p_output;
 
   public TcpBusTests(ITestOutputHelper output)
   {
@@ -42,8 +46,8 @@ public class TcpBusTests
       {
         var scheduler = lifetime.ToDisposeOnEnding(new EventLoopScheduler());
         var server = new TcpBusServer(lifetime, 9600);
-        var client0 = new TcpBusClient(lifetime, scheduler, 9600);
-        var client1 = new TcpBusClient(lifetime, scheduler, 9600);
+        var client0 = new TcpBusClient(lifetime, scheduler, p_types, 9600);
+        var client1 = new TcpBusClient(lifetime, scheduler, p_types, 9600);
 
         Thread.Sleep(TimeSpan.FromSeconds(1));
         Assert.Equal(2, server.ClientsCount);
@@ -102,9 +106,9 @@ public class TcpBusTests
       try
       {
         var server = new TcpBusServer(lifetime, 9600);
-        var receiverClient = new TcpBusClient(lifetime, 9600, _password: "test-password");
-        var senderClient = new TcpBusClient(lifetime, 9600, _password: "test-password");
-        var brokenClient = new TcpBusClient(lifetime, 9600);
+        var receiverClient = new TcpBusClient(lifetime, p_types, 9600, _password: "test-password");
+        var senderClient = new TcpBusClient(lifetime, p_types, 9600, _password: "test-password");
+        var brokenClient = new TcpBusClient(lifetime, p_types, 9600);
 
         Thread.Sleep(TimeSpan.FromSeconds(1));
         Assert.Equal(3, server.ClientsCount);
@@ -154,8 +158,8 @@ public class TcpBusTests
       {
         var scheduler = lifetime.ToDisposeOnEnding(new EventLoopScheduler());
         var server = new TcpBusServer(lifetime, 9600);
-        var client0 = new TcpBusClient(lifetime, scheduler, 9600, _password: "test-password");
-        var client1 = new TcpBusClient(lifetime, scheduler, 9600, _password: "test-password");
+        var client0 = new TcpBusClient(lifetime, scheduler, p_types, 9600, _password: "test-password");
+        var client1 = new TcpBusClient(lifetime, scheduler, p_types, 9600, _password: "test-password");
 
         Thread.Sleep(TimeSpan.FromSeconds(1));
         Assert.Equal(2, server.ClientsCount);

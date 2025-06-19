@@ -38,7 +38,7 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
   });
 
   private readonly IObservable<T?> p_sharedObservable;
-  private readonly JsonSerializerContext? p_jsonCtx;
+  private readonly JsonSerializerContext p_jsonCtx;
   private readonly Action<Exception>? p_onDeserializationError;
   private readonly SemaphoreSlim p_fileAccessSemaphore;
 
@@ -48,13 +48,10 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
   /// <param name="_jsonFilePath">Path to JSON file. Can't be null or empty.</param>
   public JsonStorage(
     string _jsonFilePath,
-    JsonSerializerContext? _jsonCtx,
+    JsonSerializerContext _jsonCtx,
     IReadOnlyLifetime _lifetime,
     Action<Exception>? _onDeserializationError = null)
   {
-    if (string.IsNullOrWhiteSpace(_jsonFilePath))
-      throw new ArgumentNullException(nameof(_jsonFilePath));
-
     p_jsonCtx = _jsonCtx;
     p_onDeserializationError = _onDeserializationError;
     JsonFilePath = _jsonFilePath;
@@ -123,10 +120,7 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
       {
         try
         {
-          if (p_jsonCtx != null)
-            return (T?)await JsonSerializer.DeserializeAsync(fileStream, typeof(T), p_jsonCtx, _ct) ?? await _defaultFactory(_ct);
-          else
-            return await JsonSerializer.DeserializeAsync<T>(fileStream, cancellationToken: _ct) ?? await _defaultFactory(_ct);
+          return (T?)await JsonSerializer.DeserializeAsync(fileStream, typeof(T), p_jsonCtx, _ct) ?? await _defaultFactory(_ct);
         }
         catch
         {
@@ -136,7 +130,11 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
     }
     finally
     {
-      p_fileAccessSemaphore.Release();
+      try
+      {
+        p_fileAccessSemaphore.Release();
+      }
+      catch (SemaphoreFullException) { }
     }
   }
 
@@ -162,10 +160,7 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
       {
         try
         {
-          if (p_jsonCtx != null)
-            return (T?)JsonSerializer.Deserialize(fileStream, typeof(T), p_jsonCtx) ?? _defaultFactory();
-          else
-            return JsonSerializer.Deserialize<T>(fileStream) ?? _defaultFactory();
+          return (T?)JsonSerializer.Deserialize(fileStream, typeof(T), p_jsonCtx) ?? _defaultFactory();
         }
         catch
         {
@@ -175,7 +170,11 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
     }
     finally
     {
-      p_fileAccessSemaphore.Release();
+      try
+      {
+        p_fileAccessSemaphore.Release();
+      }
+      catch (SemaphoreFullException) { }
     }
   }
 
@@ -191,14 +190,15 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
     try
     {
       using var fileStream = File.Open(JsonFilePath, FileMode.Create);
-      if (p_jsonCtx != null)
-        await JsonSerializer.SerializeAsync(fileStream, _data, typeof(T), p_jsonCtx, _ct);
-      else
-        await JsonSerializer.SerializeAsync(fileStream, _data, cancellationToken: _ct);
+      await JsonSerializer.SerializeAsync(fileStream, _data, typeof(T), p_jsonCtx, _ct);
     }
     finally
     {
-      p_fileAccessSemaphore.Release();
+      try
+      {
+        p_fileAccessSemaphore.Release();
+      }
+      catch (SemaphoreFullException) { }
     }
   }
 
@@ -215,14 +215,15 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
     try
     {
       using var fileStream = File.Open(JsonFilePath, FileMode.Create);
-      if (p_jsonCtx != null)
-        JsonSerializer.Serialize(fileStream, _data, typeof(T), p_jsonCtx);
-      else
-        JsonSerializer.Serialize(fileStream, _data);
+      JsonSerializer.Serialize(fileStream, _data, typeof(T), p_jsonCtx);
     }
     finally
     {
-      p_fileAccessSemaphore.Release();
+      try
+      {
+        p_fileAccessSemaphore.Release();
+      }
+      catch (SemaphoreFullException) { }
     }
   }
 
@@ -239,16 +240,15 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
       try
       {
         using (var fileStream = File.OpenRead(JsonFilePath))
-        {
-          if (p_jsonCtx != null)
-            return (T?)await JsonSerializer.DeserializeAsync(fileStream, typeof(T), p_jsonCtx, _ct) ?? default;
-          else
-            return await JsonSerializer.DeserializeAsync<T>(fileStream, cancellationToken: _ct) ?? default;
-        }
+          return (T?)await JsonSerializer.DeserializeAsync(fileStream, typeof(T), p_jsonCtx, _ct) ?? default;
       }
       finally
       {
-        p_fileAccessSemaphore.Release();
+        try
+        {
+          p_fileAccessSemaphore.Release();
+        }
+        catch (SemaphoreFullException) { }
       }
     }
     catch (OperationCanceledException)

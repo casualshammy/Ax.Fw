@@ -241,7 +241,7 @@ public class AppBase
 
   public AppBase UseConfigFile<TRaw, TOut>(
     string _filePath,
-    JsonSerializerContext? _jsonCtx,
+    JsonSerializerContext _jsonCtx,
     Func<IAppDependencyCtx, TRaw?, TOut?> _transform)
     where TRaw : class
     where TOut : class
@@ -266,7 +266,7 @@ public class AppBase
     return this;
   }
 
-  public AppBase UseConfigFile<T>(string _filePath, JsonSerializerContext? _jsonCtx)
+  public AppBase UseConfigFile<T>(string _filePath, JsonSerializerContext _jsonCtx)
     where T : class
   {
     return UseConfigFile<T, T>(_filePath, _jsonCtx, (_, _raw) => _raw);

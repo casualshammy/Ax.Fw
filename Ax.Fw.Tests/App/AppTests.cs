@@ -14,7 +14,7 @@ internal record TestConfig(string Path, int Value) : IConfigDefinition
 {
   public static string FilePath => "C:\\Windows\\Temp\\ax.fw.app.test-config.json";
 
-  public static JsonSerializerContext? JsonCtx => TestConfigJsonCtx.Default;
+  public static JsonSerializerContext JsonCtx => TestConfigJsonCtx.Default;
 }
 
 [JsonSerializable(typeof(TestConfig))]
