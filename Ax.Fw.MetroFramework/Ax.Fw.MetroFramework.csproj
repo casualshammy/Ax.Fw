@@ -11,6 +11,7 @@
 		<Description>Metro-style controls (Windows.Forms)</Description>
 		<PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
 		<PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 	</PropertyGroup>
 
 	<ItemGroup>

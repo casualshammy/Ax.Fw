@@ -17,6 +17,7 @@
 				<RepositoryUrl>https://github.com/casualshammy/Ax.Fw</RepositoryUrl>
 				<!--<PackageReadmeFile>README.md</PackageReadmeFile>-->
 				<PackageTags>log</PackageTags>
+				<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		</PropertyGroup>
 
 		<ItemGroup>
