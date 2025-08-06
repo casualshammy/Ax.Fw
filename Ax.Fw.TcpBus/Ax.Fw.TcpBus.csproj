@@ -11,10 +11,11 @@
 				<LangVersion>latest</LangVersion>
 				<Copyright>Axio</Copyright>
 				<PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
+				<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		</PropertyGroup>
 
 		<ItemGroup>
-				<PackageReference Include="WatsonTcp" Version="6.0.5" />
+				<PackageReference Include="WatsonTcp" Version="6.0.10" />
 		</ItemGroup>
 
 		<ItemGroup>

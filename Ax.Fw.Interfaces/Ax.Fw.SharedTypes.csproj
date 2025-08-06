@@ -11,10 +11,11 @@
 				<PackageProjectUrl>https://github.com/casualshammy/Ax.Fw</PackageProjectUrl>
 				<PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
 				<IsAotCompatible>true</IsAotCompatible>
+				<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		</PropertyGroup>
 
 		<ItemGroup>
-				<PackageReference Include="System.Reactive" Version="6.0.0" />
+				<PackageReference Include="System.Reactive" Version="6.0.1" />
 		</ItemGroup>
 
 </Project>

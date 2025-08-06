@@ -16,6 +16,7 @@
 				<RepositoryType>git</RepositoryType>
 				<RepositoryUrl>https://github.com/casualshammy/Ax.Fw</RepositoryUrl>
 				<!--<PackageReadmeFile>README.md</PackageReadmeFile>-->
+				<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		</PropertyGroup>
 
 		<ItemGroup>
