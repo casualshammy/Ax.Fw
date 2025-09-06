@@ -1,4 +1,4 @@
-using Ax.Fw.Storage.JsonConverters;
+﻿using Ax.Fw.Storage.JsonConverters;
 using System.Globalization;
 using System.Text.Json.Serialization;
 
@@ -19,5 +19,8 @@ public class KeyAlike
   public static implicit operator KeyAlike(ulong _key) => new(_key.ToString(CultureInfo.InvariantCulture));
   public static implicit operator KeyAlike(float _key) => new(_key.ToString(CultureInfo.InvariantCulture));
   public static implicit operator KeyAlike(double _key) => new(_key.ToString(CultureInfo.InvariantCulture));
+  public static implicit operator KeyAlike(Int128 _key) => new(_key.ToString(CultureInfo.InvariantCulture));
+  public static implicit operator KeyAlike(UInt128 _key) => new(_key.ToString(CultureInfo.InvariantCulture));
+  public static implicit operator KeyAlike(Guid _key) => new(_key.ToString());
 
 }

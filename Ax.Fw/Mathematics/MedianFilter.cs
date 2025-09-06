@@ -15,7 +15,7 @@ public class MedianFilter
       throw new ArgumentOutOfRangeException(nameof(_windowSize), $"Window size must be bigger than 0 and odd");
 
     p_windowSize = _windowSize;
-    p_medianIndex = (int)Math.Ceiling(p_windowSize / 2f);
+    p_medianIndex = (p_windowSize - 1) / 2;
     p_halfWindowSize = (int)Math.Floor(p_windowSize / 2f);
   }
 
