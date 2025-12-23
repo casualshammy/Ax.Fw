@@ -162,7 +162,7 @@ public class EncryptTests
       return;
 
     using var lifetime = new Lifetime();
-    var key = Utilities.GetRandomString(8, false);
+    var key = CommonUtilities.GetRandomString(8, false);
     var data = new byte[_size];
     Random.Shared.NextBytes(data);
 
@@ -191,7 +191,7 @@ public class EncryptTests
   public void AesGcmSimpleTest(EncryptionKeyLength _keySize, int _taskSize)
   {
     using var lifetime = new Lifetime();
-    var key = Utilities.GetRandomString(8, false);
+    var key = CommonUtilities.GetRandomString(8, false);
     var data = new byte[_taskSize];
     Random.Shared.NextBytes(data);
 
@@ -232,7 +232,7 @@ public class EncryptTests
   public void AesGcmObfsSimpleTest(EncryptionKeyLength _keySize, int _taskSize, int _minChunkSize)
   {
     using var lifetime = new Lifetime();
-    var key = Utilities.GetRandomString(8, false);
+    var key = CommonUtilities.GetRandomString(8, false);
     var data = new byte[_taskSize];
     Random.Shared.NextBytes(data);
 
@@ -276,7 +276,7 @@ public class EncryptTests
   public void AesCbcTest(EncryptionKeyLength _keySize, int _taskSize)
   {
     using var lifetime = new Lifetime();
-    var key = Utilities.GetRandomString(8, false);
+    var key = CommonUtilities.GetRandomString(8, false);
     var data = new byte[_taskSize];
     Random.Shared.NextBytes(data);
 
@@ -390,7 +390,7 @@ public class EncryptTests
   [InlineData(11652170)]
   public void XorSimpleTest(int _taskSize)
   {
-    var key = Encoding.UTF8.GetBytes(Utilities.GetRandomString(8, false));
+    var key = Encoding.UTF8.GetBytes(CommonUtilities.GetRandomString(8, false));
     var data = new byte[_taskSize];
     Random.Shared.NextBytes(data);
 
@@ -422,7 +422,7 @@ public class EncryptTests
   [Fact]
   public void XorInvalidHeaderTest()
   {
-    var key = Encoding.UTF8.GetBytes(Utilities.GetRandomString(8, false));
+    var key = Encoding.UTF8.GetBytes(CommonUtilities.GetRandomString(8, false));
     var data = new byte[32 * 1024];
     Random.Shared.NextBytes(data);
 

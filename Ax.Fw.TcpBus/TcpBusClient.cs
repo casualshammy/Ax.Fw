@@ -106,7 +106,7 @@ public class TcpBusClient : ITcpBusClient
     var typesCacheReverse = new Dictionary<Type, string>();
     foreach (var type in _types)
     {
-      var attr = Utilities.GetAttribute<TcpMsgTypeAttribute>(type);
+      var attr = CommonUtilities.GetAttribute<TcpMsgTypeAttribute>(type);
       if (attr != null)
       {
         typesCache.Add(attr.TypeSlug, type);
