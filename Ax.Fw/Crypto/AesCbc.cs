@@ -26,8 +26,8 @@ public class AesCbc : DisposableStack, ICryptoAlgorithm
     p_aes = ToDispose(Aes.Create());
     p_aes.KeySize = (int)_keyLength;
     p_aes.BlockSize = 128;
-    p_iv = hashSource
-      .Reverse()
+    p_iv = Enumerable
+      .Reverse(hashSource)
       .Take(p_aes.BlockSize / 8)
       .ToArray();
   }
@@ -58,12 +58,15 @@ public class AesCbc : DisposableStack, ICryptoAlgorithm
         using var hash = SHA512.Create();
         var key = hash.ComputeHash(_password);
         rijCrypto.Key = key.Take(rijCrypto.KeySize / 8).ToArray();
-        rijCrypto.IV = key.Reverse().Take(rijCrypto.BlockSize / 8).ToArray();
+        rijCrypto.IV = Enumerable
+          .Reverse(key)
+          .Take(rijCrypto.BlockSize / 8)
+          .ToArray();
       }
       else
       {
 #pragma warning disable SYSLIB0041 // 型またはメンバーが旧型式です
-        using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
+        using var key = new Rfc2898DeriveBytes(_password, Enumerable.Reverse(_password).ToArray(), 1000);
 #pragma warning restore SYSLIB0041 // 型またはメンバーが旧型式です
         rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
         rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
@@ -93,12 +96,12 @@ public class AesCbc : DisposableStack, ICryptoAlgorithm
         using var hash = SHA512.Create();
         var key = hash.ComputeHash(_password);
         rijCrypto.Key = key.Take(rijCrypto.KeySize / 8).ToArray();
-        rijCrypto.IV = key.Reverse().Take(rijCrypto.BlockSize / 8).ToArray();
+        rijCrypto.IV = Enumerable.Reverse(key).Take(rijCrypto.BlockSize / 8).ToArray();
       }
       else
       {
 #pragma warning disable SYSLIB0041 // 型またはメンバーが旧型式です
-        using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
+        using var key = new Rfc2898DeriveBytes(_password, Enumerable.Reverse(_password).ToArray(), 1000);
 #pragma warning restore SYSLIB0041 // 型またはメンバーが旧型式です
         rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
         rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
@@ -140,12 +143,12 @@ public class AesCbc : DisposableStack, ICryptoAlgorithm
         using var hash = SHA512.Create();
         var key = hash.ComputeHash(_password);
         rijCrypto.Key = key.Take(rijCrypto.KeySize / 8).ToArray();
-        rijCrypto.IV = key.Reverse().Take(rijCrypto.BlockSize / 8).ToArray();
+        rijCrypto.IV = Enumerable.Reverse(key).Take(rijCrypto.BlockSize / 8).ToArray();
       }
       else
       {
 #pragma warning disable SYSLIB0041 // 型またはメンバーが旧型式です
-        using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
+        using var key = new Rfc2898DeriveBytes(_password, Enumerable.Reverse(_password).ToArray(), 1000);
 #pragma warning restore SYSLIB0041 // 型またはメンバーが旧型式です
         rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
         rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);
@@ -175,12 +178,12 @@ public class AesCbc : DisposableStack, ICryptoAlgorithm
         using var hash = SHA512.Create();
         var key = hash.ComputeHash(_password);
         rijCrypto.Key = key.Take(rijCrypto.KeySize / 8).ToArray();
-        rijCrypto.IV = key.Reverse().Take(rijCrypto.BlockSize / 8).ToArray();
+        rijCrypto.IV = Enumerable.Reverse(key).Take(rijCrypto.BlockSize / 8).ToArray();
       }
       else
       {
 #pragma warning disable SYSLIB0041 // 型またはメンバーが旧型式です
-        using var key = new Rfc2898DeriveBytes(_password, _password.Reverse().ToArray(), 1000);
+        using var key = new Rfc2898DeriveBytes(_password, Enumerable.Reverse(_password).ToArray(), 1000);
 #pragma warning restore SYSLIB0041 // 型またはメンバーが旧型式です
         rijCrypto.Key = key.GetBytes(rijCrypto.KeySize / 8);
         rijCrypto.IV = key.GetBytes(rijCrypto.BlockSize / 8);

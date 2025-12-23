@@ -175,7 +175,7 @@ public static class IObservableExtensions
     var comparer = _entryComparer ?? EqualityComparer<T>.Default;
 
     return _observable
-      .DistinctUntilChanged(Utilities.CreateEqualityComparer<A>((_a, _b) =>
+      .DistinctUntilChanged(CommonUtilities.CreateEqualityComparer<A>((_a, _b) =>
       {
         if (_a == null && _b == null)
           return true;

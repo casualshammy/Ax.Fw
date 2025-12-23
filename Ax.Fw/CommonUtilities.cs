@@ -6,12 +6,13 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Reactive;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Ax.Fw;
 
-public static class Utilities
+public static class CommonUtilities
 {
   class CustomComparer<T>(Comparison<T?> _comparison) : Comparer<T>
   {
@@ -104,7 +105,7 @@ public static class Utilities
 
 }
 
-public static class UtilitiesIO
+public static class IOUtils
 {
   public static bool IsExecutableAvailable(string _executableNameWithoutExtension, [NotNullWhen(true)] out string? _executablePath)
   {
@@ -142,6 +143,57 @@ public static class UtilitiesIO
       if (File.Exists(pathWindows))
       {
         _executablePath = pathWindows;
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /// <summary>
+  /// Tries to parse a command-line argument with the specified name.
+  /// </summary>
+  /// <typeparam name="T">The type of the argument value.</typeparam>
+  /// <param name="_args">The command-line arguments array.</param>
+  /// <param name="_argName">The argument name (must start with '--').</param>
+  /// <param name="_conversionFunc">Function to convert string value to type T.</param>
+  /// <param name="_value">The parsed value if successful.</param>
+  /// <returns>True if the argument was found and successfully parsed; otherwise, false.</returns>
+  /// <exception cref="ArgumentException">Thrown when _argName doesn't start with '--'.</exception>
+  public static bool TryParseArgument<T>(
+    string[] _args,
+    string _argName,
+    Func<string, T> _conversionFunc,
+    [NotNullWhen(true)] out T? _value)
+    where T : notnull
+  {
+    _value = default;
+
+    if (!_argName.StartsWith("--"))
+      throw new ArgumentException("Argument name must start with '--'");
+    if (_args.Length == 0)
+      return false;
+
+    for (int i = 0; i < _args.Length; i++)
+    {
+      var currentArg = _args[i];
+      if (currentArg == _argName) //  && i + 1 < _args.Length
+      {
+        if (typeof(T) == typeof(Unit))
+        {
+          _value = (T)(object)Unit.Default;
+          return true;
+        }
+
+        if (i + 1 >= _args.Length)
+          return false;
+
+        var valueStr = _args[i + 1];
+        if (valueStr.StartsWith("--"))
+          return false;
+
+        valueStr = valueStr.Trim('"');
+        _value = _conversionFunc(valueStr);
         return true;
       }
     }

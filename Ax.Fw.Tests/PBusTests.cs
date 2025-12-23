@@ -1,4 +1,4 @@
-using Ax.Fw.Bus;
+﻿using Ax.Fw.Bus;
 using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.Diagnostics;
@@ -215,7 +215,7 @@ namespace Ax.Fw.Tests
         var bus = new PBus(lifetime);
         lifetime.ToDisposeOnEnding(bus.OfReqRes<SimpleMsgReq, SimpleMsgRes>(async _msg =>
         {
-          var internet = await Utilities.IsInternetAvailable();
+          var internet = await CommonUtilities.IsInternetAvailable();
           return new SimpleMsgRes(_msg.Code + (internet ? 1 : 1));
         }));
 
