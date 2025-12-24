@@ -1,20 +1,23 @@
-﻿using Ax.Fw.App.Data;
-using Ax.Fw.DependencyInjection;
-using Ax.Fw.Extensions;
-using Ax.Fw.JsonStorages;
+﻿using Ax.Fw.DependencyInjection;
 using Ax.Fw.Log;
-using Ax.Fw.SharedTypes.Data.Log;
 using Ax.Fw.SharedTypes.Interfaces;
-using System.Reactive.Concurrency;
 using System.Reactive.Linq;
-using System.Text.Json.Serialization;
 
 namespace Ax.Fw.App;
 
-public class AppBase
+/// <summary>
+/// Provides a base class for configuring, composing, and running an application with dependency injection, lifetime
+/// management, and logging capabilities.
+/// </summary>
+/// <remarks><para> <see cref="AppBase"/> enables fluent configuration of application services, modules, and
+/// logging, as well as management of application lifetime and configuration sources. It acts as the entry point for
+/// setting up dependency injection, registering services and modules, and controlling application startup and shutdown
+/// behavior. </para> <para> To create an instance, use the static <see cref="Create"/> method. After configuring
+/// dependencies and modules, call <see cref="Run"/> to build and start the application, or <see cref="RunWaitAsync"/>
+/// to run and wait for the application lifetime to complete. </para> <para> This class is not intended to be inherited.
+/// </para></remarks>
+public sealed class AppBase
 {
-  public static AppBase Create() => new();
-
   private readonly AppDependencyManager p_depMgr;
 
   private AppBase()
@@ -29,6 +32,14 @@ public class AppBase
     var log = lifetime.ToDisposeOnEnded(new GenericLog());
     p_depMgr.AddSingleton<ILog>(log);
   }
+
+  internal AppDependencyManager DependencyManager => p_depMgr;
+
+  /// <summary>
+  /// Creates a new instance of the <see cref="AppBase"/> class.
+  /// </summary>
+  /// <returns>A new <see cref="AppBase"/> instance.</returns>
+  public static AppBase Create() => new();
 
   /// <summary>
   /// Build dependencies and return
@@ -142,143 +153,6 @@ public class AppBase
   {
     p_depMgr.ActivateOnStart(_action);
     return this;
-  }
-
-  // ===========================
-  // =========== LOG ===========
-  // ===========================
-
-  public AppBase UseConsoleLog()
-  {
-    var log = p_depMgr.Locate<ILog>() as GenericLog;
-    if (log == null)
-      throw new InvalidOperationException($"Can't get the instance of {typeof(GenericLog)}!");
-
-    log.AttachConsoleLog();
-    return this;
-  }
-
-  public AppBase UseFileLog(
-    Func<string> _fileNameFactory,
-    Action<Exception, IEnumerable<LogEntry>>? _onError = null,
-    Action<HashSet<string>>? _filesWrittenCallback = null)
-  {
-    var log = p_depMgr.Locate<ILog>() as GenericLog;
-    if (log == null)
-      throw new InvalidOperationException($"Can't get the instance of {typeof(GenericLog)}!");
-
-    log.AttachFileLog(_fileNameFactory, TimeSpan.FromSeconds(1), _onError, _filesWrittenCallback);
-    return this;
-  }
-
-  public AppBase UseFileLogFromConf<T>(
-    Func<T?, string?> _fileNameFactory,
-    Action<Exception, IEnumerable<LogEntry>>? _onError = null,
-    Action<HashSet<string>>? _filesWrittenCallback = null)
-    where T : class
-  {
-    var lifetime = p_depMgr.Locate<IReadOnlyLifetime>();
-
-    var log = p_depMgr.Locate<ILog>() as GenericLog;
-    if (log == null)
-      throw new InvalidOperationException($"Can't get the instance of {typeof(GenericLog)}!");
-
-    var confFlow = p_depMgr.Locate<IObservableConfig<T?>>();
-    if (confFlow == null)
-      throw new InvalidOperationException($"Can't get the instance of {typeof(IObservableConfig<T?>)}!");
-
-    var confProp = confFlow.ToNullableProperty(lifetime, null);
-
-    string? factory()
-    {
-      var conf = confProp.Value;
-      var path = _fileNameFactory.Invoke(conf);
-      return path;
-    }
-
-    log.AttachFileLog(factory, TimeSpan.FromSeconds(1), _onError, _filesWrittenCallback);
-    return this;
-  }
-
-  public AppBase UseFileLogRotate(FileLogRotateDescription _desc)
-  {
-    p_depMgr
-      .ActivateOnStart((IReadOnlyLifetime _lifetime) =>
-      {
-        _lifetime.ToDisposeOnEnding(FileLoggerCleaner.Create(
-          _desc.Directory, _desc.Recursive, _desc.LogFilesPattern, _desc.LogFileTtl, _desc.GzipFiles, TimeSpan.FromHours(3)));
-      });
-
-    return this;
-  }
-
-  public AppBase UseFileLogRotateFromConf<T>(
-    Func<T?, FileLogRotateDescription?> _factory)
-  {
-    p_depMgr
-      .ActivateOnStart((IObservableConfig<T?> _confFlow, IReadOnlyLifetime _lifetime) =>
-      {
-        var scheduler = new EventLoopScheduler();
-
-        _confFlow
-          .HotAlive(_lifetime, scheduler, (_conf, _life) =>
-          {
-            var desc = _factory.Invoke(_conf);
-            if (desc == null)
-              return;
-
-            _life.ToDisposeOnEnding(FileLoggerCleaner.Create(
-              desc.Directory, desc.Recursive, desc.LogFilesPattern, desc.LogFileTtl, desc.GzipFiles, TimeSpan.FromHours(3)));
-          });
-      });
-
-    return this;
-  }
-
-  // ===========================
-  // ========= CONFIGS =========
-  // ===========================
-
-  public AppBase UseConfigFile<TRaw, TOut>(
-    string _filePath,
-    JsonSerializerContext _jsonCtx,
-    Func<IAppDependencyCtx, TRaw?, TOut?> _transform)
-    where TRaw : class
-    where TOut : class
-  {
-    p_depMgr.AddSingleton(_ctx =>
-    {
-      return _ctx.CreateInstance<IReadOnlyLifetime, IObservableConfig<TOut?>>((IReadOnlyLifetime _lifetime) =>
-      {
-        void tryLogDeserializationError(Exception _ex)
-        {
-          var log = _ctx.LocateOrDefault<ILog>();
-          log?.Warn($"Can't parse config file '{_filePath}': {_ex.Message}");
-        }
-
-        var observable = new JsonStorage<TRaw>(_filePath, _jsonCtx, _lifetime, tryLogDeserializationError)
-          .Select(_ => _transform(_ctx, _));
-
-        return new ObservableConfig<TOut>(observable);
-      });
-    });
-
-    return this;
-  }
-
-  public AppBase UseConfigFile<T>(string _filePath, JsonSerializerContext _jsonCtx)
-    where T : class
-  {
-    return UseConfigFile<T, T>(_filePath, _jsonCtx, (_, _raw) => _raw);
-  }
-
-  public AppBase UseConfigFile<T>()
-    where T : class, IConfigDefinition
-  {
-    var filePath = T.FilePath;
-    var jsonCtx = T.JsonCtx;
-
-    return UseConfigFile<T>(filePath, jsonCtx);
   }
 
 }

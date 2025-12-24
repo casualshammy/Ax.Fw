@@ -1,4 +1,5 @@
 ﻿using Ax.Fw.App;
+using Ax.Fw.App.Extensions;
 using Ax.Fw.SharedTypes.Interfaces;
 using System;
 using System.IO;
