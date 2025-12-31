@@ -4,6 +4,7 @@ using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Storage;
 using System.Reactive.Linq;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace ConsoleApp1;
 
@@ -11,6 +12,49 @@ internal class Program
 {
   static async Task Main(string[] args)
   {
+    Console.WriteLine($"index.html -> {Ax.Fw.MimeTypes.GetMimeByExtension("index.html")}");
+    Console.WriteLine($"index.js -> {Ax.Fw.MimeTypes.GetMimeByExtension("index.js")}");
+    Console.WriteLine($"index.jpeg -> {Ax.Fw.MimeTypes.GetMimeByExtension("index.jpeg")}");
+    Console.WriteLine($"index.jpg -> {Ax.Fw.MimeTypes.GetMimeByExtension("index.jpg")}");
+    Console.WriteLine($"index.css -> {Ax.Fw.MimeTypes.GetMimeByExtension("index.css")}");
+    Console.WriteLine($".opus -> {Ax.Fw.MimeTypes.GetMimeByExtension(".opus")}");
+
+    return;
+    using var fileStream = File.Open("E:\\repos\\private\\Ax.Fw\\Ax.Fw\\MimeTypes.csold", FileMode.Open, FileAccess.Read);
+    using var resFileStream = File.Open("E:\\repos\\private\\Ax.Fw\\Ax.Fw\\MimeTypes.csnew", FileMode.Create, FileAccess.Write);
+
+    using var reader = new StreamReader(fileStream);
+    using var writer = new StreamWriter(resFileStream);
+
+    var regex = new Regex(@"new\(""([^""]+?)""\)");
+
+    while (!reader.EndOfStream)
+    {
+      var line = await reader.ReadLineAsync();
+      if (line == null)
+        break;
+
+      var match = regex.Match(line);
+      if (!match.Success)
+      {
+        await writer.WriteLineAsync(line);
+        continue;
+      }
+
+      var mime = match.Groups[1].Value;
+      var ext = MimeMapping.MimeUtility.GetExtensions(mime);
+      if (ext != null && ext.Length > 0)
+      {
+        line = line.Replace(match.Value, $"new(new string[] {{\"{string.Join("\", \"", ext)}\"}}, \"{mime}\")");
+        await writer.WriteLineAsync(line);
+        Console.WriteLine($"{mime} => {ext}");
+        continue;
+      }
+
+      await writer.WriteLineAsync(line);
+    }
+
+    return;
     var docStorage = new SqliteDocumentStorage(Path.GetTempFileName(), ProgramJsonCtx.Default);
     docStorage.WriteDocument("test-ns", "test-key", "test-data");
     var doc = docStorage.ReadDocument<string>("test-ns", "test-key");

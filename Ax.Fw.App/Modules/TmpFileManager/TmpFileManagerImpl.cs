@@ -27,6 +27,7 @@ internal class TmpFileManagerImpl : ITmpFileManager
     _lifetime.ToDisposeOnEnded(SharedPool<EventLoopScheduler>.Get(out p_checkSheduler));
 
     p_tmpDir = _tmpDirFlow
+      .DistinctUntilChanged()
       .Alive(_lifetime, p_checkSheduler, (_path, _life) =>
       {
         var tmpDirPath = GetTmpFolder(_path);
