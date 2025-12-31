@@ -115,7 +115,7 @@ public class FileCache
       using (var fileStream = File.Open(tmpFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
       {
         Span<byte> headerBytes = new byte[HEADER_SIZE];
-        var stringLength = Encoding.UTF8.GetBytes(_mime ?? MimeTypes.Bin, headerBytes[2..]);
+        var stringLength = Encoding.UTF8.GetBytes(_mime ?? MimeTypes.Bin.Mime, headerBytes[2..]);
         if (!BitConverter.TryWriteBytes(headerBytes, (ushort)stringLength))
           throw new InvalidOperationException("Failed to write MIME length to header.");
 

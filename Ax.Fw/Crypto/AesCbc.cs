@@ -26,10 +26,9 @@ public class AesCbc : DisposableStack, ICryptoAlgorithm
     p_aes = ToDispose(Aes.Create());
     p_aes.KeySize = (int)_keyLength;
     p_aes.BlockSize = 128;
-    p_iv = Enumerable
+    p_iv = [.. Enumerable
       .Reverse(hashSource)
-      .Take(p_aes.BlockSize / 8)
-      .ToArray();
+      .Take(p_aes.BlockSize / 8)];
   }
 
   public Span<byte> Encrypt(ReadOnlySpan<byte> _data) => p_aes.EncryptCbc(_data, p_iv, PaddingMode.PKCS7);

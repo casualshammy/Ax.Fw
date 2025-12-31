@@ -120,7 +120,7 @@ public class FileCacheTests
   }
 
   [Theory(Timeout = 30000)]
-  [InlineData(MimeTypes.Png)]
+  [InlineData("image/png")]
   [InlineData(null)]
   public async Task TestMetaAsync(string? _mime)
   {
@@ -144,7 +144,7 @@ public class FileCacheTests
       if (!cache.TryGet(key, out _, out var meta))
         Assert.Fail();
 
-      Assert.Equal(meta.Mime, _mime ?? MimeTypes.Bin);
+      Assert.Equal(meta.Mime, _mime ?? MimeTypes.Bin.Mime);
     }
     finally
     {

@@ -1,2189 +1,2213 @@
-﻿namespace Ax.Fw;
+﻿using Ax.Fw.Extensions;
+using Ax.Fw.SharedTypes.Data;
+using System.Collections.Concurrent;
+using System.IO;
+using System.Linq;
+
+namespace Ax.Fw;
 
 public static class MimeTypes
 {
+  private static readonly ConcurrentDictionary<string, string> p_mimeByExtLut = new();
+
+  public static string GetMimeByExtension(string _filename)
+  {
+    if (_filename.IsNullOrWhiteSpace())
+      return Bin.Mime;
+
+    var ext = Path.GetExtension(_filename)?.TrimStart('.').ToLowerInvariant();
+    if (ext.IsNullOrEmpty())
+      return Bin.Mime;
+
+    return p_mimeByExtLut.GetOrAdd(ext, _ext =>
+    {
+      var mime = MimeEntry.AllEntries.FirstOrDefault(_entry => _entry.Extensions.Any(_ => _ == _ext));
+      return mime?.Mime ?? Bin.Mime;
+    });
+  }
+
   ///<summary>ez</summary>
-  public const string Ez = "application/andrew-inset";
+  public static MimeEntry Ez { get; } = new(["ez"], "application/andrew-inset");
   ///<summary>aw</summary>
-  public const string Aw = "application/applixware";
+  public static MimeEntry Aw { get; } = new(["aw"], "application/applixware");
   ///<summary>atom</summary>
-  public const string Atom = "application/atom+xml";
+  public static MimeEntry Atom { get; } = new(["atom"], "application/atom+xml");
   ///<summary>atomcat</summary>
-  public const string Atomcat = "application/atomcat+xml";
+  public static MimeEntry Atomcat { get; } = new(["atomcat"], "application/atomcat+xml");
   ///<summary>atomsvc</summary>
-  public const string Atomsvc = "application/atomsvc+xml";
+  public static MimeEntry Atomsvc { get; } = new(["atomsvc"], "application/atomsvc+xml");
   ///<summary>ccxml</summary>
-  public const string Ccxml = "application/ccxml+xml";
+  public static MimeEntry Ccxml { get; } = new(["ccxml"], "application/ccxml+xml");
   ///<summary>cdmia</summary>
-  public const string Cdmia = "application/cdmi-capability";
+  public static MimeEntry Cdmia { get; } = new(["cdmia"], "application/cdmi-capability");
   ///<summary>cdmic</summary>
-  public const string Cdmic = "application/cdmi-container";
+  public static MimeEntry Cdmic { get; } = new(["cdmic"], "application/cdmi-container");
   ///<summary>cdmid</summary>
-  public const string Cdmid = "application/cdmi-domain";
+  public static MimeEntry Cdmid { get; } = new(["cdmid"], "application/cdmi-domain");
   ///<summary>cdmio</summary>
-  public const string Cdmio = "application/cdmi-object";
+  public static MimeEntry Cdmio { get; } = new(["cdmio"], "application/cdmi-object");
   ///<summary>cdmiq</summary>
-  public const string Cdmiq = "application/cdmi-queue";
+  public static MimeEntry Cdmiq { get; } = new(["cdmiq"], "application/cdmi-queue");
   ///<summary>cu</summary>
-  public const string Cu = "application/cu-seeme";
+  public static MimeEntry Cu { get; } = new(["cu"], "application/cu-seeme");
   ///<summary>davmount</summary>
-  public const string Davmount = "application/davmount+xml";
+  public static MimeEntry Davmount { get; } = new(["davmount"], "application/davmount+xml");
   ///<summary>dbk</summary>
-  public const string Dbk = "application/docbook+xml";
+  public static MimeEntry Dbk { get; } = new(["dbk"], "application/docbook+xml");
   ///<summary>dssc</summary>
-  public const string Dssc = "application/dssc+der";
+  public static MimeEntry Dssc { get; } = new(["dssc"], "application/dssc+der");
   ///<summary>xdssc</summary>
-  public const string Xdssc = "application/dssc+xml";
+  public static MimeEntry Xdssc { get; } = new(["xdssc"], "application/dssc+xml");
   ///<summary>ecma</summary>
-  public const string Ecma = "application/ecmascript";
+  public static MimeEntry Ecma { get; } = new(["ecma"], "application/ecmascript");
   ///<summary>emma</summary>
-  public const string Emma = "application/emma+xml";
+  public static MimeEntry Emma { get; } = new(["emma"], "application/emma+xml");
   ///<summary>epub</summary>
-  public const string Epub = "application/epub+zip";
+  public static MimeEntry Epub { get; } = new(["epub"], "application/epub+zip");
   ///<summary>exi</summary>
-  public const string Exi = "application/exi";
+  public static MimeEntry Exi { get; } = new(["exi"], "application/exi");
   ///<summary>pfr</summary>
-  public const string Pfr = "application/font-tdpfr";
+  public static MimeEntry Pfr { get; } = new(["pfr"], "application/font-tdpfr");
   ///<summary>gml</summary>
-  public const string Gml = "application/gml+xml";
+  public static MimeEntry Gml { get; } = new(["gml"], "application/gml+xml");
   ///<summary>gpx</summary>
-  public const string Gpx = "application/gpx+xml";
+  public static MimeEntry Gpx { get; } = new(["gpx"], "application/gpx+xml");
   ///<summary>gxf</summary>
-  public const string Gxf = "application/gxf";
+  public static MimeEntry Gxf { get; } = new(["gxf"], "application/gxf");
   ///<summary>stk</summary>
-  public const string Stk = "application/hyperstudio";
+  public static MimeEntry Stk { get; } = new(["stk"], "application/hyperstudio");
   ///<summary>ink</summary>
-  public const string Ink = "application/inkml+xml";
+  public static MimeEntry Ink { get; } = new(["ink", "inkml"], "application/inkml+xml");
   ///<summary>inkml</summary>
-  public const string Inkml = "application/inkml+xml";
+  public static MimeEntry Inkml { get; } = new(["ink", "inkml"], "application/inkml+xml");
   ///<summary>ipfix</summary>
-  public const string Ipfix = "application/ipfix";
+  public static MimeEntry Ipfix { get; } = new(["ipfix"], "application/ipfix");
   ///<summary>jar</summary>
-  public const string Jar = "application/java-archive";
+  public static MimeEntry Jar { get; } = new(["jar", "war", "ear"], "application/java-archive");
   ///<summary>ser</summary>
-  public const string Ser = "application/java-serialized-object";
+  public static MimeEntry Ser { get; } = new(["ser"], "application/java-serialized-object");
   ///<summary>class</summary>
-  public const string Class = "application/java-vm";
+  public static MimeEntry Class { get; } = new(["class"], "application/java-vm");
   ///<summary>js</summary>
-  public const string Js = "application/javascript";
+  public static MimeEntry Js { get; } = new(["js"], "application/javascript");
   ///<summary>json</summary>
-  public const string Json = "application/json";
+  public static MimeEntry Json { get; } = new(["json", "map"], "application/json");
   ///<summary>jsonml</summary>
-  public const string Jsonml = "application/jsonml+json";
+  public static MimeEntry Jsonml { get; } = new(["jsonml"], "application/jsonml+json");
   ///<summary>lostxml</summary>
-  public const string Lostxml = "application/lost+xml";
+  public static MimeEntry Lostxml { get; } = new(["lostxml"], "application/lost+xml");
   ///<summary>hqx</summary>
-  public const string Hqx = "application/mac-binhex40";
+  public static MimeEntry Hqx { get; } = new(["hqx"], "application/mac-binhex40");
   ///<summary>cpt</summary>
-  public const string Cpt = "application/mac-compactpro";
+  public static MimeEntry Cpt { get; } = new(["cpt"], "application/mac-compactpro");
   ///<summary>mads</summary>
-  public const string Mads = "application/mads+xml";
+  public static MimeEntry Mads { get; } = new(["mads"], "application/mads+xml");
   ///<summary>mrc</summary>
-  public const string Mrc = "application/marc";
+  public static MimeEntry Mrc { get; } = new(["mrc"], "application/marc");
   ///<summary>mrcx</summary>
-  public const string Mrcx = "application/marcxml+xml";
+  public static MimeEntry Mrcx { get; } = new(["mrcx"], "application/marcxml+xml");
   ///<summary>ma</summary>
-  public const string Ma = "application/mathematica";
+  public static MimeEntry Ma { get; } = new(["ma", "nb", "mb"], "application/mathematica");
   ///<summary>nb</summary>
-  public const string Nb = "application/mathematica";
+  public static MimeEntry Nb { get; } = new(["ma", "nb", "mb"], "application/mathematica");
   ///<summary>mb</summary>
-  public const string Mb = "application/mathematica";
+  public static MimeEntry Mb { get; } = new(["ma", "nb", "mb"], "application/mathematica");
   ///<summary>mathml</summary>
-  public const string Mathml = "application/mathml+xml";
+  public static MimeEntry Mathml { get; } = new(["mathml"], "application/mathml+xml");
   ///<summary>mbox</summary>
-  public const string Mbox = "application/mbox";
+  public static MimeEntry Mbox { get; } = new(["mbox"], "application/mbox");
   ///<summary>mscml</summary>
-  public const string Mscml = "application/mediaservercontrol+xml";
+  public static MimeEntry Mscml { get; } = new(["mscml"], "application/mediaservercontrol+xml");
   ///<summary>metalink</summary>
-  public const string Metalink = "application/metalink+xml";
+  public static MimeEntry Metalink { get; } = new(["metalink"], "application/metalink+xml");
   ///<summary>meta4</summary>
-  public const string Meta4 = "application/metalink4+xml";
+  public static MimeEntry Meta4 { get; } = new(["meta4"], "application/metalink4+xml");
   ///<summary>mets</summary>
-  public const string Mets = "application/mets+xml";
+  public static MimeEntry Mets { get; } = new(["mets"], "application/mets+xml");
   ///<summary>mods</summary>
-  public const string Mods = "application/mods+xml";
+  public static MimeEntry Mods { get; } = new(["mods"], "application/mods+xml");
   ///<summary>m21</summary>
-  public const string M21 = "application/mp21";
+  public static MimeEntry M21 { get; } = new(["m21", "mp21"], "application/mp21");
   ///<summary>mp21</summary>
-  public const string Mp21 = "application/mp21";
+  public static MimeEntry Mp21 { get; } = new(["m21", "mp21"], "application/mp21");
   ///<summary>mp4s</summary>
-  public const string Mp4s = "application/mp4";
+  public static MimeEntry Mp4s { get; } = new(["mp4", "mpg4", "mp4s", "m4p"], "application/mp4");
   ///<summary>doc</summary>
-  public const string Doc = "application/msword";
+  public static MimeEntry Doc { get; } = new(["doc", "dot"], "application/msword");
   ///<summary>dot</summary>
-  public const string Dot = "application/msword";
+  public static MimeEntry Dot { get; } = new(["doc", "dot"], "application/msword");
   ///<summary>mxf</summary>
-  public const string Mxf = "application/mxf";
+  public static MimeEntry Mxf { get; } = new(["mxf"], "application/mxf");
   ///<summary>bin</summary>
-  public const string Bin = "application/octet-stream";
+  public static MimeEntry Bin { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>dms</summary>
-  public const string Dms = "application/octet-stream";
+  public static MimeEntry Dms { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>lrf</summary>
-  public const string Lrf = "application/octet-stream";
+  public static MimeEntry Lrf { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>mar</summary>
-  public const string Mar = "application/octet-stream";
+  public static MimeEntry Mar { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>so</summary>
-  public const string So = "application/octet-stream";
+  public static MimeEntry So { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>dist</summary>
-  public const string Dist = "application/octet-stream";
+  public static MimeEntry Dist { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>distz</summary>
-  public const string Distz = "application/octet-stream";
+  public static MimeEntry Distz { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>pkg</summary>
-  public const string Pkg = "application/octet-stream";
+  public static MimeEntry Pkg { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>bpk</summary>
-  public const string Bpk = "application/octet-stream";
+  public static MimeEntry Bpk { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>dump</summary>
-  public const string Dump = "application/octet-stream";
+  public static MimeEntry Dump { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>elc</summary>
-  public const string Elc = "application/octet-stream";
+  public static MimeEntry Elc { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>deploy</summary>
-  public const string Deploy = "application/octet-stream";
+  public static MimeEntry Deploy { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>oda</summary>
-  public const string Oda = "application/oda";
+  public static MimeEntry Oda { get; } = new(["oda"], "application/oda");
   ///<summary>opf</summary>
-  public const string Opf = "application/oebps-package+xml";
+  public static MimeEntry Opf { get; } = new(["opf"], "application/oebps-package+xml");
   ///<summary>ogx</summary>
-  public const string Ogx = "application/ogg";
+  public static MimeEntry Ogx { get; } = new(["ogx"], "application/ogg");
   ///<summary>omdoc</summary>
-  public const string Omdoc = "application/omdoc+xml";
+  public static MimeEntry Omdoc { get; } = new(["omdoc"], "application/omdoc+xml");
   ///<summary>onetoc</summary>
-  public const string Onetoc = "application/onenote";
+  public static MimeEntry Onetoc { get; } = new(["onetoc", "onetoc2", "onetmp", "onepkg"], "application/onenote");
   ///<summary>onetoc2</summary>
-  public const string Onetoc2 = "application/onenote";
+  public static MimeEntry Onetoc2 { get; } = new(["onetoc", "onetoc2", "onetmp", "onepkg"], "application/onenote");
   ///<summary>onetmp</summary>
-  public const string Onetmp = "application/onenote";
+  public static MimeEntry Onetmp { get; } = new(["onetoc", "onetoc2", "onetmp", "onepkg"], "application/onenote");
   ///<summary>onepkg</summary>
-  public const string Onepkg = "application/onenote";
+  public static MimeEntry Onepkg { get; } = new(["onetoc", "onetoc2", "onetmp", "onepkg"], "application/onenote");
   ///<summary>oxps</summary>
-  public const string Oxps = "application/oxps";
+  public static MimeEntry Oxps { get; } = new(["oxps"], "application/oxps");
   ///<summary>xer</summary>
-  public const string Xer = "application/patch-ops-error+xml";
+  public static MimeEntry Xer { get; } = new(["xer"], "application/patch-ops-error+xml");
   ///<summary>pdf</summary>
-  public const string Pdf = "application/pdf";
+  public static MimeEntry Pdf { get; } = new(["pdf"], "application/pdf");
   ///<summary>pgp</summary>
-  public const string Pgp = "application/pgp-encrypted";
+  public static MimeEntry Pgp { get; } = new(["pgp"], "application/pgp-encrypted");
   ///<summary>asc</summary>
-  public const string Asc = "application/pgp-signature";
+  public static MimeEntry Asc { get; } = new(["sig"], "application/pgp-signature");
   ///<summary>sig</summary>
-  public const string Sig = "application/pgp-signature";
+  public static MimeEntry Sig { get; } = new(["sig"], "application/pgp-signature");
   ///<summary>prf</summary>
-  public const string Prf = "application/pics-rules";
+  public static MimeEntry Prf { get; } = new(["prf"], "application/pics-rules");
   ///<summary>p10</summary>
-  public const string P10 = "application/pkcs10";
+  public static MimeEntry P10 { get; } = new(["p10"], "application/pkcs10");
   ///<summary>p7m</summary>
-  public const string P7m = "application/pkcs7-mime";
+  public static MimeEntry P7m { get; } = new(["p7m", "p7c"], "application/pkcs7-mime");
   ///<summary>p7c</summary>
-  public const string P7c = "application/pkcs7-mime";
+  public static MimeEntry P7c { get; } = new(["p7m", "p7c"], "application/pkcs7-mime");
   ///<summary>p7s</summary>
-  public const string P7s = "application/pkcs7-signature";
+  public static MimeEntry P7s { get; } = new(["p7s"], "application/pkcs7-signature");
   ///<summary>p8</summary>
-  public const string P8 = "application/pkcs8";
+  public static MimeEntry P8 { get; } = new(["p8"], "application/pkcs8");
   ///<summary>ac</summary>
-  public const string Ac = "application/pkix-attr-cert";
+  public static MimeEntry Ac { get; } = new(["ac"], "application/pkix-attr-cert");
   ///<summary>cer</summary>
-  public const string Cer = "application/pkix-cert";
+  public static MimeEntry Cer { get; } = new(["cer"], "application/pkix-cert");
   ///<summary>crl</summary>
-  public const string Crl = "application/pkix-crl";
+  public static MimeEntry Crl { get; } = new(["crl"], "application/pkix-crl");
   ///<summary>pkipath</summary>
-  public const string Pkipath = "application/pkix-pkipath";
+  public static MimeEntry Pkipath { get; } = new(["pkipath"], "application/pkix-pkipath");
   ///<summary>pki</summary>
-  public const string Pki = "application/pkixcmp";
+  public static MimeEntry Pki { get; } = new(["pki"], "application/pkixcmp");
   ///<summary>pls</summary>
-  public const string Pls = "application/pls+xml";
+  public static MimeEntry Pls { get; } = new(["pls"], "application/pls+xml");
   ///<summary>ai</summary>
-  public const string Ai = "application/postscript";
+  public static MimeEntry Ai { get; } = new(["ai", "eps", "ps"], "application/postscript");
   ///<summary>eps</summary>
-  public const string Eps = "application/postscript";
+  public static MimeEntry Eps { get; } = new(["ai", "eps", "ps"], "application/postscript");
   ///<summary>ps</summary>
-  public const string Ps = "application/postscript";
+  public static MimeEntry Ps { get; } = new(["ai", "eps", "ps"], "application/postscript");
   ///<summary>cww</summary>
-  public const string Cww = "application/prs.cww";
+  public static MimeEntry Cww { get; } = new(["cww"], "application/prs.cww");
   ///<summary>pskcxml</summary>
-  public const string Pskcxml = "application/pskc+xml";
+  public static MimeEntry Pskcxml { get; } = new(["pskcxml"], "application/pskc+xml");
   ///<summary>rdf</summary>
-  public const string Rdf = "application/rdf+xml";
+  public static MimeEntry Rdf { get; } = new(["rdf", "owl"], "application/rdf+xml");
   ///<summary>rif</summary>
-  public const string Rif = "application/reginfo+xml";
+  public static MimeEntry Rif { get; } = new(["rif"], "application/reginfo+xml");
   ///<summary>rnc</summary>
-  public const string Rnc = "application/relax-ng-compact-syntax";
+  public static MimeEntry Rnc { get; } = new(["rnc"], "application/relax-ng-compact-syntax");
   ///<summary>rl</summary>
-  public const string Rl = "application/resource-lists+xml";
+  public static MimeEntry Rl { get; } = new(["rl"], "application/resource-lists+xml");
   ///<summary>rld</summary>
-  public const string Rld = "application/resource-lists-diff+xml";
+  public static MimeEntry Rld { get; } = new(["rld"], "application/resource-lists-diff+xml");
   ///<summary>rs</summary>
-  public const string Rs = "application/rls-services+xml";
+  public static MimeEntry Rs { get; } = new(["rs"], "application/rls-services+xml");
   ///<summary>gbr</summary>
-  public const string Gbr = "application/rpki-ghostbusters";
+  public static MimeEntry Gbr { get; } = new(["gbr"], "application/rpki-ghostbusters");
   ///<summary>mft</summary>
-  public const string Mft = "application/rpki-manifest";
+  public static MimeEntry Mft { get; } = new(["mft"], "application/rpki-manifest");
   ///<summary>roa</summary>
-  public const string Roa = "application/rpki-roa";
+  public static MimeEntry Roa { get; } = new(["roa"], "application/rpki-roa");
   ///<summary>rsd</summary>
-  public const string Rsd = "application/rsd+xml";
+  public static MimeEntry Rsd { get; } = new(["rsd"], "application/rsd+xml");
   ///<summary>rss</summary>
-  public const string Rss = "application/rss+xml";
+  public static MimeEntry Rss { get; } = new(["rss"], "application/rss+xml");
   ///<summary>rtf</summary>
-  public const string Rtf = "application/rtf";
+  public static MimeEntry Rtf { get; } = new(["rtf"], "application/rtf");
   ///<summary>sbml</summary>
-  public const string Sbml = "application/sbml+xml";
+  public static MimeEntry Sbml { get; } = new(["sbml"], "application/sbml+xml");
   ///<summary>scq</summary>
-  public const string Scq = "application/scvp-cv-request";
+  public static MimeEntry Scq { get; } = new(["scq"], "application/scvp-cv-request");
   ///<summary>scs</summary>
-  public const string Scs = "application/scvp-cv-response";
+  public static MimeEntry Scs { get; } = new(["scs"], "application/scvp-cv-response");
   ///<summary>spq</summary>
-  public const string Spq = "application/scvp-vp-request";
+  public static MimeEntry Spq { get; } = new(["spq"], "application/scvp-vp-request");
   ///<summary>spp</summary>
-  public const string Spp = "application/scvp-vp-response";
+  public static MimeEntry Spp { get; } = new(["spp"], "application/scvp-vp-response");
   ///<summary>sdp</summary>
-  public const string Sdp = "application/sdp";
+  public static MimeEntry Sdp { get; } = new(["sdp"], "application/sdp");
   ///<summary>setpay</summary>
-  public const string Setpay = "application/set-payment-initiation";
+  public static MimeEntry Setpay { get; } = new(["setpay"], "application/set-payment-initiation");
   ///<summary>setreg</summary>
-  public const string Setreg = "application/set-registration-initiation";
+  public static MimeEntry Setreg { get; } = new(["setreg"], "application/set-registration-initiation");
   ///<summary>shf</summary>
-  public const string Shf = "application/shf+xml";
+  public static MimeEntry Shf { get; } = new(["shf"], "application/shf+xml");
   ///<summary>smi</summary>
-  public const string Smi = "application/smil+xml";
+  public static MimeEntry Smi { get; } = new(["smi", "smil"], "application/smil+xml");
   ///<summary>smil</summary>
-  public const string Smil = "application/smil+xml";
+  public static MimeEntry Smil { get; } = new(["smi", "smil"], "application/smil+xml");
   ///<summary>rq</summary>
-  public const string Rq = "application/sparql-query";
+  public static MimeEntry Rq { get; } = new(["rq"], "application/sparql-query");
   ///<summary>srx</summary>
-  public const string Srx = "application/sparql-results+xml";
+  public static MimeEntry Srx { get; } = new(["srx"], "application/sparql-results+xml");
   ///<summary>gram</summary>
-  public const string Gram = "application/srgs";
+  public static MimeEntry Gram { get; } = new(["gram"], "application/srgs");
   ///<summary>grxml</summary>
-  public const string Grxml = "application/srgs+xml";
+  public static MimeEntry Grxml { get; } = new(["grxml"], "application/srgs+xml");
   ///<summary>sru</summary>
-  public const string Sru = "application/sru+xml";
+  public static MimeEntry Sru { get; } = new(["sru"], "application/sru+xml");
   ///<summary>ssdl</summary>
-  public const string Ssdl = "application/ssdl+xml";
+  public static MimeEntry Ssdl { get; } = new(["ssdl"], "application/ssdl+xml");
   ///<summary>ssml</summary>
-  public const string Ssml = "application/ssml+xml";
+  public static MimeEntry Ssml { get; } = new(["ssml"], "application/ssml+xml");
   ///<summary>tei</summary>
-  public const string Tei = "application/tei+xml";
+  public static MimeEntry Tei { get; } = new(["tei", "teicorpus"], "application/tei+xml");
   ///<summary>teicorpus</summary>
-  public const string Teicorpus = "application/tei+xml";
+  public static MimeEntry Teicorpus { get; } = new(["tei", "teicorpus"], "application/tei+xml");
   ///<summary>tfi</summary>
-  public const string Tfi = "application/thraud+xml";
+  public static MimeEntry Tfi { get; } = new(["tfi"], "application/thraud+xml");
   ///<summary>tsd</summary>
-  public const string Tsd = "application/timestamped-data";
+  public static MimeEntry Tsd { get; } = new(["tsd"], "application/timestamped-data");
   ///<summary>plb</summary>
-  public const string Plb = "application/vnd.3gpp.pic-bw-large";
+  public static MimeEntry Plb { get; } = new(["plb"], "application/vnd.3gpp.pic-bw-large");
   ///<summary>psb</summary>
-  public const string Psb = "application/vnd.3gpp.pic-bw-small";
+  public static MimeEntry Psb { get; } = new(["psb"], "application/vnd.3gpp.pic-bw-small");
   ///<summary>pvb</summary>
-  public const string Pvb = "application/vnd.3gpp.pic-bw-var";
+  public static MimeEntry Pvb { get; } = new(["pvb"], "application/vnd.3gpp.pic-bw-var");
   ///<summary>tcap</summary>
-  public const string Tcap = "application/vnd.3gpp2.tcap";
+  public static MimeEntry Tcap { get; } = new(["tcap"], "application/vnd.3gpp2.tcap");
   ///<summary>pwn</summary>
-  public const string Pwn = "application/vnd.3m.post-it-notes";
+  public static MimeEntry Pwn { get; } = new(["pwn"], "application/vnd.3m.post-it-notes");
   ///<summary>aso</summary>
-  public const string Aso = "application/vnd.accpac.simply.aso";
+  public static MimeEntry Aso { get; } = new(["aso"], "application/vnd.accpac.simply.aso");
   ///<summary>imp</summary>
-  public const string Imp = "application/vnd.accpac.simply.imp";
+  public static MimeEntry Imp { get; } = new(["imp"], "application/vnd.accpac.simply.imp");
   ///<summary>acu</summary>
-  public const string Acu = "application/vnd.acucobol";
+  public static MimeEntry Acu { get; } = new(["acu"], "application/vnd.acucobol");
   ///<summary>atc</summary>
-  public const string Atc = "application/vnd.acucorp";
+  public static MimeEntry Atc { get; } = new(["atc", "acutc"], "application/vnd.acucorp");
   ///<summary>acutc</summary>
-  public const string Acutc = "application/vnd.acucorp";
+  public static MimeEntry Acutc { get; } = new(["atc", "acutc"], "application/vnd.acucorp");
   ///<summary>air</summary>
-  public const string Air = "application/vnd.adobe.air-application-installer-package+zip";
+  public static MimeEntry Air { get; } = new(["air"], "application/vnd.adobe.air-application-installer-package+zip");
   ///<summary>fcdt</summary>
-  public const string Fcdt = "application/vnd.adobe.formscentral.fcdt";
+  public static MimeEntry Fcdt { get; } = new(["fcdt"], "application/vnd.adobe.formscentral.fcdt");
   ///<summary>fxp</summary>
-  public const string Fxp = "application/vnd.adobe.fxp";
+  public static MimeEntry Fxp { get; } = new(["fxp", "fxpl"], "application/vnd.adobe.fxp");
   ///<summary>fxpl</summary>
-  public const string Fxpl = "application/vnd.adobe.fxp";
+  public static MimeEntry Fxpl { get; } = new(["fxp", "fxpl"], "application/vnd.adobe.fxp");
   ///<summary>xdp</summary>
-  public const string Xdp = "application/vnd.adobe.xdp+xml";
+  public static MimeEntry Xdp { get; } = new(["xdp"], "application/vnd.adobe.xdp+xml");
   ///<summary>xfdf</summary>
-  public const string Xfdf = "application/vnd.adobe.xfdf";
+  public static MimeEntry Xfdf { get; } = new(["xfdf"], "application/vnd.adobe.xfdf");
   ///<summary>ahead</summary>
-  public const string Ahead = "application/vnd.ahead.space";
+  public static MimeEntry Ahead { get; } = new(["ahead"], "application/vnd.ahead.space");
   ///<summary>azf</summary>
-  public const string Azf = "application/vnd.airzip.filesecure.azf";
+  public static MimeEntry Azf { get; } = new(["azf"], "application/vnd.airzip.filesecure.azf");
   ///<summary>azs</summary>
-  public const string Azs = "application/vnd.airzip.filesecure.azs";
+  public static MimeEntry Azs { get; } = new(["azs"], "application/vnd.airzip.filesecure.azs");
   ///<summary>azw</summary>
-  public const string Azw = "application/vnd.amazon.ebook";
+  public static MimeEntry Azw { get; } = new(["azw"], "application/vnd.amazon.ebook");
   ///<summary>acc</summary>
-  public const string Acc = "application/vnd.americandynamics.acc";
+  public static MimeEntry Acc { get; } = new(["acc"], "application/vnd.americandynamics.acc");
   ///<summary>ami</summary>
-  public const string Ami = "application/vnd.amiga.ami";
+  public static MimeEntry Ami { get; } = new(["ami"], "application/vnd.amiga.ami");
   ///<summary>apk</summary>
-  public const string Apk = "application/vnd.android.package-archive";
+  public static MimeEntry Apk { get; } = new(["apk"], "application/vnd.android.package-archive");
   ///<summary>cii</summary>
-  public const string Cii = "application/vnd.anser-web-certificate-issue-initiation";
+  public static MimeEntry Cii { get; } = new(["cii"], "application/vnd.anser-web-certificate-issue-initiation");
   ///<summary>fti</summary>
-  public const string Fti = "application/vnd.anser-web-funds-transfer-initiation";
+  public static MimeEntry Fti { get; } = new(["fti"], "application/vnd.anser-web-funds-transfer-initiation");
   ///<summary>atx</summary>
-  public const string Atx = "application/vnd.antix.game-component";
+  public static MimeEntry Atx { get; } = new(["atx"], "application/vnd.antix.game-component");
   ///<summary>mpkg</summary>
-  public const string Mpkg = "application/vnd.apple.installer+xml";
+  public static MimeEntry Mpkg { get; } = new(["mpkg"], "application/vnd.apple.installer+xml");
   ///<summary>m3u8</summary>
-  public const string M3u8 = "application/vnd.apple.mpegurl";
+  public static MimeEntry M3u8 { get; } = new(["m3u8"], "application/vnd.apple.mpegurl");
   ///<summary>swi</summary>
-  public const string Swi = "application/vnd.aristanetworks.swi";
+  public static MimeEntry Swi { get; } = new(["swi"], "application/vnd.aristanetworks.swi");
   ///<summary>iota</summary>
-  public const string Iota = "application/vnd.astraea-software.iota";
+  public static MimeEntry Iota { get; } = new(["iota"], "application/vnd.astraea-software.iota");
   ///<summary>aep</summary>
-  public const string Aep = "application/vnd.audiograph";
+  public static MimeEntry Aep { get; } = new(["aep"], "application/vnd.audiograph");
   ///<summary>mpm</summary>
-  public const string Mpm = "application/vnd.blueice.multipass";
+  public static MimeEntry Mpm { get; } = new(["mpm"], "application/vnd.blueice.multipass");
   ///<summary>bmi</summary>
-  public const string Bmi = "application/vnd.bmi";
+  public static MimeEntry Bmi { get; } = new(["bmi"], "application/vnd.bmi");
   ///<summary>rep</summary>
-  public const string Rep = "application/vnd.businessobjects";
+  public static MimeEntry Rep { get; } = new(["rep"], "application/vnd.businessobjects");
   ///<summary>cdxml</summary>
-  public const string Cdxml = "application/vnd.chemdraw+xml";
+  public static MimeEntry Cdxml { get; } = new(["cdxml"], "application/vnd.chemdraw+xml");
   ///<summary>mmd</summary>
-  public const string Mmd = "application/vnd.chipnuts.karaoke-mmd";
+  public static MimeEntry Mmd { get; } = new(["mmd"], "application/vnd.chipnuts.karaoke-mmd");
   ///<summary>cdy</summary>
-  public const string Cdy = "application/vnd.cinderella";
+  public static MimeEntry Cdy { get; } = new(["cdy"], "application/vnd.cinderella");
   ///<summary>cla</summary>
-  public const string Cla = "application/vnd.claymore";
+  public static MimeEntry Cla { get; } = new(["cla"], "application/vnd.claymore");
   ///<summary>rp9</summary>
-  public const string Rp9 = "application/vnd.cloanto.rp9";
+  public static MimeEntry Rp9 { get; } = new(["rp9"], "application/vnd.cloanto.rp9");
   ///<summary>c4g</summary>
-  public const string C4g = "application/vnd.clonk.c4group";
+  public static MimeEntry C4g { get; } = new(["c4g", "c4d", "c4f", "c4p", "c4u"], "application/vnd.clonk.c4group");
   ///<summary>c4d</summary>
-  public const string C4d = "application/vnd.clonk.c4group";
+  public static MimeEntry C4d { get; } = new(["c4g", "c4d", "c4f", "c4p", "c4u"], "application/vnd.clonk.c4group");
   ///<summary>c4f</summary>
-  public const string C4f = "application/vnd.clonk.c4group";
+  public static MimeEntry C4f { get; } = new(["c4g", "c4d", "c4f", "c4p", "c4u"], "application/vnd.clonk.c4group");
   ///<summary>c4p</summary>
-  public const string C4p = "application/vnd.clonk.c4group";
+  public static MimeEntry C4p { get; } = new(["c4g", "c4d", "c4f", "c4p", "c4u"], "application/vnd.clonk.c4group");
   ///<summary>c4u</summary>
-  public const string C4u = "application/vnd.clonk.c4group";
+  public static MimeEntry C4u { get; } = new(["c4g", "c4d", "c4f", "c4p", "c4u"], "application/vnd.clonk.c4group");
   ///<summary>c11amc</summary>
-  public const string C11amc = "application/vnd.cluetrust.cartomobile-config";
+  public static MimeEntry C11amc { get; } = new(["c11amc"], "application/vnd.cluetrust.cartomobile-config");
   ///<summary>c11amz</summary>
-  public const string C11amz = "application/vnd.cluetrust.cartomobile-config-pkg";
+  public static MimeEntry C11amz { get; } = new(["c11amz"], "application/vnd.cluetrust.cartomobile-config-pkg");
   ///<summary>csp</summary>
-  public const string Csp = "application/vnd.commonspace";
+  public static MimeEntry Csp { get; } = new(["csp"], "application/vnd.commonspace");
   ///<summary>cdbcmsg</summary>
-  public const string Cdbcmsg = "application/vnd.contact.cmsg";
+  public static MimeEntry Cdbcmsg { get; } = new(["cdbcmsg"], "application/vnd.contact.cmsg");
   ///<summary>cmc</summary>
-  public const string Cmc = "application/vnd.cosmocaller";
+  public static MimeEntry Cmc { get; } = new(["cmc"], "application/vnd.cosmocaller");
   ///<summary>clkx</summary>
-  public const string Clkx = "application/vnd.crick.clicker";
+  public static MimeEntry Clkx { get; } = new(["clkx"], "application/vnd.crick.clicker");
   ///<summary>clkk</summary>
-  public const string Clkk = "application/vnd.crick.clicker.keyboard";
+  public static MimeEntry Clkk { get; } = new(["clkk"], "application/vnd.crick.clicker.keyboard");
   ///<summary>clkp</summary>
-  public const string Clkp = "application/vnd.crick.clicker.palette";
+  public static MimeEntry Clkp { get; } = new(["clkp"], "application/vnd.crick.clicker.palette");
   ///<summary>clkt</summary>
-  public const string Clkt = "application/vnd.crick.clicker.template";
+  public static MimeEntry Clkt { get; } = new(["clkt"], "application/vnd.crick.clicker.template");
   ///<summary>clkw</summary>
-  public const string Clkw = "application/vnd.crick.clicker.wordbank";
+  public static MimeEntry Clkw { get; } = new(["clkw"], "application/vnd.crick.clicker.wordbank");
   ///<summary>wbs</summary>
-  public const string Wbs = "application/vnd.criticaltools.wbs+xml";
+  public static MimeEntry Wbs { get; } = new(["wbs"], "application/vnd.criticaltools.wbs+xml");
   ///<summary>pml</summary>
-  public const string Pml = "application/vnd.ctc-posml";
+  public static MimeEntry Pml { get; } = new(["pml"], "application/vnd.ctc-posml");
   ///<summary>ppd</summary>
-  public const string Ppd = "application/vnd.cups-ppd";
+  public static MimeEntry Ppd { get; } = new(["ppd"], "application/vnd.cups-ppd");
   ///<summary>car</summary>
-  public const string Car = "application/vnd.curl.car";
+  public static MimeEntry Car { get; } = new(["car"], "application/vnd.curl.car");
   ///<summary>pcurl</summary>
-  public const string Pcurl = "application/vnd.curl.pcurl";
+  public static MimeEntry Pcurl { get; } = new(["pcurl"], "application/vnd.curl.pcurl");
   ///<summary>dart</summary>
-  public const string Dart = "application/vnd.dart";
+  public static MimeEntry Dart { get; } = new(["dart"], "application/vnd.dart");
   ///<summary>rdz</summary>
-  public const string Rdz = "application/vnd.data-vision.rdz";
+  public static MimeEntry Rdz { get; } = new(["rdz"], "application/vnd.data-vision.rdz");
   ///<summary>uvf</summary>
-  public const string Uvf = "application/vnd.dece.data";
+  public static MimeEntry Uvf { get; } = new(["uvf", "uvvf", "uvd", "uvvd"], "application/vnd.dece.data");
   ///<summary>uvvf</summary>
-  public const string Uvvf = "application/vnd.dece.data";
+  public static MimeEntry Uvvf { get; } = new(["uvf", "uvvf", "uvd", "uvvd"], "application/vnd.dece.data");
   ///<summary>uvd</summary>
-  public const string Uvd = "application/vnd.dece.data";
+  public static MimeEntry Uvd { get; } = new(["uvf", "uvvf", "uvd", "uvvd"], "application/vnd.dece.data");
   ///<summary>uvvd</summary>
-  public const string Uvvd = "application/vnd.dece.data";
+  public static MimeEntry Uvvd { get; } = new(["uvf", "uvvf", "uvd", "uvvd"], "application/vnd.dece.data");
   ///<summary>uvt</summary>
-  public const string Uvt = "application/vnd.dece.ttml+xml";
+  public static MimeEntry Uvt { get; } = new(["uvt", "uvvt"], "application/vnd.dece.ttml+xml");
   ///<summary>uvvt</summary>
-  public const string Uvvt = "application/vnd.dece.ttml+xml";
+  public static MimeEntry Uvvt { get; } = new(["uvt", "uvvt"], "application/vnd.dece.ttml+xml");
   ///<summary>uvx</summary>
-  public const string Uvx = "application/vnd.dece.unspecified";
+  public static MimeEntry Uvx { get; } = new(["uvx", "uvvx"], "application/vnd.dece.unspecified");
   ///<summary>uvvx</summary>
-  public const string Uvvx = "application/vnd.dece.unspecified";
+  public static MimeEntry Uvvx { get; } = new(["uvx", "uvvx"], "application/vnd.dece.unspecified");
   ///<summary>uvz</summary>
-  public const string Uvz = "application/vnd.dece.zip";
+  public static MimeEntry Uvz { get; } = new(["uvz", "uvvz"], "application/vnd.dece.zip");
   ///<summary>uvvz</summary>
-  public const string Uvvz = "application/vnd.dece.zip";
+  public static MimeEntry Uvvz { get; } = new(["uvz", "uvvz"], "application/vnd.dece.zip");
   ///<summary>fe_launch</summary>
-  public const string Felaunch = "application/vnd.denovo.fcselayout-link";
+  public static MimeEntry Felaunch { get; } = new(["fe_launch"], "application/vnd.denovo.fcselayout-link");
   ///<summary>dna</summary>
-  public const string Dna = "application/vnd.dna";
+  public static MimeEntry Dna { get; } = new(["dna"], "application/vnd.dna");
   ///<summary>mlp</summary>
-  public const string Mlp = "application/vnd.dolby.mlp";
+  public static MimeEntry Mlp { get; } = new(["mlp"], "application/vnd.dolby.mlp");
   ///<summary>dpg</summary>
-  public const string Dpg = "application/vnd.dpgraph";
+  public static MimeEntry Dpg { get; } = new(["dpg"], "application/vnd.dpgraph");
   ///<summary>dfac</summary>
-  public const string Dfac = "application/vnd.dreamfactory";
+  public static MimeEntry Dfac { get; } = new(["dfac"], "application/vnd.dreamfactory");
   ///<summary>kpxx</summary>
-  public const string Kpxx = "application/vnd.ds-keypoint";
+  public static MimeEntry Kpxx { get; } = new(["kpxx"], "application/vnd.ds-keypoint");
   ///<summary>ait</summary>
-  public const string Ait = "application/vnd.dvb.ait";
+  public static MimeEntry Ait { get; } = new(["ait"], "application/vnd.dvb.ait");
   ///<summary>svc</summary>
-  public const string Svc = "application/vnd.dvb.service";
+  public static MimeEntry Svc { get; } = new(["svc"], "application/vnd.dvb.service");
   ///<summary>geo</summary>
-  public const string Geo = "application/vnd.dynageo";
+  public static MimeEntry Geo { get; } = new(["geo"], "application/vnd.dynageo");
   ///<summary>mag</summary>
-  public const string Mag = "application/vnd.ecowin.chart";
+  public static MimeEntry Mag { get; } = new(["mag"], "application/vnd.ecowin.chart");
   ///<summary>nml</summary>
-  public const string Nml = "application/vnd.enliven";
+  public static MimeEntry Nml { get; } = new(["nml"], "application/vnd.enliven");
   ///<summary>esf</summary>
-  public const string Esf = "application/vnd.epson.esf";
+  public static MimeEntry Esf { get; } = new(["esf"], "application/vnd.epson.esf");
   ///<summary>msf</summary>
-  public const string Msf = "application/vnd.epson.msf";
+  public static MimeEntry Msf { get; } = new(["msf"], "application/vnd.epson.msf");
   ///<summary>qam</summary>
-  public const string Qam = "application/vnd.epson.quickanime";
+  public static MimeEntry Qam { get; } = new(["qam"], "application/vnd.epson.quickanime");
   ///<summary>slt</summary>
-  public const string Slt = "application/vnd.epson.salt";
+  public static MimeEntry Slt { get; } = new(["slt"], "application/vnd.epson.salt");
   ///<summary>ssf</summary>
-  public const string Ssf = "application/vnd.epson.ssf";
+  public static MimeEntry Ssf { get; } = new(["ssf"], "application/vnd.epson.ssf");
   ///<summary>es3</summary>
-  public const string Es3 = "application/vnd.eszigno3+xml";
+  public static MimeEntry Es3 { get; } = new(["es3", "et3"], "application/vnd.eszigno3+xml");
   ///<summary>et3</summary>
-  public const string Et3 = "application/vnd.eszigno3+xml";
+  public static MimeEntry Et3 { get; } = new(["es3", "et3"], "application/vnd.eszigno3+xml");
   ///<summary>ez2</summary>
-  public const string Ez2 = "application/vnd.ezpix-album";
+  public static MimeEntry Ez2 { get; } = new(["ez2"], "application/vnd.ezpix-album");
   ///<summary>ez3</summary>
-  public const string Ez3 = "application/vnd.ezpix-package";
+  public static MimeEntry Ez3 { get; } = new(["ez3"], "application/vnd.ezpix-package");
   ///<summary>fdf</summary>
-  public const string Fdf = "application/vnd.fdf";
+  public static MimeEntry Fdf { get; } = new(["fdf"], "application/vnd.fdf");
   ///<summary>mseed</summary>
-  public const string Mseed = "application/vnd.fdsn.mseed";
+  public static MimeEntry Mseed { get; } = new(["mseed"], "application/vnd.fdsn.mseed");
   ///<summary>seed</summary>
-  public const string Seed = "application/vnd.fdsn.seed";
+  public static MimeEntry Seed { get; } = new(["seed", "dataless"], "application/vnd.fdsn.seed");
   ///<summary>dataless</summary>
-  public const string Dataless = "application/vnd.fdsn.seed";
+  public static MimeEntry Dataless { get; } = new(["seed", "dataless"], "application/vnd.fdsn.seed");
   ///<summary>gph</summary>
-  public const string Gph = "application/vnd.flographit";
+  public static MimeEntry Gph { get; } = new(["gph"], "application/vnd.flographit");
   ///<summary>ftc</summary>
-  public const string Ftc = "application/vnd.fluxtime.clip";
+  public static MimeEntry Ftc { get; } = new(["ftc"], "application/vnd.fluxtime.clip");
   ///<summary>fm</summary>
-  public const string Fm = "application/vnd.framemaker";
+  public static MimeEntry Fm { get; } = new(["fm", "frame", "maker", "book"], "application/vnd.framemaker");
   ///<summary>frame</summary>
-  public const string Frame = "application/vnd.framemaker";
+  public static MimeEntry Frame { get; } = new(["fm", "frame", "maker", "book"], "application/vnd.framemaker");
   ///<summary>maker</summary>
-  public const string Maker = "application/vnd.framemaker";
+  public static MimeEntry Maker { get; } = new(["fm", "frame", "maker", "book"], "application/vnd.framemaker");
   ///<summary>book</summary>
-  public const string Book = "application/vnd.framemaker";
+  public static MimeEntry Book { get; } = new(["fm", "frame", "maker", "book"], "application/vnd.framemaker");
   ///<summary>fnc</summary>
-  public const string Fnc = "application/vnd.frogans.fnc";
+  public static MimeEntry Fnc { get; } = new(["fnc"], "application/vnd.frogans.fnc");
   ///<summary>ltf</summary>
-  public const string Ltf = "application/vnd.frogans.ltf";
+  public static MimeEntry Ltf { get; } = new(["ltf"], "application/vnd.frogans.ltf");
   ///<summary>fsc</summary>
-  public const string Fsc = "application/vnd.fsc.weblaunch";
+  public static MimeEntry Fsc { get; } = new(["fsc"], "application/vnd.fsc.weblaunch");
   ///<summary>oas</summary>
-  public const string Oas = "application/vnd.fujitsu.oasys";
+  public static MimeEntry Oas { get; } = new(["oas"], "application/vnd.fujitsu.oasys");
   ///<summary>oa2</summary>
-  public const string Oa2 = "application/vnd.fujitsu.oasys2";
+  public static MimeEntry Oa2 { get; } = new(["oa2"], "application/vnd.fujitsu.oasys2");
   ///<summary>oa3</summary>
-  public const string Oa3 = "application/vnd.fujitsu.oasys3";
+  public static MimeEntry Oa3 { get; } = new(["oa3"], "application/vnd.fujitsu.oasys3");
   ///<summary>fg5</summary>
-  public const string Fg5 = "application/vnd.fujitsu.oasysgp";
+  public static MimeEntry Fg5 { get; } = new(["fg5"], "application/vnd.fujitsu.oasysgp");
   ///<summary>bh2</summary>
-  public const string Bh2 = "application/vnd.fujitsu.oasysprs";
+  public static MimeEntry Bh2 { get; } = new(["bh2"], "application/vnd.fujitsu.oasysprs");
   ///<summary>ddd</summary>
-  public const string Ddd = "application/vnd.fujixerox.ddd";
+  public static MimeEntry Ddd { get; } = new(["ddd"], "application/vnd.fujixerox.ddd");
   ///<summary>xdw</summary>
-  public const string Xdw = "application/vnd.fujixerox.docuworks";
+  public static MimeEntry Xdw { get; } = new(["xdw"], "application/vnd.fujixerox.docuworks");
   ///<summary>xbd</summary>
-  public const string Xbd = "application/vnd.fujixerox.docuworks.binder";
+  public static MimeEntry Xbd { get; } = new(["xbd"], "application/vnd.fujixerox.docuworks.binder");
   ///<summary>fzs</summary>
-  public const string Fzs = "application/vnd.fuzzysheet";
+  public static MimeEntry Fzs { get; } = new(["fzs"], "application/vnd.fuzzysheet");
   ///<summary>txd</summary>
-  public const string Txd = "application/vnd.genomatix.tuxedo";
+  public static MimeEntry Txd { get; } = new(["txd"], "application/vnd.genomatix.tuxedo");
   ///<summary>ggb</summary>
-  public const string Ggb = "application/vnd.geogebra.file";
+  public static MimeEntry Ggb { get; } = new(["ggb"], "application/vnd.geogebra.file");
   ///<summary>ggt</summary>
-  public const string Ggt = "application/vnd.geogebra.tool";
+  public static MimeEntry Ggt { get; } = new(["ggt"], "application/vnd.geogebra.tool");
   ///<summary>gex</summary>
-  public const string Gex = "application/vnd.geometry-explorer";
+  public static MimeEntry Gex { get; } = new(["gex", "gre"], "application/vnd.geometry-explorer");
   ///<summary>gre</summary>
-  public const string Gre = "application/vnd.geometry-explorer";
+  public static MimeEntry Gre { get; } = new(["gex", "gre"], "application/vnd.geometry-explorer");
   ///<summary>gxt</summary>
-  public const string Gxt = "application/vnd.geonext";
+  public static MimeEntry Gxt { get; } = new(["gxt"], "application/vnd.geonext");
   ///<summary>g2w</summary>
-  public const string G2w = "application/vnd.geoplan";
+  public static MimeEntry G2w { get; } = new(["g2w"], "application/vnd.geoplan");
   ///<summary>g3w</summary>
-  public const string G3w = "application/vnd.geospace";
+  public static MimeEntry G3w { get; } = new(["g3w"], "application/vnd.geospace");
   ///<summary>gmx</summary>
-  public const string Gmx = "application/vnd.gmx";
+  public static MimeEntry Gmx { get; } = new(["gmx"], "application/vnd.gmx");
   ///<summary>kml</summary>
-  public const string Kml = "application/vnd.google-earth.kml+xml";
+  public static MimeEntry Kml { get; } = new(["kml"], "application/vnd.google-earth.kml+xml");
   ///<summary>kmz</summary>
-  public const string Kmz = "application/vnd.google-earth.kmz";
+  public static MimeEntry Kmz { get; } = new(["kmz"], "application/vnd.google-earth.kmz");
   ///<summary>gqf</summary>
-  public const string Gqf = "application/vnd.grafeq";
+  public static MimeEntry Gqf { get; } = new(["gqf", "gqs"], "application/vnd.grafeq");
   ///<summary>gqs</summary>
-  public const string Gqs = "application/vnd.grafeq";
+  public static MimeEntry Gqs { get; } = new(["gqf", "gqs"], "application/vnd.grafeq");
   ///<summary>gac</summary>
-  public const string Gac = "application/vnd.groove-account";
+  public static MimeEntry Gac { get; } = new(["gac"], "application/vnd.groove-account");
   ///<summary>ghf</summary>
-  public const string Ghf = "application/vnd.groove-help";
+  public static MimeEntry Ghf { get; } = new(["ghf"], "application/vnd.groove-help");
   ///<summary>gim</summary>
-  public const string Gim = "application/vnd.groove-identity-message";
+  public static MimeEntry Gim { get; } = new(["gim"], "application/vnd.groove-identity-message");
   ///<summary>grv</summary>
-  public const string Grv = "application/vnd.groove-injector";
+  public static MimeEntry Grv { get; } = new(["grv"], "application/vnd.groove-injector");
   ///<summary>gtm</summary>
-  public const string Gtm = "application/vnd.groove-tool-message";
+  public static MimeEntry Gtm { get; } = new(["gtm"], "application/vnd.groove-tool-message");
   ///<summary>tpl</summary>
-  public const string Tpl = "application/vnd.groove-tool-template";
+  public static MimeEntry Tpl { get; } = new(["tpl"], "application/vnd.groove-tool-template");
   ///<summary>vcg</summary>
-  public const string Vcg = "application/vnd.groove-vcard";
+  public static MimeEntry Vcg { get; } = new(["vcg"], "application/vnd.groove-vcard");
   ///<summary>hal</summary>
-  public const string Hal = "application/vnd.hal+xml";
+  public static MimeEntry Hal { get; } = new(["hal"], "application/vnd.hal+xml");
   ///<summary>zmm</summary>
-  public const string Zmm = "application/vnd.handheld-entertainment+xml";
+  public static MimeEntry Zmm { get; } = new(["zmm"], "application/vnd.handheld-entertainment+xml");
   ///<summary>hbci</summary>
-  public const string Hbci = "application/vnd.hbci";
+  public static MimeEntry Hbci { get; } = new(["hbci"], "application/vnd.hbci");
   ///<summary>les</summary>
-  public const string Les = "application/vnd.hhe.lesson-player";
+  public static MimeEntry Les { get; } = new(["les"], "application/vnd.hhe.lesson-player");
   ///<summary>hpgl</summary>
-  public const string Hpgl = "application/vnd.hp-hpgl";
+  public static MimeEntry Hpgl { get; } = new(["hpgl"], "application/vnd.hp-hpgl");
   ///<summary>hpid</summary>
-  public const string Hpid = "application/vnd.hp-hpid";
+  public static MimeEntry Hpid { get; } = new(["hpid"], "application/vnd.hp-hpid");
   ///<summary>hps</summary>
-  public const string Hps = "application/vnd.hp-hps";
+  public static MimeEntry Hps { get; } = new(["hps"], "application/vnd.hp-hps");
   ///<summary>jlt</summary>
-  public const string Jlt = "application/vnd.hp-jlyt";
+  public static MimeEntry Jlt { get; } = new(["jlt"], "application/vnd.hp-jlyt");
   ///<summary>pcl</summary>
-  public const string Pcl = "application/vnd.hp-pcl";
+  public static MimeEntry Pcl { get; } = new(["pcl"], "application/vnd.hp-pcl");
   ///<summary>pclxl</summary>
-  public const string Pclxl = "application/vnd.hp-pclxl";
+  public static MimeEntry Pclxl { get; } = new(["pclxl"], "application/vnd.hp-pclxl");
   ///<summary>sfd-hdstx</summary>
-  public const string Sfdhdstx = "application/vnd.hydrostatix.sof-data";
+  public static MimeEntry Sfdhdstx { get; } = new(["sfd-hdstx"], "application/vnd.hydrostatix.sof-data");
   ///<summary>mpy</summary>
-  public const string Mpy = "application/vnd.ibm.minipay";
+  public static MimeEntry Mpy { get; } = new(["mpy"], "application/vnd.ibm.minipay");
   ///<summary>afp</summary>
-  public const string Afp = "application/vnd.ibm.modcap";
+  public static MimeEntry Afp { get; } = new(["afp", "listafp", "list3820"], "application/vnd.ibm.modcap");
   ///<summary>listafp</summary>
-  public const string Listafp = "application/vnd.ibm.modcap";
+  public static MimeEntry Listafp { get; } = new(["afp", "listafp", "list3820"], "application/vnd.ibm.modcap");
   ///<summary>list3820</summary>
-  public const string List3820 = "application/vnd.ibm.modcap";
+  public static MimeEntry List3820 { get; } = new(["afp", "listafp", "list3820"], "application/vnd.ibm.modcap");
   ///<summary>irm</summary>
-  public const string Irm = "application/vnd.ibm.rights-management";
+  public static MimeEntry Irm { get; } = new(["irm"], "application/vnd.ibm.rights-management");
   ///<summary>sc</summary>
-  public const string Sc = "application/vnd.ibm.secure-container";
+  public static MimeEntry Sc { get; } = new(["sc"], "application/vnd.ibm.secure-container");
   ///<summary>icc</summary>
-  public const string Icc = "application/vnd.iccprofile";
+  public static MimeEntry Icc { get; } = new(["icc", "icm"], "application/vnd.iccprofile");
   ///<summary>icm</summary>
-  public const string Icm = "application/vnd.iccprofile";
+  public static MimeEntry Icm { get; } = new(["icc", "icm"], "application/vnd.iccprofile");
   ///<summary>igl</summary>
-  public const string Igl = "application/vnd.igloader";
+  public static MimeEntry Igl { get; } = new(["igl"], "application/vnd.igloader");
   ///<summary>ivp</summary>
-  public const string Ivp = "application/vnd.immervision-ivp";
+  public static MimeEntry Ivp { get; } = new(["ivp"], "application/vnd.immervision-ivp");
   ///<summary>ivu</summary>
-  public const string Ivu = "application/vnd.immervision-ivu";
+  public static MimeEntry Ivu { get; } = new(["ivu"], "application/vnd.immervision-ivu");
   ///<summary>igm</summary>
-  public const string Igm = "application/vnd.insors.igm";
+  public static MimeEntry Igm { get; } = new(["igm"], "application/vnd.insors.igm");
   ///<summary>xpw</summary>
-  public const string Xpw = "application/vnd.intercon.formnet";
+  public static MimeEntry Xpw { get; } = new(["xpw", "xpx"], "application/vnd.intercon.formnet");
   ///<summary>xpx</summary>
-  public const string Xpx = "application/vnd.intercon.formnet";
+  public static MimeEntry Xpx { get; } = new(["xpw", "xpx"], "application/vnd.intercon.formnet");
   ///<summary>i2g</summary>
-  public const string I2g = "application/vnd.intergeo";
+  public static MimeEntry I2g { get; } = new(["i2g"], "application/vnd.intergeo");
   ///<summary>qbo</summary>
-  public const string Qbo = "application/vnd.intu.qbo";
+  public static MimeEntry Qbo { get; } = new(["qbo"], "application/vnd.intu.qbo");
   ///<summary>qfx</summary>
-  public const string Qfx = "application/vnd.intu.qfx";
+  public static MimeEntry Qfx { get; } = new(["qfx"], "application/vnd.intu.qfx");
   ///<summary>rcprofile</summary>
-  public const string Rcprofile = "application/vnd.ipunplugged.rcprofile";
+  public static MimeEntry Rcprofile { get; } = new(["rcprofile"], "application/vnd.ipunplugged.rcprofile");
   ///<summary>irp</summary>
-  public const string Irp = "application/vnd.irepository.package+xml";
+  public static MimeEntry Irp { get; } = new(["irp"], "application/vnd.irepository.package+xml");
   ///<summary>xpr</summary>
-  public const string Xpr = "application/vnd.is-xpr";
+  public static MimeEntry Xpr { get; } = new(["xpr"], "application/vnd.is-xpr");
   ///<summary>fcs</summary>
-  public const string Fcs = "application/vnd.isac.fcs";
+  public static MimeEntry Fcs { get; } = new(["fcs"], "application/vnd.isac.fcs");
   ///<summary>jam</summary>
-  public const string Jam = "application/vnd.jam";
+  public static MimeEntry Jam { get; } = new(["jam"], "application/vnd.jam");
   ///<summary>rms</summary>
-  public const string Rms = "application/vnd.jcp.javame.midlet-rms";
+  public static MimeEntry Rms { get; } = new(["rms"], "application/vnd.jcp.javame.midlet-rms");
   ///<summary>jisp</summary>
-  public const string Jisp = "application/vnd.jisp";
+  public static MimeEntry Jisp { get; } = new(["jisp"], "application/vnd.jisp");
   ///<summary>joda</summary>
-  public const string Joda = "application/vnd.joost.joda-archive";
+  public static MimeEntry Joda { get; } = new(["joda"], "application/vnd.joost.joda-archive");
   ///<summary>ktz</summary>
-  public const string Ktz = "application/vnd.kahootz";
+  public static MimeEntry Ktz { get; } = new(["ktz", "ktr"], "application/vnd.kahootz");
   ///<summary>ktr</summary>
-  public const string Ktr = "application/vnd.kahootz";
+  public static MimeEntry Ktr { get; } = new(["ktz", "ktr"], "application/vnd.kahootz");
   ///<summary>karbon</summary>
-  public const string Karbon = "application/vnd.kde.karbon";
+  public static MimeEntry Karbon { get; } = new(["karbon"], "application/vnd.kde.karbon");
   ///<summary>chrt</summary>
-  public const string Chrt = "application/vnd.kde.kchart";
+  public static MimeEntry Chrt { get; } = new(["chrt"], "application/vnd.kde.kchart");
   ///<summary>kfo</summary>
-  public const string Kfo = "application/vnd.kde.kformula";
+  public static MimeEntry Kfo { get; } = new(["kfo"], "application/vnd.kde.kformula");
   ///<summary>flw</summary>
-  public const string Flw = "application/vnd.kde.kivio";
+  public static MimeEntry Flw { get; } = new(["flw"], "application/vnd.kde.kivio");
   ///<summary>kon</summary>
-  public const string Kon = "application/vnd.kde.kontour";
+  public static MimeEntry Kon { get; } = new(["kon"], "application/vnd.kde.kontour");
   ///<summary>kpr</summary>
-  public const string Kpr = "application/vnd.kde.kpresenter";
+  public static MimeEntry Kpr { get; } = new(["kpr", "kpt"], "application/vnd.kde.kpresenter");
   ///<summary>kpt</summary>
-  public const string Kpt = "application/vnd.kde.kpresenter";
+  public static MimeEntry Kpt { get; } = new(["kpr", "kpt"], "application/vnd.kde.kpresenter");
   ///<summary>ksp</summary>
-  public const string Ksp = "application/vnd.kde.kspread";
+  public static MimeEntry Ksp { get; } = new(["ksp"], "application/vnd.kde.kspread");
   ///<summary>kwd</summary>
-  public const string Kwd = "application/vnd.kde.kword";
+  public static MimeEntry Kwd { get; } = new(["kwd", "kwt"], "application/vnd.kde.kword");
   ///<summary>kwt</summary>
-  public const string Kwt = "application/vnd.kde.kword";
+  public static MimeEntry Kwt { get; } = new(["kwd", "kwt"], "application/vnd.kde.kword");
   ///<summary>htke</summary>
-  public const string Htke = "application/vnd.kenameaapp";
+  public static MimeEntry Htke { get; } = new(["htke"], "application/vnd.kenameaapp");
   ///<summary>kia</summary>
-  public const string Kia = "application/vnd.kidspiration";
+  public static MimeEntry Kia { get; } = new(["kia"], "application/vnd.kidspiration");
   ///<summary>kne</summary>
-  public const string Kne = "application/vnd.kinar";
+  public static MimeEntry Kne { get; } = new(["kne", "knp"], "application/vnd.kinar");
   ///<summary>knp</summary>
-  public const string Knp = "application/vnd.kinar";
+  public static MimeEntry Knp { get; } = new(["kne", "knp"], "application/vnd.kinar");
   ///<summary>skp</summary>
-  public const string Skp = "application/vnd.koan";
+  public static MimeEntry Skp { get; } = new(["skp", "skd", "skt", "skm"], "application/vnd.koan");
   ///<summary>skd</summary>
-  public const string Skd = "application/vnd.koan";
+  public static MimeEntry Skd { get; } = new(["skp", "skd", "skt", "skm"], "application/vnd.koan");
   ///<summary>skt</summary>
-  public const string Skt = "application/vnd.koan";
+  public static MimeEntry Skt { get; } = new(["skp", "skd", "skt", "skm"], "application/vnd.koan");
   ///<summary>skm</summary>
-  public const string Skm = "application/vnd.koan";
+  public static MimeEntry Skm { get; } = new(["skp", "skd", "skt", "skm"], "application/vnd.koan");
   ///<summary>sse</summary>
-  public const string Sse = "application/vnd.kodak-descriptor";
+  public static MimeEntry Sse { get; } = new(["sse"], "application/vnd.kodak-descriptor");
   ///<summary>lasxml</summary>
-  public const string Lasxml = "application/vnd.las.las+xml";
+  public static MimeEntry Lasxml { get; } = new(["lasxml"], "application/vnd.las.las+xml");
   ///<summary>lbd</summary>
-  public const string Lbd = "application/vnd.llamagraphics.life-balance.desktop";
+  public static MimeEntry Lbd { get; } = new(["lbd"], "application/vnd.llamagraphics.life-balance.desktop");
   ///<summary>lbe</summary>
-  public const string Lbe = "application/vnd.llamagraphics.life-balance.exchange+xml";
+  public static MimeEntry Lbe { get; } = new(["lbe"], "application/vnd.llamagraphics.life-balance.exchange+xml");
   ///<summary>123</summary>
-  public const string _123 = "application/vnd.lotus-1-2-3";
+  public static MimeEntry _123 { get; } = new(["123"], "application/vnd.lotus-1-2-3");
   ///<summary>apr</summary>
-  public const string Apr = "application/vnd.lotus-approach";
+  public static MimeEntry Apr { get; } = new(["apr"], "application/vnd.lotus-approach");
   ///<summary>pre</summary>
-  public const string Pre = "application/vnd.lotus-freelance";
+  public static MimeEntry Pre { get; } = new(["pre"], "application/vnd.lotus-freelance");
   ///<summary>nsf</summary>
-  public const string Nsf = "application/vnd.lotus-notes";
+  public static MimeEntry Nsf { get; } = new(["nsf"], "application/vnd.lotus-notes");
   ///<summary>org</summary>
-  public const string Org = "application/vnd.lotus-organizer";
+  public static MimeEntry Org { get; } = new(["org"], "application/vnd.lotus-organizer");
   ///<summary>scm</summary>
-  public const string Scm = "application/vnd.lotus-screencam";
+  public static MimeEntry Scm { get; } = new(["scm"], "application/vnd.lotus-screencam");
   ///<summary>lwp</summary>
-  public const string Lwp = "application/vnd.lotus-wordpro";
+  public static MimeEntry Lwp { get; } = new(["lwp"], "application/vnd.lotus-wordpro");
   ///<summary>portpkg</summary>
-  public const string Portpkg = "application/vnd.macports.portpkg";
+  public static MimeEntry Portpkg { get; } = new(["portpkg"], "application/vnd.macports.portpkg");
   ///<summary>mcd</summary>
-  public const string Mcd = "application/vnd.mcd";
+  public static MimeEntry Mcd { get; } = new(["mcd"], "application/vnd.mcd");
   ///<summary>mc1</summary>
-  public const string Mc1 = "application/vnd.medcalcdata";
+  public static MimeEntry Mc1 { get; } = new(["mc1"], "application/vnd.medcalcdata");
   ///<summary>cdkey</summary>
-  public const string Cdkey = "application/vnd.mediastation.cdkey";
+  public static MimeEntry Cdkey { get; } = new(["cdkey"], "application/vnd.mediastation.cdkey");
   ///<summary>mwf</summary>
-  public const string Mwf = "application/vnd.mfer";
+  public static MimeEntry Mwf { get; } = new(["mwf"], "application/vnd.mfer");
   ///<summary>mfm</summary>
-  public const string Mfm = "application/vnd.mfmp";
+  public static MimeEntry Mfm { get; } = new(["mfm"], "application/vnd.mfmp");
   ///<summary>flo</summary>
-  public const string Flo = "application/vnd.micrografx.flo";
+  public static MimeEntry Flo { get; } = new(["flo"], "application/vnd.micrografx.flo");
   ///<summary>igx</summary>
-  public const string Igx = "application/vnd.micrografx.igx";
+  public static MimeEntry Igx { get; } = new(["igx"], "application/vnd.micrografx.igx");
   ///<summary>mif</summary>
-  public const string Mif = "application/vnd.mif";
+  public static MimeEntry Mif { get; } = new(["mif"], "application/vnd.mif");
   ///<summary>daf</summary>
-  public const string Daf = "application/vnd.mobius.daf";
+  public static MimeEntry Daf { get; } = new(["daf"], "application/vnd.mobius.daf");
   ///<summary>dis</summary>
-  public const string Dis = "application/vnd.mobius.dis";
+  public static MimeEntry Dis { get; } = new(["dis"], "application/vnd.mobius.dis");
   ///<summary>mbk</summary>
-  public const string Mbk = "application/vnd.mobius.mbk";
+  public static MimeEntry Mbk { get; } = new(["mbk"], "application/vnd.mobius.mbk");
   ///<summary>mqy</summary>
-  public const string Mqy = "application/vnd.mobius.mqy";
+  public static MimeEntry Mqy { get; } = new(["mqy"], "application/vnd.mobius.mqy");
   ///<summary>msl</summary>
-  public const string Msl = "application/vnd.mobius.msl";
+  public static MimeEntry Msl { get; } = new(["msl"], "application/vnd.mobius.msl");
   ///<summary>plc</summary>
-  public const string Plc = "application/vnd.mobius.plc";
+  public static MimeEntry Plc { get; } = new(["plc"], "application/vnd.mobius.plc");
   ///<summary>txf</summary>
-  public const string Txf = "application/vnd.mobius.txf";
+  public static MimeEntry Txf { get; } = new(["txf"], "application/vnd.mobius.txf");
   ///<summary>mpn</summary>
-  public const string Mpn = "application/vnd.mophun.application";
+  public static MimeEntry Mpn { get; } = new(["mpn"], "application/vnd.mophun.application");
   ///<summary>mpc</summary>
-  public const string Mpc = "application/vnd.mophun.certificate";
+  public static MimeEntry Mpc { get; } = new(["mpc"], "application/vnd.mophun.certificate");
   ///<summary>xul</summary>
-  public const string Xul = "application/vnd.mozilla.xul+xml";
+  public static MimeEntry Xul { get; } = new(["xul"], "application/vnd.mozilla.xul+xml");
   ///<summary>cil</summary>
-  public const string Cil = "application/vnd.ms-artgalry";
+  public static MimeEntry Cil { get; } = new(["cil"], "application/vnd.ms-artgalry");
   ///<summary>cab</summary>
-  public const string Cab = "application/vnd.ms-cab-compressed";
+  public static MimeEntry Cab { get; } = new(["cab"], "application/vnd.ms-cab-compressed");
   ///<summary>xls</summary>
-  public const string Xls = "application/vnd.ms-excel";
+  public static MimeEntry Xls { get; } = new(["xls", "xlm", "xla", "xlc", "xlt", "xlw"], "application/vnd.ms-excel");
   ///<summary>xlm</summary>
-  public const string Xlm = "application/vnd.ms-excel";
+  public static MimeEntry Xlm { get; } = new(["xls", "xlm", "xla", "xlc", "xlt", "xlw"], "application/vnd.ms-excel");
   ///<summary>xla</summary>
-  public const string Xla = "application/vnd.ms-excel";
+  public static MimeEntry Xla { get; } = new(["xls", "xlm", "xla", "xlc", "xlt", "xlw"], "application/vnd.ms-excel");
   ///<summary>xlc</summary>
-  public const string Xlc = "application/vnd.ms-excel";
+  public static MimeEntry Xlc { get; } = new(["xls", "xlm", "xla", "xlc", "xlt", "xlw"], "application/vnd.ms-excel");
   ///<summary>xlt</summary>
-  public const string Xlt = "application/vnd.ms-excel";
+  public static MimeEntry Xlt { get; } = new(["xls", "xlm", "xla", "xlc", "xlt", "xlw"], "application/vnd.ms-excel");
   ///<summary>xlw</summary>
-  public const string Xlw = "application/vnd.ms-excel";
+  public static MimeEntry Xlw { get; } = new(["xls", "xlm", "xla", "xlc", "xlt", "xlw"], "application/vnd.ms-excel");
   ///<summary>xlam</summary>
-  public const string Xlam = "application/vnd.ms-excel.addin.macroenabled.12";
+  public static MimeEntry Xlam { get; } = new(["xlam"], "application/vnd.ms-excel.addin.macroenabled.12");
   ///<summary>xlsb</summary>
-  public const string Xlsb = "application/vnd.ms-excel.sheet.binary.macroenabled.12";
+  public static MimeEntry Xlsb { get; } = new(["xlsb"], "application/vnd.ms-excel.sheet.binary.macroenabled.12");
   ///<summary>xlsm</summary>
-  public const string Xlsm = "application/vnd.ms-excel.sheet.macroenabled.12";
+  public static MimeEntry Xlsm { get; } = new(["xlsm"], "application/vnd.ms-excel.sheet.macroenabled.12");
   ///<summary>xltm</summary>
-  public const string Xltm = "application/vnd.ms-excel.template.macroenabled.12";
+  public static MimeEntry Xltm { get; } = new(["xltm"], "application/vnd.ms-excel.template.macroenabled.12");
   ///<summary>eot</summary>
-  public const string Eot = "application/vnd.ms-fontobject";
+  public static MimeEntry Eot { get; } = new(["eot"], "application/vnd.ms-fontobject");
   ///<summary>chm</summary>
-  public const string Chm = "application/vnd.ms-htmlhelp";
+  public static MimeEntry Chm { get; } = new(["chm"], "application/vnd.ms-htmlhelp");
   ///<summary>ims</summary>
-  public const string Ims = "application/vnd.ms-ims";
+  public static MimeEntry Ims { get; } = new(["ims"], "application/vnd.ms-ims");
   ///<summary>lrm</summary>
-  public const string Lrm = "application/vnd.ms-lrm";
+  public static MimeEntry Lrm { get; } = new(["lrm"], "application/vnd.ms-lrm");
   ///<summary>thmx</summary>
-  public const string Thmx = "application/vnd.ms-officetheme";
+  public static MimeEntry Thmx { get; } = new(["thmx"], "application/vnd.ms-officetheme");
   ///<summary>cat</summary>
-  public const string Cat = "application/vnd.ms-pki.seccat";
+  public static MimeEntry Cat { get; } = new(["cat"], "application/vnd.ms-pki.seccat");
   ///<summary>stl</summary>
-  public const string Stl = "application/vnd.ms-pki.stl";
+  public static MimeEntry Stl { get; } = new(["stl"], "application/vnd.ms-pki.stl");
   ///<summary>ppt</summary>
-  public const string Ppt = "application/vnd.ms-powerpoint";
+  public static MimeEntry Ppt { get; } = new(["ppt", "pps", "pot"], "application/vnd.ms-powerpoint");
   ///<summary>pps</summary>
-  public const string Pps = "application/vnd.ms-powerpoint";
+  public static MimeEntry Pps { get; } = new(["ppt", "pps", "pot"], "application/vnd.ms-powerpoint");
   ///<summary>pot</summary>
-  public const string Pot = "application/vnd.ms-powerpoint";
+  public static MimeEntry Pot { get; } = new(["ppt", "pps", "pot"], "application/vnd.ms-powerpoint");
   ///<summary>ppam</summary>
-  public const string Ppam = "application/vnd.ms-powerpoint.addin.macroenabled.12";
+  public static MimeEntry Ppam { get; } = new(["ppam"], "application/vnd.ms-powerpoint.addin.macroenabled.12");
   ///<summary>pptm</summary>
-  public const string Pptm = "application/vnd.ms-powerpoint.presentation.macroenabled.12";
+  public static MimeEntry Pptm { get; } = new(["pptm"], "application/vnd.ms-powerpoint.presentation.macroenabled.12");
   ///<summary>sldm</summary>
-  public const string Sldm = "application/vnd.ms-powerpoint.slide.macroenabled.12";
+  public static MimeEntry Sldm { get; } = new(["sldm"], "application/vnd.ms-powerpoint.slide.macroenabled.12");
   ///<summary>ppsm</summary>
-  public const string Ppsm = "application/vnd.ms-powerpoint.slideshow.macroenabled.12";
+  public static MimeEntry Ppsm { get; } = new(["ppsm"], "application/vnd.ms-powerpoint.slideshow.macroenabled.12");
   ///<summary>potm</summary>
-  public const string Potm = "application/vnd.ms-powerpoint.template.macroenabled.12";
+  public static MimeEntry Potm { get; } = new(["potm"], "application/vnd.ms-powerpoint.template.macroenabled.12");
   ///<summary>mpp</summary>
-  public const string Mpp = "application/vnd.ms-project";
+  public static MimeEntry Mpp { get; } = new(["mpt"], "application/vnd.ms-project");
   ///<summary>mpt</summary>
-  public const string Mpt = "application/vnd.ms-project";
+  public static MimeEntry Mpt { get; } = new(["mpt"], "application/vnd.ms-project");
   ///<summary>docm</summary>
-  public const string Docm = "application/vnd.ms-word.document.macroenabled.12";
+  public static MimeEntry Docm { get; } = new(["docm"], "application/vnd.ms-word.document.macroenabled.12");
   ///<summary>dotm</summary>
-  public const string Dotm = "application/vnd.ms-word.template.macroenabled.12";
+  public static MimeEntry Dotm { get; } = new(["dotm"], "application/vnd.ms-word.template.macroenabled.12");
   ///<summary>wps</summary>
-  public const string Wps = "application/vnd.ms-works";
+  public static MimeEntry Wps { get; } = new(["wps", "wks", "wcm", "wdb"], "application/vnd.ms-works");
   ///<summary>wks</summary>
-  public const string Wks = "application/vnd.ms-works";
+  public static MimeEntry Wks { get; } = new(["wps", "wks", "wcm", "wdb"], "application/vnd.ms-works");
   ///<summary>wcm</summary>
-  public const string Wcm = "application/vnd.ms-works";
+  public static MimeEntry Wcm { get; } = new(["wps", "wks", "wcm", "wdb"], "application/vnd.ms-works");
   ///<summary>wdb</summary>
-  public const string Wdb = "application/vnd.ms-works";
+  public static MimeEntry Wdb { get; } = new(["wps", "wks", "wcm", "wdb"], "application/vnd.ms-works");
   ///<summary>wpl</summary>
-  public const string Wpl = "application/vnd.ms-wpl";
+  public static MimeEntry Wpl { get; } = new(["wpl"], "application/vnd.ms-wpl");
   ///<summary>xps</summary>
-  public const string Xps = "application/vnd.ms-xpsdocument";
+  public static MimeEntry Xps { get; } = new(["xps"], "application/vnd.ms-xpsdocument");
   ///<summary>mseq</summary>
-  public const string Mseq = "application/vnd.mseq";
+  public static MimeEntry Mseq { get; } = new(["mseq"], "application/vnd.mseq");
   ///<summary>mus</summary>
-  public const string Mus = "application/vnd.musician";
+  public static MimeEntry Mus { get; } = new(["mus"], "application/vnd.musician");
   ///<summary>msty</summary>
-  public const string Msty = "application/vnd.muvee.style";
+  public static MimeEntry Msty { get; } = new(["msty"], "application/vnd.muvee.style");
   ///<summary>taglet</summary>
-  public const string Taglet = "application/vnd.mynfc";
+  public static MimeEntry Taglet { get; } = new(["taglet"], "application/vnd.mynfc");
   ///<summary>nlu</summary>
-  public const string Nlu = "application/vnd.neurolanguage.nlu";
+  public static MimeEntry Nlu { get; } = new(["nlu"], "application/vnd.neurolanguage.nlu");
   ///<summary>ntf</summary>
-  public const string Ntf = "application/vnd.nitf";
+  public static MimeEntry Ntf { get; } = new(["ntf", "nitf"], "application/vnd.nitf");
   ///<summary>nitf</summary>
-  public const string Nitf = "application/vnd.nitf";
+  public static MimeEntry Nitf { get; } = new(["ntf", "nitf"], "application/vnd.nitf");
   ///<summary>nnd</summary>
-  public const string Nnd = "application/vnd.noblenet-directory";
+  public static MimeEntry Nnd { get; } = new(["nnd"], "application/vnd.noblenet-directory");
   ///<summary>nns</summary>
-  public const string Nns = "application/vnd.noblenet-sealer";
+  public static MimeEntry Nns { get; } = new(["nns"], "application/vnd.noblenet-sealer");
   ///<summary>nnw</summary>
-  public const string Nnw = "application/vnd.noblenet-web";
+  public static MimeEntry Nnw { get; } = new(["nnw"], "application/vnd.noblenet-web");
   ///<summary>ngdat</summary>
-  public const string Ngdat = "application/vnd.nokia.n-gage.data";
+  public static MimeEntry Ngdat { get; } = new(["ngdat"], "application/vnd.nokia.n-gage.data");
   ///<summary>n-gage</summary>
-  public const string Ngage = "application/vnd.nokia.n-gage.symbian.install";
+  public static MimeEntry Ngage { get; } = new(["n-gage"], "application/vnd.nokia.n-gage.symbian.install");
   ///<summary>rpst</summary>
-  public const string Rpst = "application/vnd.nokia.radio-preset";
+  public static MimeEntry Rpst { get; } = new(["rpst"], "application/vnd.nokia.radio-preset");
   ///<summary>rpss</summary>
-  public const string Rpss = "application/vnd.nokia.radio-presets";
+  public static MimeEntry Rpss { get; } = new(["rpss"], "application/vnd.nokia.radio-presets");
   ///<summary>edm</summary>
-  public const string Edm = "application/vnd.novadigm.edm";
+  public static MimeEntry Edm { get; } = new(["edm"], "application/vnd.novadigm.edm");
   ///<summary>edx</summary>
-  public const string Edx = "application/vnd.novadigm.edx";
+  public static MimeEntry Edx { get; } = new(["edx"], "application/vnd.novadigm.edx");
   ///<summary>ext</summary>
-  public const string Ext = "application/vnd.novadigm.ext";
+  public static MimeEntry Ext { get; } = new(["ext"], "application/vnd.novadigm.ext");
   ///<summary>odc</summary>
-  public const string Odc = "application/vnd.oasis.opendocument.chart";
+  public static MimeEntry Odc { get; } = new(["odc"], "application/vnd.oasis.opendocument.chart");
   ///<summary>otc</summary>
-  public const string Otc = "application/vnd.oasis.opendocument.chart-template";
+  public static MimeEntry Otc { get; } = new(["otc"], "application/vnd.oasis.opendocument.chart-template");
   ///<summary>odb</summary>
-  public const string Odb = "application/vnd.oasis.opendocument.database";
+  public static MimeEntry Odb { get; } = new(["odb"], "application/vnd.oasis.opendocument.database");
   ///<summary>odf</summary>
-  public const string Odf = "application/vnd.oasis.opendocument.formula";
+  public static MimeEntry Odf { get; } = new(["odf"], "application/vnd.oasis.opendocument.formula");
   ///<summary>odft</summary>
-  public const string Odft = "application/vnd.oasis.opendocument.formula-template";
+  public static MimeEntry Odft { get; } = new(["odft"], "application/vnd.oasis.opendocument.formula-template");
   ///<summary>odg</summary>
-  public const string Odg = "application/vnd.oasis.opendocument.graphics";
+  public static MimeEntry Odg { get; } = new(["odg"], "application/vnd.oasis.opendocument.graphics");
   ///<summary>otg</summary>
-  public const string Otg = "application/vnd.oasis.opendocument.graphics-template";
+  public static MimeEntry Otg { get; } = new(["otg"], "application/vnd.oasis.opendocument.graphics-template");
   ///<summary>odi</summary>
-  public const string Odi = "application/vnd.oasis.opendocument.image";
+  public static MimeEntry Odi { get; } = new(["odi"], "application/vnd.oasis.opendocument.image");
   ///<summary>oti</summary>
-  public const string Oti = "application/vnd.oasis.opendocument.image-template";
+  public static MimeEntry Oti { get; } = new(["oti"], "application/vnd.oasis.opendocument.image-template");
   ///<summary>odp</summary>
-  public const string Odp = "application/vnd.oasis.opendocument.presentation";
+  public static MimeEntry Odp { get; } = new(["odp"], "application/vnd.oasis.opendocument.presentation");
   ///<summary>otp</summary>
-  public const string Otp = "application/vnd.oasis.opendocument.presentation-template";
+  public static MimeEntry Otp { get; } = new(["otp"], "application/vnd.oasis.opendocument.presentation-template");
   ///<summary>ods</summary>
-  public const string Ods = "application/vnd.oasis.opendocument.spreadsheet";
+  public static MimeEntry Ods { get; } = new(["ods"], "application/vnd.oasis.opendocument.spreadsheet");
   ///<summary>ots</summary>
-  public const string Ots = "application/vnd.oasis.opendocument.spreadsheet-template";
+  public static MimeEntry Ots { get; } = new(["ots"], "application/vnd.oasis.opendocument.spreadsheet-template");
   ///<summary>odt</summary>
-  public const string Odt = "application/vnd.oasis.opendocument.text";
+  public static MimeEntry Odt { get; } = new(["odt"], "application/vnd.oasis.opendocument.text");
   ///<summary>odm</summary>
-  public const string Odm = "application/vnd.oasis.opendocument.text-master";
+  public static MimeEntry Odm { get; } = new(["odm"], "application/vnd.oasis.opendocument.text-master");
   ///<summary>ott</summary>
-  public const string Ott = "application/vnd.oasis.opendocument.text-template";
+  public static MimeEntry Ott { get; } = new(["ott"], "application/vnd.oasis.opendocument.text-template");
   ///<summary>oth</summary>
-  public const string Oth = "application/vnd.oasis.opendocument.text-web";
+  public static MimeEntry Oth { get; } = new(["oth"], "application/vnd.oasis.opendocument.text-web");
   ///<summary>xo</summary>
-  public const string Xo = "application/vnd.olpc-sugar";
+  public static MimeEntry Xo { get; } = new(["xo"], "application/vnd.olpc-sugar");
   ///<summary>dd2</summary>
-  public const string Dd2 = "application/vnd.oma.dd2+xml";
+  public static MimeEntry Dd2 { get; } = new(["dd2"], "application/vnd.oma.dd2+xml");
   ///<summary>oxt</summary>
-  public const string Oxt = "application/vnd.openofficeorg.extension";
+  public static MimeEntry Oxt { get; } = new(["oxt"], "application/vnd.openofficeorg.extension");
   ///<summary>pptx</summary>
-  public const string Pptx = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  public static MimeEntry Pptx { get; } = new(["pptx"], "application/vnd.openxmlformats-officedocument.presentationml.presentation");
   ///<summary>sldx</summary>
-  public const string Sldx = "application/vnd.openxmlformats-officedocument.presentationml.slide";
+  public static MimeEntry Sldx { get; } = new(["sldx"], "application/vnd.openxmlformats-officedocument.presentationml.slide");
   ///<summary>ppsx</summary>
-  public const string Ppsx = "application/vnd.openxmlformats-officedocument.presentationml.slideshow";
+  public static MimeEntry Ppsx { get; } = new(["ppsx"], "application/vnd.openxmlformats-officedocument.presentationml.slideshow");
   ///<summary>potx</summary>
-  public const string Potx = "application/vnd.openxmlformats-officedocument.presentationml.template";
+  public static MimeEntry Potx { get; } = new(["potx"], "application/vnd.openxmlformats-officedocument.presentationml.template");
   ///<summary>xlsx</summary>
-  public const string Xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  public static MimeEntry Xlsx { get; } = new(["xlsx"], "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   ///<summary>xltx</summary>
-  public const string Xltx = "application/vnd.openxmlformats-officedocument.spreadsheetml.template";
+  public static MimeEntry Xltx { get; } = new(["xltx"], "application/vnd.openxmlformats-officedocument.spreadsheetml.template");
   ///<summary>docx</summary>
-  public const string Docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  public static MimeEntry Docx { get; } = new(["docx"], "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
   ///<summary>dotx</summary>
-  public const string Dotx = "application/vnd.openxmlformats-officedocument.wordprocessingml.template";
+  public static MimeEntry Dotx { get; } = new(["dotx"], "application/vnd.openxmlformats-officedocument.wordprocessingml.template");
   ///<summary>mgp</summary>
-  public const string Mgp = "application/vnd.osgeo.mapguide.package";
+  public static MimeEntry Mgp { get; } = new(["mgp"], "application/vnd.osgeo.mapguide.package");
   ///<summary>dp</summary>
-  public const string Dp = "application/vnd.osgi.dp";
+  public static MimeEntry Dp { get; } = new(["dp"], "application/vnd.osgi.dp");
   ///<summary>esa</summary>
-  public const string Esa = "application/vnd.osgi.subsystem";
+  public static MimeEntry Esa { get; } = new(["esa"], "application/vnd.osgi.subsystem");
   ///<summary>pdb</summary>
-  public const string Pdb = "application/vnd.palm";
+  public static MimeEntry Pdb { get; } = new(["pdb", "pqa", "oprc"], "application/vnd.palm");
   ///<summary>pqa</summary>
-  public const string Pqa = "application/vnd.palm";
+  public static MimeEntry Pqa { get; } = new(["pdb", "pqa", "oprc"], "application/vnd.palm");
   ///<summary>oprc</summary>
-  public const string Oprc = "application/vnd.palm";
+  public static MimeEntry Oprc { get; } = new(["pdb", "pqa", "oprc"], "application/vnd.palm");
   ///<summary>paw</summary>
-  public const string Paw = "application/vnd.pawaafile";
+  public static MimeEntry Paw { get; } = new(["paw"], "application/vnd.pawaafile");
   ///<summary>str</summary>
-  public const string Str = "application/vnd.pg.format";
+  public static MimeEntry Str { get; } = new(["str"], "application/vnd.pg.format");
   ///<summary>ei6</summary>
-  public const string Ei6 = "application/vnd.pg.osasli";
+  public static MimeEntry Ei6 { get; } = new(["ei6"], "application/vnd.pg.osasli");
   ///<summary>efif</summary>
-  public const string Efif = "application/vnd.picsel";
+  public static MimeEntry Efif { get; } = new(["efif"], "application/vnd.picsel");
   ///<summary>wg</summary>
-  public const string Wg = "application/vnd.pmi.widget";
+  public static MimeEntry Wg { get; } = new(["wg"], "application/vnd.pmi.widget");
   ///<summary>plf</summary>
-  public const string Plf = "application/vnd.pocketlearn";
+  public static MimeEntry Plf { get; } = new(["plf"], "application/vnd.pocketlearn");
   ///<summary>pbd</summary>
-  public const string Pbd = "application/vnd.powerbuilder6";
+  public static MimeEntry Pbd { get; } = new(["pbd"], "application/vnd.powerbuilder6");
   ///<summary>box</summary>
-  public const string Box = "application/vnd.previewsystems.box";
+  public static MimeEntry Box { get; } = new(["box"], "application/vnd.previewsystems.box");
   ///<summary>mgz</summary>
-  public const string Mgz = "application/vnd.proteus.magazine";
+  public static MimeEntry Mgz { get; } = new(["mgz"], "application/vnd.proteus.magazine");
   ///<summary>qps</summary>
-  public const string Qps = "application/vnd.publishare-delta-tree";
+  public static MimeEntry Qps { get; } = new(["qps"], "application/vnd.publishare-delta-tree");
   ///<summary>ptid</summary>
-  public const string Ptid = "application/vnd.pvi.ptid1";
+  public static MimeEntry Ptid { get; } = new(["ptid"], "application/vnd.pvi.ptid1");
   ///<summary>qxd</summary>
-  public const string Qxd = "application/vnd.quark.quarkxpress";
+  public static MimeEntry Qxd { get; } = new(["qxd", "qxt", "qwd", "qwt", "qxl", "qxb"], "application/vnd.quark.quarkxpress");
   ///<summary>qxt</summary>
-  public const string Qxt = "application/vnd.quark.quarkxpress";
+  public static MimeEntry Qxt { get; } = new(["qxd", "qxt", "qwd", "qwt", "qxl", "qxb"], "application/vnd.quark.quarkxpress");
   ///<summary>qwd</summary>
-  public const string Qwd = "application/vnd.quark.quarkxpress";
+  public static MimeEntry Qwd { get; } = new(["qxd", "qxt", "qwd", "qwt", "qxl", "qxb"], "application/vnd.quark.quarkxpress");
   ///<summary>qwt</summary>
-  public const string Qwt = "application/vnd.quark.quarkxpress";
+  public static MimeEntry Qwt { get; } = new(["qxd", "qxt", "qwd", "qwt", "qxl", "qxb"], "application/vnd.quark.quarkxpress");
   ///<summary>qxl</summary>
-  public const string Qxl = "application/vnd.quark.quarkxpress";
+  public static MimeEntry Qxl { get; } = new(["qxd", "qxt", "qwd", "qwt", "qxl", "qxb"], "application/vnd.quark.quarkxpress");
   ///<summary>qxb</summary>
-  public const string Qxb = "application/vnd.quark.quarkxpress";
+  public static MimeEntry Qxb { get; } = new(["qxd", "qxt", "qwd", "qwt", "qxl", "qxb"], "application/vnd.quark.quarkxpress");
   ///<summary>bed</summary>
-  public const string Bed = "application/vnd.realvnc.bed";
+  public static MimeEntry Bed { get; } = new(["bed"], "application/vnd.realvnc.bed");
   ///<summary>mxl</summary>
-  public const string Mxl = "application/vnd.recordare.musicxml";
+  public static MimeEntry Mxl { get; } = new(["mxl"], "application/vnd.recordare.musicxml");
   ///<summary>musicxml</summary>
-  public const string Musicxml = "application/vnd.recordare.musicxml+xml";
+  public static MimeEntry Musicxml { get; } = new(["musicxml"], "application/vnd.recordare.musicxml+xml");
   ///<summary>cryptonote</summary>
-  public const string Cryptonote = "application/vnd.rig.cryptonote";
+  public static MimeEntry Cryptonote { get; } = new(["cryptonote"], "application/vnd.rig.cryptonote");
   ///<summary>cod</summary>
-  public const string Cod = "application/vnd.rim.cod";
+  public static MimeEntry Cod { get; } = new(["cod"], "application/vnd.rim.cod");
   ///<summary>rm</summary>
-  public const string Rm = "application/vnd.rn-realmedia";
+  public static MimeEntry Rm { get; } = new(["rm"], "application/vnd.rn-realmedia");
   ///<summary>rmvb</summary>
-  public const string Rmvb = "application/vnd.rn-realmedia-vbr";
+  public static MimeEntry Rmvb { get; } = new(["rmvb"], "application/vnd.rn-realmedia-vbr");
   ///<summary>link66</summary>
-  public const string Link66 = "application/vnd.route66.link66+xml";
+  public static MimeEntry Link66 { get; } = new(["link66"], "application/vnd.route66.link66+xml");
   ///<summary>st</summary>
-  public const string St = "application/vnd.sailingtracker.track";
+  public static MimeEntry St { get; } = new(["st"], "application/vnd.sailingtracker.track");
   ///<summary>see</summary>
-  public const string See = "application/vnd.seemail";
+  public static MimeEntry See { get; } = new(["see"], "application/vnd.seemail");
   ///<summary>sema</summary>
-  public const string Sema = "application/vnd.sema";
+  public static MimeEntry Sema { get; } = new(["sema"], "application/vnd.sema");
   ///<summary>semd</summary>
-  public const string Semd = "application/vnd.semd";
+  public static MimeEntry Semd { get; } = new(["semd"], "application/vnd.semd");
   ///<summary>semf</summary>
-  public const string Semf = "application/vnd.semf";
+  public static MimeEntry Semf { get; } = new(["semf"], "application/vnd.semf");
   ///<summary>ifm</summary>
-  public const string Ifm = "application/vnd.shana.informed.formdata";
+  public static MimeEntry Ifm { get; } = new(["ifm"], "application/vnd.shana.informed.formdata");
   ///<summary>itp</summary>
-  public const string Itp = "application/vnd.shana.informed.formtemplate";
+  public static MimeEntry Itp { get; } = new(["itp"], "application/vnd.shana.informed.formtemplate");
   ///<summary>iif</summary>
-  public const string Iif = "application/vnd.shana.informed.interchange";
+  public static MimeEntry Iif { get; } = new(["iif"], "application/vnd.shana.informed.interchange");
   ///<summary>ipk</summary>
-  public const string Ipk = "application/vnd.shana.informed.package";
+  public static MimeEntry Ipk { get; } = new(["ipk"], "application/vnd.shana.informed.package");
   ///<summary>twd</summary>
-  public const string Twd = "application/vnd.simtech-mindmapper";
+  public static MimeEntry Twd { get; } = new(["twd", "twds"], "application/vnd.simtech-mindmapper");
   ///<summary>twds</summary>
-  public const string Twds = "application/vnd.simtech-mindmapper";
+  public static MimeEntry Twds { get; } = new(["twd", "twds"], "application/vnd.simtech-mindmapper");
   ///<summary>mmf</summary>
-  public const string Mmf = "application/vnd.smaf";
+  public static MimeEntry Mmf { get; } = new(["mmf"], "application/vnd.smaf");
   ///<summary>teacher</summary>
-  public const string Teacher = "application/vnd.smart.teacher";
+  public static MimeEntry Teacher { get; } = new(["teacher"], "application/vnd.smart.teacher");
   ///<summary>sdkm</summary>
-  public const string Sdkm = "application/vnd.solent.sdkm+xml";
+  public static MimeEntry Sdkm { get; } = new(["sdkm", "sdkd"], "application/vnd.solent.sdkm+xml");
   ///<summary>sdkd</summary>
-  public const string Sdkd = "application/vnd.solent.sdkm+xml";
+  public static MimeEntry Sdkd { get; } = new(["sdkm", "sdkd"], "application/vnd.solent.sdkm+xml");
   ///<summary>dxp</summary>
-  public const string Dxp = "application/vnd.spotfire.dxp";
+  public static MimeEntry Dxp { get; } = new(["dxp"], "application/vnd.spotfire.dxp");
   ///<summary>sfs</summary>
-  public const string Sfs = "application/vnd.spotfire.sfs";
+  public static MimeEntry Sfs { get; } = new(["sfs"], "application/vnd.spotfire.sfs");
   ///<summary>sdc</summary>
-  public const string Sdc = "application/vnd.stardivision.calc";
+  public static MimeEntry Sdc { get; } = new(["sdc"], "application/vnd.stardivision.calc");
   ///<summary>sda</summary>
-  public const string Sda = "application/vnd.stardivision.draw";
+  public static MimeEntry Sda { get; } = new(["sda"], "application/vnd.stardivision.draw");
   ///<summary>sdd</summary>
-  public const string Sdd = "application/vnd.stardivision.impress";
+  public static MimeEntry Sdd { get; } = new(["sdd"], "application/vnd.stardivision.impress");
   ///<summary>smf</summary>
-  public const string Smf = "application/vnd.stardivision.math";
+  public static MimeEntry Smf { get; } = new(["smf"], "application/vnd.stardivision.math");
   ///<summary>sdw</summary>
-  public const string Sdw = "application/vnd.stardivision.writer";
+  public static MimeEntry Sdw { get; } = new(["sdw", "vor"], "application/vnd.stardivision.writer");
   ///<summary>vor</summary>
-  public const string Vor = "application/vnd.stardivision.writer";
+  public static MimeEntry Vor { get; } = new(["sdw", "vor"], "application/vnd.stardivision.writer");
   ///<summary>sgl</summary>
-  public const string Sgl = "application/vnd.stardivision.writer-global";
+  public static MimeEntry Sgl { get; } = new(["sgl"], "application/vnd.stardivision.writer-global");
   ///<summary>smzip</summary>
-  public const string Smzip = "application/vnd.stepmania.package";
+  public static MimeEntry Smzip { get; } = new(["smzip"], "application/vnd.stepmania.package");
   ///<summary>sm</summary>
-  public const string Sm = "application/vnd.stepmania.stepchart";
+  public static MimeEntry Sm { get; } = new(["sm"], "application/vnd.stepmania.stepchart");
   ///<summary>sxc</summary>
-  public const string Sxc = "application/vnd.sun.xml.calc";
+  public static MimeEntry Sxc { get; } = new(["sxc"], "application/vnd.sun.xml.calc");
   ///<summary>stc</summary>
-  public const string Stc = "application/vnd.sun.xml.calc.template";
+  public static MimeEntry Stc { get; } = new(["stc"], "application/vnd.sun.xml.calc.template");
   ///<summary>sxd</summary>
-  public const string Sxd = "application/vnd.sun.xml.draw";
+  public static MimeEntry Sxd { get; } = new(["sxd"], "application/vnd.sun.xml.draw");
   ///<summary>std</summary>
-  public const string Std = "application/vnd.sun.xml.draw.template";
+  public static MimeEntry Std { get; } = new(["std"], "application/vnd.sun.xml.draw.template");
   ///<summary>sxi</summary>
-  public const string Sxi = "application/vnd.sun.xml.impress";
+  public static MimeEntry Sxi { get; } = new(["sxi"], "application/vnd.sun.xml.impress");
   ///<summary>sti</summary>
-  public const string Sti = "application/vnd.sun.xml.impress.template";
+  public static MimeEntry Sti { get; } = new(["sti"], "application/vnd.sun.xml.impress.template");
   ///<summary>sxm</summary>
-  public const string Sxm = "application/vnd.sun.xml.math";
+  public static MimeEntry Sxm { get; } = new(["sxm"], "application/vnd.sun.xml.math");
   ///<summary>sxw</summary>
-  public const string Sxw = "application/vnd.sun.xml.writer";
+  public static MimeEntry Sxw { get; } = new(["sxw"], "application/vnd.sun.xml.writer");
   ///<summary>sxg</summary>
-  public const string Sxg = "application/vnd.sun.xml.writer.global";
+  public static MimeEntry Sxg { get; } = new(["sxg"], "application/vnd.sun.xml.writer.global");
   ///<summary>stw</summary>
-  public const string Stw = "application/vnd.sun.xml.writer.template";
+  public static MimeEntry Stw { get; } = new(["stw"], "application/vnd.sun.xml.writer.template");
   ///<summary>sus</summary>
-  public const string Sus = "application/vnd.sus-calendar";
+  public static MimeEntry Sus { get; } = new(["sus", "susp"], "application/vnd.sus-calendar");
   ///<summary>susp</summary>
-  public const string Susp = "application/vnd.sus-calendar";
+  public static MimeEntry Susp { get; } = new(["sus", "susp"], "application/vnd.sus-calendar");
   ///<summary>svd</summary>
-  public const string Svd = "application/vnd.svd";
+  public static MimeEntry Svd { get; } = new(["svd"], "application/vnd.svd");
   ///<summary>sis</summary>
-  public const string Sis = "application/vnd.symbian.install";
+  public static MimeEntry Sis { get; } = new(["sis", "sisx"], "application/vnd.symbian.install");
   ///<summary>sisx</summary>
-  public const string Sisx = "application/vnd.symbian.install";
+  public static MimeEntry Sisx { get; } = new(["sis", "sisx"], "application/vnd.symbian.install");
   ///<summary>xsm</summary>
-  public const string Xsm = "application/vnd.syncml+xml";
+  public static MimeEntry Xsm { get; } = new(["xsm"], "application/vnd.syncml+xml");
   ///<summary>bdm</summary>
-  public const string Bdm = "application/vnd.syncml.dm+wbxml";
+  public static MimeEntry Bdm { get; } = new(["bdm"], "application/vnd.syncml.dm+wbxml");
   ///<summary>xdm</summary>
-  public const string Xdm = "application/vnd.syncml.dm+xml";
+  public static MimeEntry Xdm { get; } = new(["xdm"], "application/vnd.syncml.dm+xml");
   ///<summary>tao</summary>
-  public const string Tao = "application/vnd.tao.intent-module-archive";
+  public static MimeEntry Tao { get; } = new(["tao"], "application/vnd.tao.intent-module-archive");
   ///<summary>pcap</summary>
-  public const string Pcap = "application/vnd.tcpdump.pcap";
+  public static MimeEntry Pcap { get; } = new(["pcap", "cap", "dmp"], "application/vnd.tcpdump.pcap");
   ///<summary>cap</summary>
-  public const string Cap = "application/vnd.tcpdump.pcap";
+  public static MimeEntry Cap { get; } = new(["pcap", "cap", "dmp"], "application/vnd.tcpdump.pcap");
   ///<summary>dmp</summary>
-  public const string Dmp = "application/vnd.tcpdump.pcap";
+  public static MimeEntry Dmp { get; } = new(["pcap", "cap", "dmp"], "application/vnd.tcpdump.pcap");
   ///<summary>tmo</summary>
-  public const string Tmo = "application/vnd.tmobile-livetv";
+  public static MimeEntry Tmo { get; } = new(["tmo"], "application/vnd.tmobile-livetv");
   ///<summary>tpt</summary>
-  public const string Tpt = "application/vnd.trid.tpt";
+  public static MimeEntry Tpt { get; } = new(["tpt"], "application/vnd.trid.tpt");
   ///<summary>mxs</summary>
-  public const string Mxs = "application/vnd.triscape.mxs";
+  public static MimeEntry Mxs { get; } = new(["mxs"], "application/vnd.triscape.mxs");
   ///<summary>tra</summary>
-  public const string Tra = "application/vnd.trueapp";
+  public static MimeEntry Tra { get; } = new(["tra"], "application/vnd.trueapp");
   ///<summary>ufd</summary>
-  public const string Ufd = "application/vnd.ufdl";
+  public static MimeEntry Ufd { get; } = new(["ufd", "ufdl"], "application/vnd.ufdl");
   ///<summary>ufdl</summary>
-  public const string Ufdl = "application/vnd.ufdl";
+  public static MimeEntry Ufdl { get; } = new(["ufd", "ufdl"], "application/vnd.ufdl");
   ///<summary>utz</summary>
-  public const string Utz = "application/vnd.uiq.theme";
+  public static MimeEntry Utz { get; } = new(["utz"], "application/vnd.uiq.theme");
   ///<summary>umj</summary>
-  public const string Umj = "application/vnd.umajin";
+  public static MimeEntry Umj { get; } = new(["umj"], "application/vnd.umajin");
   ///<summary>unityweb</summary>
-  public const string Unityweb = "application/vnd.unity";
+  public static MimeEntry Unityweb { get; } = new(["unityweb"], "application/vnd.unity");
   ///<summary>uoml</summary>
-  public const string Uoml = "application/vnd.uoml+xml";
+  public static MimeEntry Uoml { get; } = new(["uoml", "uo"], "application/vnd.uoml+xml");
   ///<summary>vcx</summary>
-  public const string Vcx = "application/vnd.vcx";
+  public static MimeEntry Vcx { get; } = new(["vcx"], "application/vnd.vcx");
   ///<summary>vsd</summary>
-  public const string Vsd = "application/vnd.visio";
+  public static MimeEntry Vsd { get; } = new(["vsd", "vst", "vss", "vsw"], "application/vnd.visio");
   ///<summary>vst</summary>
-  public const string Vst = "application/vnd.visio";
+  public static MimeEntry Vst { get; } = new(["vsd", "vst", "vss", "vsw"], "application/vnd.visio");
   ///<summary>vss</summary>
-  public const string Vss = "application/vnd.visio";
+  public static MimeEntry Vss { get; } = new(["vsd", "vst", "vss", "vsw"], "application/vnd.visio");
   ///<summary>vsw</summary>
-  public const string Vsw = "application/vnd.visio";
+  public static MimeEntry Vsw { get; } = new(["vsd", "vst", "vss", "vsw"], "application/vnd.visio");
   ///<summary>vis</summary>
-  public const string Vis = "application/vnd.visionary";
+  public static MimeEntry Vis { get; } = new(["vis"], "application/vnd.visionary");
   ///<summary>vsf</summary>
-  public const string Vsf = "application/vnd.vsf";
+  public static MimeEntry Vsf { get; } = new(["vsf"], "application/vnd.vsf");
   ///<summary>wbxml</summary>
-  public const string Wbxml = "application/vnd.wap.wbxml";
+  public static MimeEntry Wbxml { get; } = new(["wbxml"], "application/vnd.wap.wbxml");
   ///<summary>wmlc</summary>
-  public const string Wmlc = "application/vnd.wap.wmlc";
+  public static MimeEntry Wmlc { get; } = new(["wmlc"], "application/vnd.wap.wmlc");
   ///<summary>wmlsc</summary>
-  public const string Wmlsc = "application/vnd.wap.wmlscriptc";
+  public static MimeEntry Wmlsc { get; } = new(["wmlsc"], "application/vnd.wap.wmlscriptc");
   ///<summary>wtb</summary>
-  public const string Wtb = "application/vnd.webturbo";
+  public static MimeEntry Wtb { get; } = new(["wtb"], "application/vnd.webturbo");
   ///<summary>nbp</summary>
-  public const string Nbp = "application/vnd.wolfram.player";
+  public static MimeEntry Nbp { get; } = new(["nbp"], "application/vnd.wolfram.player");
   ///<summary>wpd</summary>
-  public const string Wpd = "application/vnd.wordperfect";
+  public static MimeEntry Wpd { get; } = new(["wpd"], "application/vnd.wordperfect");
   ///<summary>wqd</summary>
-  public const string Wqd = "application/vnd.wqd";
+  public static MimeEntry Wqd { get; } = new(["wqd"], "application/vnd.wqd");
   ///<summary>stf</summary>
-  public const string Stf = "application/vnd.wt.stf";
+  public static MimeEntry Stf { get; } = new(["stf"], "application/vnd.wt.stf");
   ///<summary>xar</summary>
-  public const string Xar = "application/vnd.xara";
+  public static MimeEntry Xar { get; } = new(["xar"], "application/vnd.xara");
   ///<summary>xfdl</summary>
-  public const string Xfdl = "application/vnd.xfdl";
+  public static MimeEntry Xfdl { get; } = new(["xfdl"], "application/vnd.xfdl");
   ///<summary>hvd</summary>
-  public const string Hvd = "application/vnd.yamaha.hv-dic";
+  public static MimeEntry Hvd { get; } = new(["hvd"], "application/vnd.yamaha.hv-dic");
   ///<summary>hvs</summary>
-  public const string Hvs = "application/vnd.yamaha.hv-script";
+  public static MimeEntry Hvs { get; } = new(["hvs"], "application/vnd.yamaha.hv-script");
   ///<summary>hvp</summary>
-  public const string Hvp = "application/vnd.yamaha.hv-voice";
+  public static MimeEntry Hvp { get; } = new(["hvp"], "application/vnd.yamaha.hv-voice");
   ///<summary>osf</summary>
-  public const string Osf = "application/vnd.yamaha.openscoreformat";
+  public static MimeEntry Osf { get; } = new(["osf"], "application/vnd.yamaha.openscoreformat");
   ///<summary>osfpvg</summary>
-  public const string Osfpvg = "application/vnd.yamaha.openscoreformat.osfpvg+xml";
+  public static MimeEntry Osfpvg { get; } = new(["osfpvg"], "application/vnd.yamaha.openscoreformat.osfpvg+xml");
   ///<summary>saf</summary>
-  public const string Saf = "application/vnd.yamaha.smaf-audio";
+  public static MimeEntry Saf { get; } = new(["saf"], "application/vnd.yamaha.smaf-audio");
   ///<summary>spf</summary>
-  public const string Spf = "application/vnd.yamaha.smaf-phrase";
+  public static MimeEntry Spf { get; } = new(["spf"], "application/vnd.yamaha.smaf-phrase");
   ///<summary>cmp</summary>
-  public const string Cmp = "application/vnd.yellowriver-custom-menu";
+  public static MimeEntry Cmp { get; } = new(["cmp"], "application/vnd.yellowriver-custom-menu");
   ///<summary>zir</summary>
-  public const string Zir = "application/vnd.zul";
+  public static MimeEntry Zir { get; } = new(["zir", "zirz"], "application/vnd.zul");
   ///<summary>zirz</summary>
-  public const string Zirz = "application/vnd.zul";
+  public static MimeEntry Zirz { get; } = new(["zir", "zirz"], "application/vnd.zul");
   ///<summary>zaz</summary>
-  public const string Zaz = "application/vnd.zzazz.deck+xml";
+  public static MimeEntry Zaz { get; } = new(["zaz"], "application/vnd.zzazz.deck+xml");
   ///<summary>vxml</summary>
-  public const string Vxml = "application/voicexml+xml";
+  public static MimeEntry Vxml { get; } = new(["vxml"], "application/voicexml+xml");
   ///<summary>wgt</summary>
-  public const string Wgt = "application/widget";
+  public static MimeEntry Wgt { get; } = new(["wgt"], "application/widget");
   ///<summary>hlp</summary>
-  public const string Hlp = "application/winhlp";
+  public static MimeEntry Hlp { get; } = new(["hlp"], "application/winhlp");
   ///<summary>wsdl</summary>
-  public const string Wsdl = "application/wsdl+xml";
+  public static MimeEntry Wsdl { get; } = new(["wsdl"], "application/wsdl+xml");
   ///<summary>wspolicy</summary>
-  public const string Wspolicy = "application/wspolicy+xml";
+  public static MimeEntry Wspolicy { get; } = new(["wspolicy"], "application/wspolicy+xml");
   ///<summary>7z</summary>
-  public const string _7z = "application/x-7z-compressed";
+  public static MimeEntry _7z { get; } = new(["7z"], "application/x-7z-compressed");
   ///<summary>abw</summary>
-  public const string Abw = "application/x-abiword";
+  public static MimeEntry Abw { get; } = new(["abw"], "application/x-abiword");
   ///<summary>ace</summary>
-  public const string Ace = "application/x-ace-compressed";
+  public static MimeEntry Ace { get; } = new(["ace"], "application/x-ace-compressed");
   ///<summary>dmg</summary>
-  public const string Dmg = "application/x-apple-diskimage";
+  public static MimeEntry Dmg { get; } = new(["dmg"], "application/x-apple-diskimage");
   ///<summary>aab</summary>
-  public const string Aab = "application/x-authorware-bin";
+  public static MimeEntry Aab { get; } = new(["aab", "x32", "u32", "vox"], "application/x-authorware-bin");
   ///<summary>x32</summary>
-  public const string X32 = "application/x-authorware-bin";
+  public static MimeEntry X32 { get; } = new(["aab", "x32", "u32", "vox"], "application/x-authorware-bin");
   ///<summary>u32</summary>
-  public const string U32 = "application/x-authorware-bin";
+  public static MimeEntry U32 { get; } = new(["aab", "x32", "u32", "vox"], "application/x-authorware-bin");
   ///<summary>vox</summary>
-  public const string Vox = "application/x-authorware-bin";
+  public static MimeEntry Vox { get; } = new(["aab", "x32", "u32", "vox"], "application/x-authorware-bin");
   ///<summary>aam</summary>
-  public const string Aam = "application/x-authorware-map";
+  public static MimeEntry Aam { get; } = new(["aam"], "application/x-authorware-map");
   ///<summary>aas</summary>
-  public const string Aas = "application/x-authorware-seg";
+  public static MimeEntry Aas { get; } = new(["aas"], "application/x-authorware-seg");
   ///<summary>bcpio</summary>
-  public const string Bcpio = "application/x-bcpio";
+  public static MimeEntry Bcpio { get; } = new(["bcpio"], "application/x-bcpio");
   ///<summary>torrent</summary>
-  public const string Torrent = "application/x-bittorrent";
+  public static MimeEntry Torrent { get; } = new(["torrent"], "application/x-bittorrent");
   ///<summary>blb</summary>
-  public const string Blb = "application/x-blorb";
+  public static MimeEntry Blb { get; } = new(["blb", "blorb"], "application/x-blorb");
   ///<summary>blorb</summary>
-  public const string Blorb = "application/x-blorb";
+  public static MimeEntry Blorb { get; } = new(["blb", "blorb"], "application/x-blorb");
   ///<summary>bz</summary>
-  public const string Bz = "application/x-bzip";
+  public static MimeEntry Bz { get; } = new(["bz"], "application/x-bzip");
   ///<summary>bz2</summary>
-  public const string Bz2 = "application/x-bzip2";
+  public static MimeEntry Bz2 { get; } = new(["bz2", "boz"], "application/x-bzip2");
   ///<summary>boz</summary>
-  public const string Boz = "application/x-bzip2";
+  public static MimeEntry Boz { get; } = new(["bz2", "boz"], "application/x-bzip2");
   ///<summary>cbr</summary>
-  public const string Cbr = "application/x-cbr";
+  public static MimeEntry Cbr { get; } = new(["cbr", "cba", "cbt", "cbz", "cb7"], "application/x-cbr");
   ///<summary>cba</summary>
-  public const string Cba = "application/x-cbr";
+  public static MimeEntry Cba { get; } = new(["cbr", "cba", "cbt", "cbz", "cb7"], "application/x-cbr");
   ///<summary>cbt</summary>
-  public const string Cbt = "application/x-cbr";
+  public static MimeEntry Cbt { get; } = new(["cbr", "cba", "cbt", "cbz", "cb7"], "application/x-cbr");
   ///<summary>cbz</summary>
-  public const string Cbz = "application/x-cbr";
+  public static MimeEntry Cbz { get; } = new(["cbr", "cba", "cbt", "cbz", "cb7"], "application/x-cbr");
   ///<summary>cb7</summary>
-  public const string Cb7 = "application/x-cbr";
+  public static MimeEntry Cb7 { get; } = new(["cbr", "cba", "cbt", "cbz", "cb7"], "application/x-cbr");
   ///<summary>vcd</summary>
-  public const string Vcd = "application/x-cdlink";
+  public static MimeEntry Vcd { get; } = new(["vcd"], "application/x-cdlink");
   ///<summary>cfs</summary>
-  public const string Cfs = "application/x-cfs-compressed";
+  public static MimeEntry Cfs { get; } = new(["cfs"], "application/x-cfs-compressed");
   ///<summary>chat</summary>
-  public const string Chat = "application/x-chat";
+  public static MimeEntry Chat { get; } = new(["chat"], "application/x-chat");
   ///<summary>pgn</summary>
-  public const string Pgn = "application/x-chess-pgn";
+  public static MimeEntry Pgn { get; } = new(["pgn"], "application/x-chess-pgn");
   ///<summary>nsc</summary>
-  public const string Nsc = "application/x-conference";
+  public static MimeEntry Nsc { get; } = new(["nsc"], "application/x-conference");
   ///<summary>cpio</summary>
-  public const string Cpio = "application/x-cpio";
+  public static MimeEntry Cpio { get; } = new(["cpio"], "application/x-cpio");
   ///<summary>csh</summary>
-  public const string Csh = "application/x-csh";
+  public static MimeEntry Csh { get; } = new(["csh"], "application/x-csh");
   ///<summary>deb</summary>
-  public const string Deb = "application/x-debian-package";
+  public static MimeEntry Deb { get; } = new(["udeb"], "application/x-debian-package");
   ///<summary>udeb</summary>
-  public const string Udeb = "application/x-debian-package";
+  public static MimeEntry Udeb { get; } = new(["udeb"], "application/x-debian-package");
   ///<summary>dgc</summary>
-  public const string Dgc = "application/x-dgc-compressed";
+  public static MimeEntry Dgc { get; } = new(["dgc"], "application/x-dgc-compressed");
   ///<summary>dir</summary>
-  public const string Dir = "application/x-director";
+  public static MimeEntry Dir { get; } = new(["dir", "dcr", "dxr", "cst", "cct", "cxt", "w3d", "fgd", "swa"], "application/x-director");
   ///<summary>dcr</summary>
-  public const string Dcr = "application/x-director";
+  public static MimeEntry Dcr { get; } = new(["dir", "dcr", "dxr", "cst", "cct", "cxt", "w3d", "fgd", "swa"], "application/x-director");
   ///<summary>dxr</summary>
-  public const string Dxr = "application/x-director";
+  public static MimeEntry Dxr { get; } = new(["dir", "dcr", "dxr", "cst", "cct", "cxt", "w3d", "fgd", "swa"], "application/x-director");
   ///<summary>cst</summary>
-  public const string Cst = "application/x-director";
+  public static MimeEntry Cst { get; } = new(["dir", "dcr", "dxr", "cst", "cct", "cxt", "w3d", "fgd", "swa"], "application/x-director");
   ///<summary>cct</summary>
-  public const string Cct = "application/x-director";
+  public static MimeEntry Cct { get; } = new(["dir", "dcr", "dxr", "cst", "cct", "cxt", "w3d", "fgd", "swa"], "application/x-director");
   ///<summary>cxt</summary>
-  public const string Cxt = "application/x-director";
+  public static MimeEntry Cxt { get; } = new(["dir", "dcr", "dxr", "cst", "cct", "cxt", "w3d", "fgd", "swa"], "application/x-director");
   ///<summary>w3d</summary>
-  public const string W3d = "application/x-director";
+  public static MimeEntry W3d { get; } = new(["dir", "dcr", "dxr", "cst", "cct", "cxt", "w3d", "fgd", "swa"], "application/x-director");
   ///<summary>fgd</summary>
-  public const string Fgd = "application/x-director";
+  public static MimeEntry Fgd { get; } = new(["dir", "dcr", "dxr", "cst", "cct", "cxt", "w3d", "fgd", "swa"], "application/x-director");
   ///<summary>swa</summary>
-  public const string Swa = "application/x-director";
+  public static MimeEntry Swa { get; } = new(["dir", "dcr", "dxr", "cst", "cct", "cxt", "w3d", "fgd", "swa"], "application/x-director");
   ///<summary>wad</summary>
-  public const string Wad = "application/x-doom";
+  public static MimeEntry Wad { get; } = new(["wad"], "application/x-doom");
   ///<summary>ncx</summary>
-  public const string Ncx = "application/x-dtbncx+xml";
+  public static MimeEntry Ncx { get; } = new(["ncx"], "application/x-dtbncx+xml");
   ///<summary>dtb</summary>
-  public const string Dtb = "application/x-dtbook+xml";
+  public static MimeEntry Dtb { get; } = new(["dtb"], "application/x-dtbook+xml");
   ///<summary>res</summary>
-  public const string Res = "application/x-dtbresource+xml";
+  public static MimeEntry Res { get; } = new(["res"], "application/x-dtbresource+xml");
   ///<summary>dvi</summary>
-  public const string Dvi = "application/x-dvi";
+  public static MimeEntry Dvi { get; } = new(["dvi"], "application/x-dvi");
   ///<summary>evy</summary>
-  public const string Evy = "application/x-envoy";
+  public static MimeEntry Evy { get; } = new(["evy"], "application/x-envoy");
   ///<summary>eva</summary>
-  public const string Eva = "application/x-eva";
+  public static MimeEntry Eva { get; } = new(["eva"], "application/x-eva");
   ///<summary>bdf</summary>
-  public const string Bdf = "application/x-font-bdf";
+  public static MimeEntry Bdf { get; } = new(["bdf"], "application/x-font-bdf");
   ///<summary>gsf</summary>
-  public const string Gsf = "application/x-font-ghostscript";
+  public static MimeEntry Gsf { get; } = new(["gsf"], "application/x-font-ghostscript");
   ///<summary>psf</summary>
-  public const string Psf = "application/x-font-linux-psf";
+  public static MimeEntry Psf { get; } = new(["psf"], "application/x-font-linux-psf");
   ///<summary>pcf</summary>
-  public const string Pcf = "application/x-font-pcf";
+  public static MimeEntry Pcf { get; } = new(["pcf"], "application/x-font-pcf");
   ///<summary>snf</summary>
-  public const string Snf = "application/x-font-snf";
+  public static MimeEntry Snf { get; } = new(["snf"], "application/x-font-snf");
   ///<summary>pfa</summary>
-  public const string Pfa = "application/x-font-type1";
+  public static MimeEntry Pfa { get; } = new(["pfa", "pfb", "pfm", "afm"], "application/x-font-type1");
   ///<summary>pfb</summary>
-  public const string Pfb = "application/x-font-type1";
+  public static MimeEntry Pfb { get; } = new(["pfa", "pfb", "pfm", "afm"], "application/x-font-type1");
   ///<summary>pfm</summary>
-  public const string Pfm = "application/x-font-type1";
+  public static MimeEntry Pfm { get; } = new(["pfa", "pfb", "pfm", "afm"], "application/x-font-type1");
   ///<summary>afm</summary>
-  public const string Afm = "application/x-font-type1";
+  public static MimeEntry Afm { get; } = new(["pfa", "pfb", "pfm", "afm"], "application/x-font-type1");
   ///<summary>arc</summary>
-  public const string Arc = "application/x-freearc";
+  public static MimeEntry Arc { get; } = new(["arc"], "application/x-freearc");
   ///<summary>spl</summary>
-  public const string Spl = "application/x-futuresplash";
+  public static MimeEntry Spl { get; } = new(["spl"], "application/x-futuresplash");
   ///<summary>gca</summary>
-  public const string Gca = "application/x-gca-compressed";
+  public static MimeEntry Gca { get; } = new(["gca"], "application/x-gca-compressed");
   ///<summary>ulx</summary>
-  public const string Ulx = "application/x-glulx";
+  public static MimeEntry Ulx { get; } = new(["ulx"], "application/x-glulx");
   ///<summary>gnumeric</summary>
-  public const string Gnumeric = "application/x-gnumeric";
+  public static MimeEntry Gnumeric { get; } = new(["gnumeric"], "application/x-gnumeric");
   ///<summary>gramps</summary>
-  public const string Gramps = "application/x-gramps-xml";
+  public static MimeEntry Gramps { get; } = new(["gramps"], "application/x-gramps-xml");
   ///<summary>gtar</summary>
-  public const string Gtar = "application/x-gtar";
+  public static MimeEntry Gtar { get; } = new(["gtar"], "application/x-gtar");
   ///<summary>hdf</summary>
-  public const string Hdf = "application/x-hdf";
+  public static MimeEntry Hdf { get; } = new(["hdf"], "application/x-hdf");
   ///<summary>install</summary>
-  public const string Install = "application/x-install-instructions";
+  public static MimeEntry Install { get; } = new(["install"], "application/x-install-instructions");
   ///<summary>iso</summary>
-  public const string Iso = "application/x-iso9660-image";
+  public static MimeEntry Iso { get; } = new(["iso"], "application/x-iso9660-image");
   ///<summary>jnlp</summary>
-  public const string Jnlp = "application/x-java-jnlp-file";
+  public static MimeEntry Jnlp { get; } = new(["jnlp"], "application/x-java-jnlp-file");
   ///<summary>latex</summary>
-  public const string Latex = "application/x-latex";
+  public static MimeEntry Latex { get; } = new(["latex"], "application/x-latex");
   ///<summary>lzh</summary>
-  public const string Lzh = "application/x-lzh-compressed";
+  public static MimeEntry Lzh { get; } = new(["lzh", "lha"], "application/x-lzh-compressed");
   ///<summary>lha</summary>
-  public const string Lha = "application/x-lzh-compressed";
+  public static MimeEntry Lha { get; } = new(["lzh", "lha"], "application/x-lzh-compressed");
   ///<summary>mie</summary>
-  public const string Mie = "application/x-mie";
+  public static MimeEntry Mie { get; } = new(["mie"], "application/x-mie");
   ///<summary>prc</summary>
-  public const string Prc = "application/x-mobipocket-ebook";
+  public static MimeEntry Prc { get; } = new(["prc", "mobi"], "application/x-mobipocket-ebook");
   ///<summary>mobi</summary>
-  public const string Mobi = "application/x-mobipocket-ebook";
+  public static MimeEntry Mobi { get; } = new(["prc", "mobi"], "application/x-mobipocket-ebook");
   ///<summary>application</summary>
-  public const string Application = "application/x-ms-application";
+  public static MimeEntry Application { get; } = new(["application"], "application/x-ms-application");
   ///<summary>lnk</summary>
-  public const string Lnk = "application/x-ms-shortcut";
+  public static MimeEntry Lnk { get; } = new(["lnk"], "application/x-ms-shortcut");
   ///<summary>wmd</summary>
-  public const string Wmd = "application/x-ms-wmd";
+  public static MimeEntry Wmd { get; } = new(["wmd"], "application/x-ms-wmd");
   ///<summary>wmz</summary>
-  public const string Wmz = "application/x-ms-wmz";
+  public static MimeEntry Wmz { get; } = new(["wmz"], "application/x-ms-wmz");
   ///<summary>xbap</summary>
-  public const string Xbap = "application/x-ms-xbap";
+  public static MimeEntry Xbap { get; } = new(["xbap"], "application/x-ms-xbap");
   ///<summary>mdb</summary>
-  public const string Mdb = "application/x-msaccess";
+  public static MimeEntry Mdb { get; } = new(["mdb"], "application/x-msaccess");
   ///<summary>obd</summary>
-  public const string Obd = "application/x-msbinder";
+  public static MimeEntry Obd { get; } = new(["obd"], "application/x-msbinder");
   ///<summary>crd</summary>
-  public const string Crd = "application/x-mscardfile";
+  public static MimeEntry Crd { get; } = new(["crd"], "application/x-mscardfile");
   ///<summary>clp</summary>
-  public const string Clp = "application/x-msclip";
+  public static MimeEntry Clp { get; } = new(["clp"], "application/x-msclip");
   ///<summary>exe</summary>
-  public const string Exe = "application/x-msdownload";
+  public static MimeEntry Exe { get; } = new(["com", "bat"], "application/x-msdownload");
   ///<summary>dll</summary>
-  public const string Dll = "application/x-msdownload";
+  public static MimeEntry Dll { get; } = new(["com", "bat"], "application/x-msdownload");
   ///<summary>com</summary>
-  public const string Com = "application/x-msdownload";
+  public static MimeEntry Com { get; } = new(["com", "bat"], "application/x-msdownload");
   ///<summary>bat</summary>
-  public const string Bat = "application/x-msdownload";
+  public static MimeEntry Bat { get; } = new(["com", "bat"], "application/x-msdownload");
   ///<summary>msi</summary>
-  public const string Msi = "application/x-msdownload";
+  public static MimeEntry Msi { get; } = new(["com", "bat"], "application/x-msdownload");
   ///<summary>mvb</summary>
-  public const string Mvb = "application/x-msmediaview";
+  public static MimeEntry Mvb { get; } = new(["mvb", "m13", "m14"], "application/x-msmediaview");
   ///<summary>m13</summary>
-  public const string M13 = "application/x-msmediaview";
+  public static MimeEntry M13 { get; } = new(["mvb", "m13", "m14"], "application/x-msmediaview");
   ///<summary>m14</summary>
-  public const string M14 = "application/x-msmediaview";
+  public static MimeEntry M14 { get; } = new(["mvb", "m13", "m14"], "application/x-msmediaview");
   ///<summary>wmf</summary>
-  public const string Wmf = "application/x-msmetafile";
+  public static MimeEntry Wmf { get; } = new(["wmf", "emf", "emz"], "application/x-msmetafile");
   ///<summary>emf</summary>
-  public const string Emf = "application/x-msmetafile";
+  public static MimeEntry Emf { get; } = new(["wmf", "emf", "emz"], "application/x-msmetafile");
   ///<summary>emz</summary>
-  public const string Emz = "application/x-msmetafile";
+  public static MimeEntry Emz { get; } = new(["wmf", "emf", "emz"], "application/x-msmetafile");
   ///<summary>mny</summary>
-  public const string Mny = "application/x-msmoney";
+  public static MimeEntry Mny { get; } = new(["mny"], "application/x-msmoney");
   ///<summary>pub</summary>
-  public const string Pub = "application/x-mspublisher";
+  public static MimeEntry Pub { get; } = new(["pub"], "application/x-mspublisher");
   ///<summary>scd</summary>
-  public const string Scd = "application/x-msschedule";
+  public static MimeEntry Scd { get; } = new(["scd"], "application/x-msschedule");
   ///<summary>trm</summary>
-  public const string Trm = "application/x-msterminal";
+  public static MimeEntry Trm { get; } = new(["trm"], "application/x-msterminal");
   ///<summary>wri</summary>
-  public const string Wri = "application/x-mswrite";
+  public static MimeEntry Wri { get; } = new(["wri"], "application/x-mswrite");
   ///<summary>nc</summary>
-  public const string Nc = "application/x-netcdf";
+  public static MimeEntry Nc { get; } = new(["nc", "cdf"], "application/x-netcdf");
   ///<summary>cdf</summary>
-  public const string Cdf = "application/x-netcdf";
+  public static MimeEntry Cdf { get; } = new(["nc", "cdf"], "application/x-netcdf");
   ///<summary>nzb</summary>
-  public const string Nzb = "application/x-nzb";
+  public static MimeEntry Nzb { get; } = new(["nzb"], "application/x-nzb");
   ///<summary>p12</summary>
-  public const string P12 = "application/x-pkcs12";
+  public static MimeEntry P12 { get; } = new(["p12", "pfx"], "application/x-pkcs12");
   ///<summary>pfx</summary>
-  public const string Pfx = "application/x-pkcs12";
+  public static MimeEntry Pfx { get; } = new(["p12", "pfx"], "application/x-pkcs12");
   ///<summary>p7b</summary>
-  public const string P7b = "application/x-pkcs7-certificates";
+  public static MimeEntry P7b { get; } = new(["p7b", "spc"], "application/x-pkcs7-certificates");
   ///<summary>spc</summary>
-  public const string Spc = "application/x-pkcs7-certificates";
+  public static MimeEntry Spc { get; } = new(["p7b", "spc"], "application/x-pkcs7-certificates");
   ///<summary>p7r</summary>
-  public const string P7r = "application/x-pkcs7-certreqresp";
+  public static MimeEntry P7r { get; } = new(["p7r"], "application/x-pkcs7-certreqresp");
   ///<summary>rar</summary>
-  public const string Rar = "application/x-rar-compressed";
+  public static MimeEntry Rar { get; } = new(["rar"], "application/x-rar-compressed");
   ///<summary>ris</summary>
-  public const string Ris = "application/x-research-info-systems";
+  public static MimeEntry Ris { get; } = new(["ris"], "application/x-research-info-systems");
   ///<summary>sh</summary>
-  public const string Sh = "application/x-sh";
+  public static MimeEntry Sh { get; } = new(["sh"], "application/x-sh");
   ///<summary>shar</summary>
-  public const string Shar = "application/x-shar";
+  public static MimeEntry Shar { get; } = new(["shar"], "application/x-shar");
   ///<summary>swf</summary>
-  public const string Swf = "application/x-shockwave-flash";
+  public static MimeEntry Swf { get; } = new(["swf"], "application/x-shockwave-flash");
   ///<summary>xap</summary>
-  public const string Xap = "application/x-silverlight-app";
+  public static MimeEntry Xap { get; } = new(["xap"], "application/x-silverlight-app");
   ///<summary>sql</summary>
-  public const string Sql = "application/x-sql";
+  public static MimeEntry Sql { get; } = new(["sql"], "application/x-sql");
   ///<summary>sit</summary>
-  public const string Sit = "application/x-stuffit";
+  public static MimeEntry Sit { get; } = new(["sit"], "application/x-stuffit");
   ///<summary>sitx</summary>
-  public const string Sitx = "application/x-stuffitx";
+  public static MimeEntry Sitx { get; } = new(["sitx"], "application/x-stuffitx");
   ///<summary>srt</summary>
-  public const string Srt = "application/x-subrip";
+  public static MimeEntry Srt { get; } = new(["srt"], "application/x-subrip");
   ///<summary>sv4cpio</summary>
-  public const string Sv4cpio = "application/x-sv4cpio";
+  public static MimeEntry Sv4cpio { get; } = new(["sv4cpio"], "application/x-sv4cpio");
   ///<summary>sv4crc</summary>
-  public const string Sv4crc = "application/x-sv4crc";
+  public static MimeEntry Sv4crc { get; } = new(["sv4crc"], "application/x-sv4crc");
   ///<summary>t3</summary>
-  public const string T3 = "application/x-t3vm-image";
+  public static MimeEntry T3 { get; } = new(["t3"], "application/x-t3vm-image");
   ///<summary>gam</summary>
-  public const string Gam = "application/x-tads";
+  public static MimeEntry Gam { get; } = new(["gam"], "application/x-tads");
   ///<summary>tar</summary>
-  public const string Tar = "application/x-tar";
+  public static MimeEntry Tar { get; } = new(["tar"], "application/x-tar");
   ///<summary>tcl</summary>
-  public const string Tcl = "application/x-tcl";
+  public static MimeEntry Tcl { get; } = new(["tcl", "tk"], "application/x-tcl");
   ///<summary>tex</summary>
-  public const string Tex = "application/x-tex";
+  public static MimeEntry Tex { get; } = new(["tex"], "application/x-tex");
   ///<summary>tfm</summary>
-  public const string Tfm = "application/x-tex-tfm";
+  public static MimeEntry Tfm { get; } = new(["tfm"], "application/x-tex-tfm");
   ///<summary>texinfo</summary>
-  public const string Texinfo = "application/x-texinfo";
+  public static MimeEntry Texinfo { get; } = new(["texinfo", "texi"], "application/x-texinfo");
   ///<summary>texi</summary>
-  public const string Texi = "application/x-texinfo";
+  public static MimeEntry Texi { get; } = new(["texinfo", "texi"], "application/x-texinfo");
   ///<summary>obj</summary>
-  public const string Obj = "application/x-tgif";
+  public static MimeEntry Obj { get; } = new(["obj"], "application/x-tgif");
   ///<summary>ustar</summary>
-  public const string Ustar = "application/x-ustar";
+  public static MimeEntry Ustar { get; } = new(["ustar"], "application/x-ustar");
   ///<summary>src</summary>
-  public const string Src = "application/x-wais-source";
+  public static MimeEntry Src { get; } = new(["src"], "application/x-wais-source");
   ///<summary>der</summary>
-  public const string Der = "application/x-x509-ca-cert";
+  public static MimeEntry Der { get; } = new(["der", "crt", "pem"], "application/x-x509-ca-cert");
   ///<summary>crt</summary>
-  public const string Crt = "application/x-x509-ca-cert";
+  public static MimeEntry Crt { get; } = new(["der", "crt", "pem"], "application/x-x509-ca-cert");
   ///<summary>fig</summary>
-  public const string Fig = "application/x-xfig";
+  public static MimeEntry Fig { get; } = new(["fig"], "application/x-xfig");
   ///<summary>xlf</summary>
-  public const string Xlf = "application/x-xliff+xml";
+  public static MimeEntry Xlf { get; } = new(["xlf"], "application/x-xliff+xml");
   ///<summary>xpi</summary>
-  public const string Xpi = "application/x-xpinstall";
+  public static MimeEntry Xpi { get; } = new(["xpi"], "application/x-xpinstall");
   ///<summary>xz</summary>
-  public const string Xz = "application/x-xz";
+  public static MimeEntry Xz { get; } = new(["xz"], "application/x-xz");
   ///<summary>z1</summary>
-  public const string Z1 = "application/x-zmachine";
+  public static MimeEntry Z1 { get; } = new(["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8"], "application/x-zmachine");
   ///<summary>z2</summary>
-  public const string Z2 = "application/x-zmachine";
+  public static MimeEntry Z2 { get; } = new(["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8"], "application/x-zmachine");
   ///<summary>z3</summary>
-  public const string Z3 = "application/x-zmachine";
+  public static MimeEntry Z3 { get; } = new(["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8"], "application/x-zmachine");
   ///<summary>z4</summary>
-  public const string Z4 = "application/x-zmachine";
+  public static MimeEntry Z4 { get; } = new(["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8"], "application/x-zmachine");
   ///<summary>z5</summary>
-  public const string Z5 = "application/x-zmachine";
+  public static MimeEntry Z5 { get; } = new(["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8"], "application/x-zmachine");
   ///<summary>z6</summary>
-  public const string Z6 = "application/x-zmachine";
+  public static MimeEntry Z6 { get; } = new(["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8"], "application/x-zmachine");
   ///<summary>z7</summary>
-  public const string Z7 = "application/x-zmachine";
+  public static MimeEntry Z7 { get; } = new(["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8"], "application/x-zmachine");
   ///<summary>z8</summary>
-  public const string Z8 = "application/x-zmachine";
+  public static MimeEntry Z8 { get; } = new(["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8"], "application/x-zmachine");
   ///<summary>xaml</summary>
-  public const string Xaml = "application/xaml+xml";
+  public static MimeEntry Xaml { get; } = new(["xaml"], "application/xaml+xml");
   ///<summary>xdf</summary>
-  public const string Xdf = "application/xcap-diff+xml";
+  public static MimeEntry Xdf { get; } = new(["xdf"], "application/xcap-diff+xml");
   ///<summary>xenc</summary>
-  public const string Xenc = "application/xenc+xml";
+  public static MimeEntry Xenc { get; } = new(["xenc"], "application/xenc+xml");
   ///<summary>xhtml</summary>
-  public const string Xhtml = "application/xhtml+xml";
+  public static MimeEntry Xhtml { get; } = new(["xhtml", "xht"], "application/xhtml+xml");
   ///<summary>xht</summary>
-  public const string Xht = "application/xhtml+xml";
+  public static MimeEntry Xht { get; } = new(["xhtml", "xht"], "application/xhtml+xml");
   ///<summary>xml</summary>
-  public const string Xml = "application/xml";
+  public static MimeEntry Xml { get; } = new(["xml", "xsl", "xsd", "rng"], "application/xml");
   ///<summary>xsl</summary>
-  public const string Xsl = "application/xml";
+  public static MimeEntry Xsl { get; } = new(["xml", "xsl", "xsd", "rng"], "application/xml");
   ///<summary>dtd</summary>
-  public const string Dtd = "application/xml-dtd";
+  public static MimeEntry Dtd { get; } = new(["dtd"], "application/xml-dtd");
   ///<summary>xop</summary>
-  public const string Xop = "application/xop+xml";
+  public static MimeEntry Xop { get; } = new(["xop"], "application/xop+xml");
   ///<summary>xpl</summary>
-  public const string Xpl = "application/xproc+xml";
+  public static MimeEntry Xpl { get; } = new(["xpl"], "application/xproc+xml");
   ///<summary>xslt</summary>
-  public const string Xslt = "application/xslt+xml";
+  public static MimeEntry Xslt { get; } = new(["xslt"], "application/xslt+xml");
   ///<summary>xspf</summary>
-  public const string Xspf = "application/xspf+xml";
+  public static MimeEntry Xspf { get; } = new(["xspf"], "application/xspf+xml");
   ///<summary>mxml</summary>
-  public const string Mxml = "application/xv+xml";
+  public static MimeEntry Mxml { get; } = new(["mxml", "xhvml", "xvml", "xvm"], "application/xv+xml");
   ///<summary>xhvml</summary>
-  public const string Xhvml = "application/xv+xml";
+  public static MimeEntry Xhvml { get; } = new(["mxml", "xhvml", "xvml", "xvm"], "application/xv+xml");
   ///<summary>xvml</summary>
-  public const string Xvml = "application/xv+xml";
+  public static MimeEntry Xvml { get; } = new(["mxml", "xhvml", "xvml", "xvm"], "application/xv+xml");
   ///<summary>xvm</summary>
-  public const string Xvm = "application/xv+xml";
+  public static MimeEntry Xvm { get; } = new(["mxml", "xhvml", "xvml", "xvm"], "application/xv+xml");
   ///<summary>yang</summary>
-  public const string Yang = "application/yang";
+  public static MimeEntry Yang { get; } = new(["yang"], "application/yang");
   ///<summary>yin</summary>
-  public const string Yin = "application/yin+xml";
+  public static MimeEntry Yin { get; } = new(["yin"], "application/yin+xml");
   ///<summary>zip</summary>
-  public const string Zip = "application/zip";
+  public static MimeEntry Zip { get; } = new(["zip"], "application/zip");
   ///<summary>adp</summary>
-  public const string Adp = "audio/adpcm";
+  public static MimeEntry Adp { get; } = new(["adp"], "audio/adpcm");
   ///<summary>au</summary>
-  public const string Au = "audio/basic";
+  public static MimeEntry Au { get; } = new(["au", "snd"], "audio/basic");
   ///<summary>snd</summary>
-  public const string Snd = "audio/basic";
+  public static MimeEntry Snd { get; } = new(["au", "snd"], "audio/basic");
   ///<summary>mid</summary>
-  public const string Mid = "audio/midi";
+  public static MimeEntry Mid { get; } = new(["mid", "midi", "kar", "rmi"], "audio/midi");
   ///<summary>midi</summary>
-  public const string Midi = "audio/midi";
+  public static MimeEntry Midi { get; } = new(["mid", "midi", "kar", "rmi"], "audio/midi");
   ///<summary>kar</summary>
-  public const string Kar = "audio/midi";
+  public static MimeEntry Kar { get; } = new(["mid", "midi", "kar", "rmi"], "audio/midi");
   ///<summary>rmi</summary>
-  public const string Rmi = "audio/midi";
+  public static MimeEntry Rmi { get; } = new(["mid", "midi", "kar", "rmi"], "audio/midi");
   ///<summary>m4a</summary>
-  public const string M4a = "audio/mp4";
+  public static MimeEntry M4a { get; } = new(["m4a", "mp4a"], "audio/mp4");
   ///<summary>mp4a</summary>
-  public const string Mp4a = "audio/mp4";
+  public static MimeEntry Mp4a { get; } = new(["m4a", "mp4a"], "audio/mp4");
   ///<summary>mpga</summary>
-  public const string Mpga = "audio/mpeg";
+  public static MimeEntry Mpga { get; } = new(["mpga", "mp2", "mp2a", "m2a", "m3a"], "audio/mpeg");
   ///<summary>mp2</summary>
-  public const string Mp2 = "audio/mpeg";
+  public static MimeEntry Mp2 { get; } = new(["mpga", "mp2", "mp2a", "m2a", "m3a"], "audio/mpeg");
   ///<summary>mp2a</summary>
-  public const string Mp2a = "audio/mpeg";
+  public static MimeEntry Mp2a { get; } = new(["mpga", "mp2", "mp2a", "m2a", "m3a"], "audio/mpeg");
   ///<summary>mp3</summary>
-  public const string Mp3 = "audio/mpeg";
+  public static MimeEntry Mp3 { get; } = new(["mpga", "mp2", "mp2a", "m2a", "m3a"], "audio/mpeg");
   ///<summary>m2a</summary>
-  public const string M2a = "audio/mpeg";
+  public static MimeEntry M2a { get; } = new(["mpga", "mp2", "mp2a", "m2a", "m3a"], "audio/mpeg");
   ///<summary>m3a</summary>
-  public const string M3a = "audio/mpeg";
+  public static MimeEntry M3a { get; } = new(["mpga", "mp2", "mp2a", "m2a", "m3a"], "audio/mpeg");
   ///<summary>oga</summary>
-  public const string Oga = "audio/ogg";
+  public static MimeEntry Oga { get; } = new(["oga", "ogg", "spx", "opus"], "audio/ogg");
   ///<summary>ogg</summary>
-  public const string Ogg = "audio/ogg";
+  public static MimeEntry Ogg { get; } = new(["oga", "ogg", "spx", "opus"], "audio/ogg");
   ///<summary>spx</summary>
-  public const string Spx = "audio/ogg";
+  public static MimeEntry Spx { get; } = new(["oga", "ogg", "spx", "opus"], "audio/ogg");
   ///<summary>opus</summary>
-  public const string Opus = "audio/ogg";
+  public static MimeEntry Opus { get; } = new(["oga", "ogg", "spx", "opus"], "audio/ogg");
   ///<summary>s3m</summary>
-  public const string S3m = "audio/s3m";
+  public static MimeEntry S3m { get; } = new(["s3m"], "audio/s3m");
   ///<summary>sil</summary>
-  public const string Sil = "audio/silk";
+  public static MimeEntry Sil { get; } = new(["sil"], "audio/silk");
   ///<summary>uva</summary>
-  public const string Uva = "audio/vnd.dece.audio";
+  public static MimeEntry Uva { get; } = new(["uva", "uvva"], "audio/vnd.dece.audio");
   ///<summary>uvva</summary>
-  public const string Uvva = "audio/vnd.dece.audio";
+  public static MimeEntry Uvva { get; } = new(["uva", "uvva"], "audio/vnd.dece.audio");
   ///<summary>eol</summary>
-  public const string Eol = "audio/vnd.digital-winds";
+  public static MimeEntry Eol { get; } = new(["eol"], "audio/vnd.digital-winds");
   ///<summary>dra</summary>
-  public const string Dra = "audio/vnd.dra";
+  public static MimeEntry Dra { get; } = new(["dra"], "audio/vnd.dra");
   ///<summary>dts</summary>
-  public const string Dts = "audio/vnd.dts";
+  public static MimeEntry Dts { get; } = new(["dts"], "audio/vnd.dts");
   ///<summary>dtshd</summary>
-  public const string Dtshd = "audio/vnd.dts.hd";
+  public static MimeEntry Dtshd { get; } = new(["dtshd"], "audio/vnd.dts.hd");
   ///<summary>lvp</summary>
-  public const string Lvp = "audio/vnd.lucent.voice";
+  public static MimeEntry Lvp { get; } = new(["lvp"], "audio/vnd.lucent.voice");
   ///<summary>pya</summary>
-  public const string Pya = "audio/vnd.ms-playready.media.pya";
+  public static MimeEntry Pya { get; } = new(["pya"], "audio/vnd.ms-playready.media.pya");
   ///<summary>ecelp4800</summary>
-  public const string Ecelp4800 = "audio/vnd.nuera.ecelp4800";
+  public static MimeEntry Ecelp4800 { get; } = new(["ecelp4800"], "audio/vnd.nuera.ecelp4800");
   ///<summary>ecelp7470</summary>
-  public const string Ecelp7470 = "audio/vnd.nuera.ecelp7470";
+  public static MimeEntry Ecelp7470 { get; } = new(["ecelp7470"], "audio/vnd.nuera.ecelp7470");
   ///<summary>ecelp9600</summary>
-  public const string Ecelp9600 = "audio/vnd.nuera.ecelp9600";
+  public static MimeEntry Ecelp9600 { get; } = new(["ecelp9600"], "audio/vnd.nuera.ecelp9600");
   ///<summary>rip</summary>
-  public const string Rip = "audio/vnd.rip";
+  public static MimeEntry Rip { get; } = new(["rip"], "audio/vnd.rip");
   ///<summary>weba</summary>
-  public const string Weba = "audio/webm";
+  public static MimeEntry Weba { get; } = new(["weba"], "audio/webm");
   ///<summary>aac</summary>
-  public const string Aac = "audio/x-aac";
+  public static MimeEntry Aac { get; } = new(["aac"], "audio/x-aac");
   ///<summary>aif</summary>
-  public const string Aif = "audio/x-aiff";
+  public static MimeEntry Aif { get; } = new(["aif", "aiff", "aifc"], "audio/x-aiff");
   ///<summary>aiff</summary>
-  public const string Aiff = "audio/x-aiff";
+  public static MimeEntry Aiff { get; } = new(["aif", "aiff", "aifc"], "audio/x-aiff");
   ///<summary>aifc</summary>
-  public const string Aifc = "audio/x-aiff";
+  public static MimeEntry Aifc { get; } = new(["aif", "aiff", "aifc"], "audio/x-aiff");
   ///<summary>caf</summary>
-  public const string Caf = "audio/x-caf";
+  public static MimeEntry Caf { get; } = new(["caf"], "audio/x-caf");
   ///<summary>flac</summary>
-  public const string Flac = "audio/x-flac";
+  public static MimeEntry Flac { get; } = new(["flac"], "audio/x-flac");
   ///<summary>mka</summary>
-  public const string Mka = "audio/x-matroska";
+  public static MimeEntry Mka { get; } = new(["mka"], "audio/x-matroska");
   ///<summary>m3u</summary>
-  public const string M3u = "audio/x-mpegurl";
+  public static MimeEntry M3u { get; } = new(["m3u"], "audio/x-mpegurl");
   ///<summary>wax</summary>
-  public const string Wax = "audio/x-ms-wax";
+  public static MimeEntry Wax { get; } = new(["wax"], "audio/x-ms-wax");
   ///<summary>wma</summary>
-  public const string Wma = "audio/x-ms-wma";
+  public static MimeEntry Wma { get; } = new(["wma"], "audio/x-ms-wma");
   ///<summary>ram</summary>
-  public const string Ram = "audio/x-pn-realaudio";
+  public static MimeEntry Ram { get; } = new(["ram", "ra"], "audio/x-pn-realaudio");
   ///<summary>ra</summary>
-  public const string Ra = "audio/x-pn-realaudio";
+  public static MimeEntry Ra { get; } = new(["ram", "ra"], "audio/x-pn-realaudio");
   ///<summary>rmp</summary>
-  public const string Rmp = "audio/x-pn-realaudio-plugin";
+  public static MimeEntry Rmp { get; } = new(["rmp"], "audio/x-pn-realaudio-plugin");
   ///<summary>wav</summary>
-  public const string Wav = "audio/x-wav";
+  public static MimeEntry Wav { get; } = new(["wav"], "audio/x-wav");
   ///<summary>xm</summary>
-  public const string Xm = "audio/xm";
+  public static MimeEntry Xm { get; } = new(["xm"], "audio/xm");
   ///<summary>cdx</summary>
-  public const string Cdx = "chemical/x-cdx";
+  public static MimeEntry Cdx { get; } = new(["cdx"], "chemical/x-cdx");
   ///<summary>cif</summary>
-  public const string Cif = "chemical/x-cif";
+  public static MimeEntry Cif { get; } = new(["cif"], "chemical/x-cif");
   ///<summary>cmdf</summary>
-  public const string Cmdf = "chemical/x-cmdf";
+  public static MimeEntry Cmdf { get; } = new(["cmdf"], "chemical/x-cmdf");
   ///<summary>cml</summary>
-  public const string Cml = "chemical/x-cml";
+  public static MimeEntry Cml { get; } = new(["cml"], "chemical/x-cml");
   ///<summary>csml</summary>
-  public const string Csml = "chemical/x-csml";
+  public static MimeEntry Csml { get; } = new(["csml"], "chemical/x-csml");
   ///<summary>xyz</summary>
-  public const string Xyz = "chemical/x-xyz";
+  public static MimeEntry Xyz { get; } = new(["xyz"], "chemical/x-xyz");
   ///<summary>ttc</summary>
-  public const string Ttc = "font/collection";
+  public static MimeEntry Ttc { get; } = new(["ttc"], "font/collection");
   ///<summary>otf</summary>
-  public const string Otf = "font/otf";
+  public static MimeEntry Otf { get; } = new(["otf"], "font/otf");
   ///<summary>ttf</summary>
-  public const string Ttf = "font/ttf";
+  public static MimeEntry Ttf { get; } = new(["ttf"], "font/ttf");
   ///<summary>woff</summary>
-  public const string Woff = "font/woff";
+  public static MimeEntry Woff { get; } = new(["woff"], "font/woff");
   ///<summary>woff2</summary>
-  public const string Woff2 = "font/woff2";
+  public static MimeEntry Woff2 { get; } = new(["woff2"], "font/woff2");
   ///<summary>bmp</summary>
-  public const string Bmp = "image/bmp";
+  public static MimeEntry Bmp { get; } = new(["bmp", "dib"], "image/bmp");
   ///<summary>cgm</summary>
-  public const string Cgm = "image/cgm";
+  public static MimeEntry Cgm { get; } = new(["cgm"], "image/cgm");
   ///<summary>g3</summary>
-  public const string G3 = "image/g3fax";
+  public static MimeEntry G3 { get; } = new(["g3"], "image/g3fax");
   ///<summary>gif</summary>
-  public const string Gif = "image/gif";
+  public static MimeEntry Gif { get; } = new(["gif"], "image/gif");
   ///<summary>ief</summary>
-  public const string Ief = "image/ief";
+  public static MimeEntry Ief { get; } = new(["ief"], "image/ief");
   ///<summary>jpeg</summary>
-  public const string Jpeg = "image/jpeg";
+  public static MimeEntry Jpeg { get; } = new(["jpeg", "jpg", "jpe"], "image/jpeg");
   ///<summary>jpg</summary>
-  public const string Jpg = "image/jpeg";
+  public static MimeEntry Jpg { get; } = new(["jpeg", "jpg", "jpe"], "image/jpeg");
   ///<summary>jpe</summary>
-  public const string Jpe = "image/jpeg";
+  public static MimeEntry Jpe { get; } = new(["jpeg", "jpg", "jpe"], "image/jpeg");
   ///<summary>ktx</summary>
-  public const string Ktx = "image/ktx";
+  public static MimeEntry Ktx { get; } = new(["ktx"], "image/ktx");
   ///<summary>png</summary>
-  public const string Png = "image/png";
+  public static MimeEntry Png { get; } = new(["png"], "image/png");
   ///<summary>btif</summary>
-  public const string Btif = "image/prs.btif";
+  public static MimeEntry Btif { get; } = new(["btif", "btf"], "image/prs.btif");
   ///<summary>sgi</summary>
-  public const string Sgi = "image/sgi";
+  public static MimeEntry Sgi { get; } = new(["sgi"], "image/sgi");
   ///<summary>svg</summary>
-  public const string Svg = "image/svg+xml";
+  public static MimeEntry Svg { get; } = new(["svg", "svgz"], "image/svg+xml");
   ///<summary>svgz</summary>
-  public const string Svgz = "image/svg+xml";
+  public static MimeEntry Svgz { get; } = new(["svg", "svgz"], "image/svg+xml");
   ///<summary>tiff</summary>
-  public const string Tiff = "image/tiff";
+  public static MimeEntry Tiff { get; } = new(["tif", "tiff"], "image/tiff");
   ///<summary>tif</summary>
-  public const string Tif = "image/tiff";
+  public static MimeEntry Tif { get; } = new(["tif", "tiff"], "image/tiff");
   ///<summary>psd</summary>
-  public const string Psd = "image/vnd.adobe.photoshop";
+  public static MimeEntry Psd { get; } = new(["psd"], "image/vnd.adobe.photoshop");
   ///<summary>uvi</summary>
-  public const string Uvi = "image/vnd.dece.graphic";
+  public static MimeEntry Uvi { get; } = new(["uvi", "uvvi", "uvg", "uvvg"], "image/vnd.dece.graphic");
   ///<summary>uvvi</summary>
-  public const string Uvvi = "image/vnd.dece.graphic";
+  public static MimeEntry Uvvi { get; } = new(["uvi", "uvvi", "uvg", "uvvg"], "image/vnd.dece.graphic");
   ///<summary>uvg</summary>
-  public const string Uvg = "image/vnd.dece.graphic";
+  public static MimeEntry Uvg { get; } = new(["uvi", "uvvi", "uvg", "uvvg"], "image/vnd.dece.graphic");
   ///<summary>uvvg</summary>
-  public const string Uvvg = "image/vnd.dece.graphic";
+  public static MimeEntry Uvvg { get; } = new(["uvi", "uvvi", "uvg", "uvvg"], "image/vnd.dece.graphic");
   ///<summary>djvu</summary>
-  public const string Djvu = "image/vnd.djvu";
+  public static MimeEntry Djvu { get; } = new(["djvu", "djv"], "image/vnd.djvu");
   ///<summary>djv</summary>
-  public const string Djv = "image/vnd.djvu";
+  public static MimeEntry Djv { get; } = new(["djvu", "djv"], "image/vnd.djvu");
   ///<summary>sub</summary>
-  public const string Sub = "image/vnd.dvb.subtitle";
+  public static MimeEntry Sub { get; } = new(["sub"], "image/vnd.dvb.subtitle");
   ///<summary>dwg</summary>
-  public const string Dwg = "image/vnd.dwg";
+  public static MimeEntry Dwg { get; } = new(["dwg"], "image/vnd.dwg");
   ///<summary>dxf</summary>
-  public const string Dxf = "image/vnd.dxf";
+  public static MimeEntry Dxf { get; } = new(["dxf"], "image/vnd.dxf");
   ///<summary>fbs</summary>
-  public const string Fbs = "image/vnd.fastbidsheet";
+  public static MimeEntry Fbs { get; } = new(["fbs"], "image/vnd.fastbidsheet");
   ///<summary>fpx</summary>
-  public const string Fpx = "image/vnd.fpx";
+  public static MimeEntry Fpx { get; } = new(["fpx"], "image/vnd.fpx");
   ///<summary>fst</summary>
-  public const string Fst = "image/vnd.fst";
+  public static MimeEntry Fst { get; } = new(["fst"], "image/vnd.fst");
   ///<summary>mmr</summary>
-  public const string Mmr = "image/vnd.fujixerox.edmics-mmr";
+  public static MimeEntry Mmr { get; } = new(["mmr"], "image/vnd.fujixerox.edmics-mmr");
   ///<summary>rlc</summary>
-  public const string Rlc = "image/vnd.fujixerox.edmics-rlc";
+  public static MimeEntry Rlc { get; } = new(["rlc"], "image/vnd.fujixerox.edmics-rlc");
   ///<summary>mdi</summary>
-  public const string Mdi = "image/vnd.ms-modi";
+  public static MimeEntry Mdi { get; } = new(["mdi"], "image/vnd.ms-modi");
   ///<summary>wdp</summary>
-  public const string Wdp = "image/vnd.ms-photo";
+  public static MimeEntry Wdp { get; } = new(["wdp"], "image/vnd.ms-photo");
   ///<summary>npx</summary>
-  public const string Npx = "image/vnd.net-fpx";
+  public static MimeEntry Npx { get; } = new(["npx"], "image/vnd.net-fpx");
   ///<summary>wbmp</summary>
-  public const string Wbmp = "image/vnd.wap.wbmp";
+  public static MimeEntry Wbmp { get; } = new(["wbmp"], "image/vnd.wap.wbmp");
   ///<summary>xif</summary>
-  public const string Xif = "image/vnd.xiff";
+  public static MimeEntry Xif { get; } = new(["xif"], "image/vnd.xiff");
   ///<summary>webp</summary>
-  public const string Webp = "image/webp";
+  public static MimeEntry Webp { get; } = new(["webp"], "image/webp");
   ///<summary>3ds</summary>
-  public const string _3ds = "image/x-3ds";
+  public static MimeEntry _3ds { get; } = new(["3ds"], "image/x-3ds");
   ///<summary>ras</summary>
-  public const string Ras = "image/x-cmu-raster";
+  public static MimeEntry Ras { get; } = new(["ras"], "image/x-cmu-raster");
   ///<summary>cmx</summary>
-  public const string Cmx = "image/x-cmx";
+  public static MimeEntry Cmx { get; } = new(["cmx"], "image/x-cmx");
   ///<summary>fh</summary>
-  public const string Fh = "image/x-freehand";
+  public static MimeEntry Fh { get; } = new(["fh", "fhc", "fh4", "fh5", "fh7"], "image/x-freehand");
   ///<summary>fhc</summary>
-  public const string Fhc = "image/x-freehand";
+  public static MimeEntry Fhc { get; } = new(["fh", "fhc", "fh4", "fh5", "fh7"], "image/x-freehand");
   ///<summary>fh4</summary>
-  public const string Fh4 = "image/x-freehand";
+  public static MimeEntry Fh4 { get; } = new(["fh", "fhc", "fh4", "fh5", "fh7"], "image/x-freehand");
   ///<summary>fh5</summary>
-  public const string Fh5 = "image/x-freehand";
+  public static MimeEntry Fh5 { get; } = new(["fh", "fhc", "fh4", "fh5", "fh7"], "image/x-freehand");
   ///<summary>fh7</summary>
-  public const string Fh7 = "image/x-freehand";
+  public static MimeEntry Fh7 { get; } = new(["fh", "fhc", "fh4", "fh5", "fh7"], "image/x-freehand");
   ///<summary>ico</summary>
-  public const string Ico = "image/x-icon";
+  public static MimeEntry Ico { get; } = new(["ico"], "image/x-icon");
   ///<summary>sid</summary>
-  public const string Sid = "image/x-mrsid-image";
+  public static MimeEntry Sid { get; } = new(["sid"], "image/x-mrsid-image");
   ///<summary>pcx</summary>
-  public const string Pcx = "image/x-pcx";
+  public static MimeEntry Pcx { get; } = new(["pcx"], "image/x-pcx");
   ///<summary>pic</summary>
-  public const string Pic = "image/x-pict";
+  public static MimeEntry Pic { get; } = new(["pic", "pct"], "image/x-pict");
   ///<summary>pct</summary>
-  public const string Pct = "image/x-pict";
+  public static MimeEntry Pct { get; } = new(["pic", "pct"], "image/x-pict");
   ///<summary>pnm</summary>
-  public const string Pnm = "image/x-portable-anymap";
+  public static MimeEntry Pnm { get; } = new(["pnm"], "image/x-portable-anymap");
   ///<summary>pbm</summary>
-  public const string Pbm = "image/x-portable-bitmap";
+  public static MimeEntry Pbm { get; } = new(["pbm"], "image/x-portable-bitmap");
   ///<summary>pgm</summary>
-  public const string Pgm = "image/x-portable-graymap";
+  public static MimeEntry Pgm { get; } = new(["pgm"], "image/x-portable-graymap");
   ///<summary>ppm</summary>
-  public const string Ppm = "image/x-portable-pixmap";
+  public static MimeEntry Ppm { get; } = new(["ppm"], "image/x-portable-pixmap");
   ///<summary>rgb</summary>
-  public const string Rgb = "image/x-rgb";
+  public static MimeEntry Rgb { get; } = new(["rgb"], "image/x-rgb");
   ///<summary>tga</summary>
-  public const string Tga = "image/x-tga";
+  public static MimeEntry Tga { get; } = new(["tga"], "image/x-tga");
   ///<summary>xbm</summary>
-  public const string Xbm = "image/x-xbitmap";
+  public static MimeEntry Xbm { get; } = new(["xbm"], "image/x-xbitmap");
   ///<summary>xpm</summary>
-  public const string Xpm = "image/x-xpixmap";
+  public static MimeEntry Xpm { get; } = new(["xpm"], "image/x-xpixmap");
   ///<summary>xwd</summary>
-  public const string Xwd = "image/x-xwindowdump";
+  public static MimeEntry Xwd { get; } = new(["xwd"], "image/x-xwindowdump");
   ///<summary>eml</summary>
-  public const string Eml = "message/rfc822";
+  public static MimeEntry Eml { get; } = new(["eml", "mime"], "message/rfc822");
   ///<summary>mime</summary>
-  public const string Mime = "message/rfc822";
+  public static MimeEntry Mime { get; } = new(["eml", "mime"], "message/rfc822");
   ///<summary>igs</summary>
-  public const string Igs = "model/iges";
+  public static MimeEntry Igs { get; } = new(["igs", "iges"], "model/iges");
   ///<summary>iges</summary>
-  public const string Iges = "model/iges";
+  public static MimeEntry Iges { get; } = new(["igs", "iges"], "model/iges");
   ///<summary>msh</summary>
-  public const string Msh = "model/mesh";
+  public static MimeEntry Msh { get; } = new(["msh", "mesh", "silo"], "model/mesh");
   ///<summary>mesh</summary>
-  public const string Mesh = "model/mesh";
+  public static MimeEntry Mesh { get; } = new(["msh", "mesh", "silo"], "model/mesh");
   ///<summary>silo</summary>
-  public const string Silo = "model/mesh";
+  public static MimeEntry Silo { get; } = new(["msh", "mesh", "silo"], "model/mesh");
   ///<summary>dae</summary>
-  public const string Dae = "model/vnd.collada+xml";
+  public static MimeEntry Dae { get; } = new(["dae"], "model/vnd.collada+xml");
   ///<summary>dwf</summary>
-  public const string Dwf = "model/vnd.dwf";
+  public static MimeEntry Dwf { get; } = new(["dwf"], "model/vnd.dwf");
   ///<summary>gdl</summary>
-  public const string Gdl = "model/vnd.gdl";
+  public static MimeEntry Gdl { get; } = new(["gdl"], "model/vnd.gdl");
   ///<summary>gtw</summary>
-  public const string Gtw = "model/vnd.gtw";
+  public static MimeEntry Gtw { get; } = new(["gtw"], "model/vnd.gtw");
   ///<summary>mts</summary>
-  public const string Mts = "model/vnd.mts";
+  public static MimeEntry Mts { get; } = new(["mts"], "model/vnd.mts");
   ///<summary>vtu</summary>
-  public const string Vtu = "model/vnd.vtu";
+  public static MimeEntry Vtu { get; } = new(["vtu"], "model/vnd.vtu");
   ///<summary>wrl</summary>
-  public const string Wrl = "model/vrml";
+  public static MimeEntry Wrl { get; } = new(["wrl", "vrml"], "model/vrml");
   ///<summary>vrml</summary>
-  public const string Vrml = "model/vrml";
+  public static MimeEntry Vrml { get; } = new(["wrl", "vrml"], "model/vrml");
   ///<summary>x3db</summary>
-  public const string X3db = "model/x3d+binary";
+  public static MimeEntry X3db { get; } = new(["x3db", "x3dbz"], "model/x3d+binary");
   ///<summary>x3dbz</summary>
-  public const string X3dbz = "model/x3d+binary";
+  public static MimeEntry X3dbz { get; } = new(["x3db", "x3dbz"], "model/x3d+binary");
   ///<summary>x3dv</summary>
-  public const string X3dv = "model/x3d+vrml";
+  public static MimeEntry X3dv { get; } = new(["x3dv", "x3dvz"], "model/x3d+vrml");
   ///<summary>x3dvz</summary>
-  public const string X3dvz = "model/x3d+vrml";
+  public static MimeEntry X3dvz { get; } = new(["x3dv", "x3dvz"], "model/x3d+vrml");
   ///<summary>x3d</summary>
-  public const string X3d = "model/x3d+xml";
+  public static MimeEntry X3d { get; } = new(["x3d", "x3dz"], "model/x3d+xml");
   ///<summary>x3dz</summary>
-  public const string X3dz = "model/x3d+xml";
+  public static MimeEntry X3dz { get; } = new(["x3d", "x3dz"], "model/x3d+xml");
   ///<summary>appcache</summary>
-  public const string Appcache = "text/cache-manifest";
+  public static MimeEntry Appcache { get; } = new(["appcache", "manifest"], "text/cache-manifest");
   ///<summary>ics</summary>
-  public const string Ics = "text/calendar";
+  public static MimeEntry Ics { get; } = new(["ics", "ifb"], "text/calendar");
   ///<summary>ifb</summary>
-  public const string Ifb = "text/calendar";
+  public static MimeEntry Ifb { get; } = new(["ics", "ifb"], "text/calendar");
   ///<summary>css</summary>
-  public const string Css = "text/css";
+  public static MimeEntry Css { get; } = new(["css"], "text/css");
   ///<summary>csv</summary>
-  public const string Csv = "text/csv";
+  public static MimeEntry Csv { get; } = new(["csv"], "text/csv");
   ///<summary>html</summary>
-  public const string Html = "text/html";
+  public static MimeEntry Html { get; } = new(["html", "htm", "shtml"], "text/html");
   ///<summary>htm</summary>
-  public const string Htm = "text/html";
+  public static MimeEntry Htm { get; } = new(["html", "htm", "shtml"], "text/html");
   ///<summary>n3</summary>
-  public const string N3 = "text/n3";
+  public static MimeEntry N3 { get; } = new(["n3"], "text/n3");
   ///<summary>txt</summary>
-  public const string Txt = "text/plain";
+  public static MimeEntry Txt { get; } = new(["txt", "text", "conf", "def", "list", "log", "in", "ini"], "text/plain");
   ///<summary>text</summary>
-  public const string Text = "text/plain";
+  public static MimeEntry Text { get; } = new(["txt", "text", "conf", "def", "list", "log", "in", "ini"], "text/plain");
   ///<summary>conf</summary>
-  public const string Conf = "text/plain";
+  public static MimeEntry Conf { get; } = new(["txt", "text", "conf", "def", "list", "log", "in", "ini"], "text/plain");
   ///<summary>def</summary>
-  public const string Def = "text/plain";
+  public static MimeEntry Def { get; } = new(["txt", "text", "conf", "def", "list", "log", "in", "ini"], "text/plain");
   ///<summary>list</summary>
-  public const string List = "text/plain";
+  public static MimeEntry List { get; } = new(["txt", "text", "conf", "def", "list", "log", "in", "ini"], "text/plain");
   ///<summary>log</summary>
-  public const string Log = "text/plain";
+  public static MimeEntry Log { get; } = new(["txt", "text", "conf", "def", "list", "log", "in", "ini"], "text/plain");
   ///<summary>in</summary>
-  public const string In = "text/plain";
+  public static MimeEntry In { get; } = new(["txt", "text", "conf", "def", "list", "log", "in", "ini"], "text/plain");
   ///<summary>dsc</summary>
-  public const string Dsc = "text/prs.lines.tag";
+  public static MimeEntry Dsc { get; } = new(["dsc"], "text/prs.lines.tag");
   ///<summary>rtx</summary>
-  public const string Rtx = "text/richtext";
+  public static MimeEntry Rtx { get; } = new(["rtx"], "text/richtext");
   ///<summary>sgml</summary>
-  public const string Sgml = "text/sgml";
+  public static MimeEntry Sgml { get; } = new(["sgml", "sgm"], "text/sgml");
   ///<summary>sgm</summary>
-  public const string Sgm = "text/sgml";
+  public static MimeEntry Sgm { get; } = new(["sgml", "sgm"], "text/sgml");
   ///<summary>tsv</summary>
-  public const string Tsv = "text/tab-separated-values";
+  public static MimeEntry Tsv { get; } = new(["tsv"], "text/tab-separated-values");
   ///<summary>t</summary>
-  public const string T = "text/troff";
+  public static MimeEntry T { get; } = new(["t", "tr", "roff", "man", "me", "ms"], "text/troff");
   ///<summary>tr</summary>
-  public const string Tr = "text/troff";
+  public static MimeEntry Tr { get; } = new(["t", "tr", "roff", "man", "me", "ms"], "text/troff");
   ///<summary>roff</summary>
-  public const string Roff = "text/troff";
+  public static MimeEntry Roff { get; } = new(["t", "tr", "roff", "man", "me", "ms"], "text/troff");
   ///<summary>man</summary>
-  public const string Man = "text/troff";
+  public static MimeEntry Man { get; } = new(["t", "tr", "roff", "man", "me", "ms"], "text/troff");
   ///<summary>me</summary>
-  public const string Me = "text/troff";
+  public static MimeEntry Me { get; } = new(["t", "tr", "roff", "man", "me", "ms"], "text/troff");
   ///<summary>ms</summary>
-  public const string Ms = "text/troff";
+  public static MimeEntry Ms { get; } = new(["t", "tr", "roff", "man", "me", "ms"], "text/troff");
   ///<summary>ttl</summary>
-  public const string Ttl = "text/turtle";
+  public static MimeEntry Ttl { get; } = new(["ttl"], "text/turtle");
   ///<summary>uri</summary>
-  public const string Uri = "text/uri-list";
+  public static MimeEntry Uri { get; } = new(["uri", "uris", "urls"], "text/uri-list");
   ///<summary>uris</summary>
-  public const string Uris = "text/uri-list";
+  public static MimeEntry Uris { get; } = new(["uri", "uris", "urls"], "text/uri-list");
   ///<summary>urls</summary>
-  public const string Urls = "text/uri-list";
+  public static MimeEntry Urls { get; } = new(["uri", "uris", "urls"], "text/uri-list");
   ///<summary>vcard</summary>
-  public const string Vcard = "text/vcard";
+  public static MimeEntry Vcard { get; } = new(["vcard"], "text/vcard");
   ///<summary>curl</summary>
-  public const string Curl = "text/vnd.curl";
+  public static MimeEntry Curl { get; } = new(["curl"], "text/vnd.curl");
   ///<summary>dcurl</summary>
-  public const string Dcurl = "text/vnd.curl.dcurl";
+  public static MimeEntry Dcurl { get; } = new(["dcurl"], "text/vnd.curl.dcurl");
   ///<summary>mcurl</summary>
-  public const string Mcurl = "text/vnd.curl.mcurl";
+  public static MimeEntry Mcurl { get; } = new(["mcurl"], "text/vnd.curl.mcurl");
   ///<summary>scurl</summary>
-  public const string Scurl = "text/vnd.curl.scurl";
+  public static MimeEntry Scurl { get; } = new(["scurl"], "text/vnd.curl.scurl");
   ///<summary>fly</summary>
-  public const string Fly = "text/vnd.fly";
+  public static MimeEntry Fly { get; } = new(["fly"], "text/vnd.fly");
   ///<summary>flx</summary>
-  public const string Flx = "text/vnd.fmi.flexstor";
+  public static MimeEntry Flx { get; } = new(["flx"], "text/vnd.fmi.flexstor");
   ///<summary>gv</summary>
-  public const string Gv = "text/vnd.graphviz";
+  public static MimeEntry Gv { get; } = new(["gv"], "text/vnd.graphviz");
   ///<summary>3dml</summary>
-  public const string _3dml = "text/vnd.in3d.3dml";
+  public static MimeEntry _3dml { get; } = new(["3dml"], "text/vnd.in3d.3dml");
   ///<summary>spot</summary>
-  public const string Spot = "text/vnd.in3d.spot";
+  public static MimeEntry Spot { get; } = new(["spot"], "text/vnd.in3d.spot");
   ///<summary>jad</summary>
-  public const string Jad = "text/vnd.sun.j2me.app-descriptor";
+  public static MimeEntry Jad { get; } = new(["jad"], "text/vnd.sun.j2me.app-descriptor");
   ///<summary>wml</summary>
-  public const string Wml = "text/vnd.wap.wml";
+  public static MimeEntry Wml { get; } = new(["wml"], "text/vnd.wap.wml");
   ///<summary>wmls</summary>
-  public const string Wmls = "text/vnd.wap.wmlscript";
+  public static MimeEntry Wmls { get; } = new(["wmls"], "text/vnd.wap.wmlscript");
   ///<summary>s</summary>
-  public const string S = "text/x-asm";
+  public static MimeEntry S { get; } = new(["s", "asm"], "text/x-asm");
   ///<summary>asm</summary>
-  public const string Asm = "text/x-asm";
+  public static MimeEntry Asm { get; } = new(["s", "asm"], "text/x-asm");
   ///<summary>c</summary>
-  public const string C = "text/x-c";
+  public static MimeEntry C { get; } = new(["c", "cc", "cxx", "cpp", "h", "hh", "dic"], "text/x-c");
   ///<summary>cc</summary>
-  public const string Cc = "text/x-c";
+  public static MimeEntry Cc { get; } = new(["c", "cc", "cxx", "cpp", "h", "hh", "dic"], "text/x-c");
   ///<summary>cxx</summary>
-  public const string Cxx = "text/x-c";
+  public static MimeEntry Cxx { get; } = new(["c", "cc", "cxx", "cpp", "h", "hh", "dic"], "text/x-c");
   ///<summary>cpp</summary>
-  public const string Cpp = "text/x-c";
+  public static MimeEntry Cpp { get; } = new(["c", "cc", "cxx", "cpp", "h", "hh", "dic"], "text/x-c");
   ///<summary>h</summary>
-  public const string H = "text/x-c";
+  public static MimeEntry H { get; } = new(["c", "cc", "cxx", "cpp", "h", "hh", "dic"], "text/x-c");
   ///<summary>hh</summary>
-  public const string Hh = "text/x-c";
+  public static MimeEntry Hh { get; } = new(["c", "cc", "cxx", "cpp", "h", "hh", "dic"], "text/x-c");
   ///<summary>dic</summary>
-  public const string Dic = "text/x-c";
+  public static MimeEntry Dic { get; } = new(["c", "cc", "cxx", "cpp", "h", "hh", "dic"], "text/x-c");
   ///<summary>f</summary>
-  public const string F = "text/x-fortran";
+  public static MimeEntry F { get; } = new(["f", "for", "f77", "f90"], "text/x-fortran");
   ///<summary>for</summary>
-  public const string For = "text/x-fortran";
+  public static MimeEntry For { get; } = new(["f", "for", "f77", "f90"], "text/x-fortran");
   ///<summary>f77</summary>
-  public const string F77 = "text/x-fortran";
+  public static MimeEntry F77 { get; } = new(["f", "for", "f77", "f90"], "text/x-fortran");
   ///<summary>f90</summary>
-  public const string F90 = "text/x-fortran";
+  public static MimeEntry F90 { get; } = new(["f", "for", "f77", "f90"], "text/x-fortran");
   ///<summary>java</summary>
-  public const string Java = "text/x-java-source";
+  public static MimeEntry Java { get; } = new(["java"], "text/x-java-source");
   ///<summary>nfo</summary>
-  public const string Nfo = "text/x-nfo";
+  public static MimeEntry Nfo { get; } = new(["nfo"], "text/x-nfo");
   ///<summary>opml</summary>
-  public const string Opml = "text/x-opml";
+  public static MimeEntry Opml { get; } = new(["opml"], "text/x-opml");
   ///<summary>p</summary>
-  public const string P = "text/x-pascal";
+  public static MimeEntry P { get; } = new(["p", "pas"], "text/x-pascal");
   ///<summary>pas</summary>
-  public const string Pas = "text/x-pascal";
+  public static MimeEntry Pas { get; } = new(["p", "pas"], "text/x-pascal");
   ///<summary>etx</summary>
-  public const string Etx = "text/x-setext";
+  public static MimeEntry Etx { get; } = new(["etx"], "text/x-setext");
   ///<summary>sfv</summary>
-  public const string Sfv = "text/x-sfv";
+  public static MimeEntry Sfv { get; } = new(["sfv"], "text/x-sfv");
   ///<summary>uu</summary>
-  public const string Uu = "text/x-uuencode";
+  public static MimeEntry Uu { get; } = new(["uu"], "text/x-uuencode");
   ///<summary>vcs</summary>
-  public const string Vcs = "text/x-vcalendar";
+  public static MimeEntry Vcs { get; } = new(["vcs"], "text/x-vcalendar");
   ///<summary>vcf</summary>
-  public const string Vcf = "text/x-vcard";
+  public static MimeEntry Vcf { get; } = new(["vcf"], "text/x-vcard");
   ///<summary>3gp</summary>
-  public const string _3gp = "video/3gpp";
+  public static MimeEntry _3gp { get; } = new(["3gp"], "video/3gpp");
   ///<summary>3g2</summary>
-  public const string _3g2 = "video/3gpp2";
+  public static MimeEntry _3g2 { get; } = new(["3g2"], "video/3gpp2");
   ///<summary>h261</summary>
-  public const string H261 = "video/h261";
+  public static MimeEntry H261 { get; } = new(["h261"], "video/h261");
   ///<summary>h263</summary>
-  public const string H263 = "video/h263";
+  public static MimeEntry H263 { get; } = new(["h263"], "video/h263");
   ///<summary>h264</summary>
-  public const string H264 = "video/h264";
+  public static MimeEntry H264 { get; } = new(["h264"], "video/h264");
   ///<summary>jpgv</summary>
-  public const string Jpgv = "video/jpeg";
+  public static MimeEntry Jpgv { get; } = new(["jpgv"], "video/jpeg");
   ///<summary>jpm</summary>
-  public const string Jpm = "video/jpm";
+  public static MimeEntry Jpm { get; } = new(["jpm"], "video/jpm");
   ///<summary>jpgm</summary>
-  public const string Jpgm = "video/jpm";
+  public static MimeEntry Jpgm { get; } = new(["jpgm"], "video/jpm");
   ///<summary>mj2</summary>
-  public const string Mj2 = "video/mj2";
+  public static MimeEntry Mj2 { get; } = new(["mj2", "mjp2"], "video/mj2");
   ///<summary>mjp2</summary>
-  public const string Mjp2 = "video/mj2";
+  public static MimeEntry Mjp2 { get; } = new(["mj2", "mjp2"], "video/mj2");
   ///<summary>mp4</summary>
-  public const string Mp4 = "video/mp4";
+  public static MimeEntry Mp4 { get; } = new(["mp4v"], "video/mp4");
   ///<summary>mp4v</summary>
-  public const string Mp4v = "video/mp4";
+  public static MimeEntry Mp4v { get; } = new(["mp4v"], "video/mp4");
   ///<summary>mpg4</summary>
-  public const string Mpg4 = "video/mp4";
+  public static MimeEntry Mpg4 { get; } = new(["mp4v"], "video/mp4");
   ///<summary>mpeg</summary>
-  public const string Mpeg = "video/mpeg";
+  public static MimeEntry Mpeg { get; } = new(["mpeg", "mpg", "mpe", "m1v", "m2v"], "video/mpeg");
   ///<summary>mpg</summary>
-  public const string Mpg = "video/mpeg";
+  public static MimeEntry Mpg { get; } = new(["mpeg", "mpg", "mpe", "m1v", "m2v"], "video/mpeg");
   ///<summary>mpe</summary>
-  public const string Mpe = "video/mpeg";
+  public static MimeEntry Mpe { get; } = new(["mpeg", "mpg", "mpe", "m1v", "m2v"], "video/mpeg");
   ///<summary>m1v</summary>
-  public const string M1v = "video/mpeg";
+  public static MimeEntry M1v { get; } = new(["mpeg", "mpg", "mpe", "m1v", "m2v"], "video/mpeg");
   ///<summary>m2v</summary>
-  public const string M2v = "video/mpeg";
+  public static MimeEntry M2v { get; } = new(["mpeg", "mpg", "mpe", "m1v", "m2v"], "video/mpeg");
   ///<summary>ogv</summary>
-  public const string Ogv = "video/ogg";
+  public static MimeEntry Ogv { get; } = new(["ogv"], "video/ogg");
   ///<summary>qt</summary>
-  public const string Qt = "video/quicktime";
+  public static MimeEntry Qt { get; } = new(["qt", "mov"], "video/quicktime");
   ///<summary>mov</summary>
-  public const string Mov = "video/quicktime";
+  public static MimeEntry Mov { get; } = new(["qt", "mov"], "video/quicktime");
   ///<summary>uvh</summary>
-  public const string Uvh = "video/vnd.dece.hd";
+  public static MimeEntry Uvh { get; } = new(["uvh", "uvvh"], "video/vnd.dece.hd");
   ///<summary>uvvh</summary>
-  public const string Uvvh = "video/vnd.dece.hd";
+  public static MimeEntry Uvvh { get; } = new(["uvh", "uvvh"], "video/vnd.dece.hd");
   ///<summary>uvm</summary>
-  public const string Uvm = "video/vnd.dece.mobile";
+  public static MimeEntry Uvm { get; } = new(["uvm", "uvvm"], "video/vnd.dece.mobile");
   ///<summary>uvvm</summary>
-  public const string Uvvm = "video/vnd.dece.mobile";
+  public static MimeEntry Uvvm { get; } = new(["uvm", "uvvm"], "video/vnd.dece.mobile");
   ///<summary>uvp</summary>
-  public const string Uvp = "video/vnd.dece.pd";
+  public static MimeEntry Uvp { get; } = new(["uvp", "uvvp"], "video/vnd.dece.pd");
   ///<summary>uvvp</summary>
-  public const string Uvvp = "video/vnd.dece.pd";
+  public static MimeEntry Uvvp { get; } = new(["uvp", "uvvp"], "video/vnd.dece.pd");
   ///<summary>uvs</summary>
-  public const string Uvs = "video/vnd.dece.sd";
+  public static MimeEntry Uvs { get; } = new(["uvs", "uvvs"], "video/vnd.dece.sd");
   ///<summary>uvvs</summary>
-  public const string Uvvs = "video/vnd.dece.sd";
+  public static MimeEntry Uvvs { get; } = new(["uvs", "uvvs"], "video/vnd.dece.sd");
   ///<summary>uvv</summary>
-  public const string Uvv = "video/vnd.dece.video";
+  public static MimeEntry Uvv { get; } = new(["uvv", "uvvv"], "video/vnd.dece.video");
   ///<summary>uvvv</summary>
-  public const string Uvvv = "video/vnd.dece.video";
+  public static MimeEntry Uvvv { get; } = new(["uvv", "uvvv"], "video/vnd.dece.video");
   ///<summary>dvb</summary>
-  public const string Dvb = "video/vnd.dvb.file";
+  public static MimeEntry Dvb { get; } = new(["dvb"], "video/vnd.dvb.file");
   ///<summary>fvt</summary>
-  public const string Fvt = "video/vnd.fvt";
+  public static MimeEntry Fvt { get; } = new(["fvt"], "video/vnd.fvt");
   ///<summary>mxu</summary>
-  public const string Mxu = "video/vnd.mpegurl";
+  public static MimeEntry Mxu { get; } = new(["mxu", "m4u"], "video/vnd.mpegurl");
   ///<summary>m4u</summary>
-  public const string M4u = "video/vnd.mpegurl";
+  public static MimeEntry M4u { get; } = new(["mxu", "m4u"], "video/vnd.mpegurl");
   ///<summary>pyv</summary>
-  public const string Pyv = "video/vnd.ms-playready.media.pyv";
+  public static MimeEntry Pyv { get; } = new(["pyv"], "video/vnd.ms-playready.media.pyv");
   ///<summary>uvu</summary>
-  public const string Uvu = "video/vnd.uvvu.mp4";
+  public static MimeEntry Uvu { get; } = new(["uvu", "uvvu"], "video/vnd.uvvu.mp4");
   ///<summary>uvvu</summary>
-  public const string Uvvu = "video/vnd.uvvu.mp4";
+  public static MimeEntry Uvvu { get; } = new(["uvu", "uvvu"], "video/vnd.uvvu.mp4");
   ///<summary>viv</summary>
-  public const string Viv = "video/vnd.vivo";
+  public static MimeEntry Viv { get; } = new(["viv"], "video/vnd.vivo");
   ///<summary>webm</summary>
-  public const string Webm = "video/webm";
+  public static MimeEntry Webm { get; } = new(["webm"], "video/webm");
   ///<summary>f4v</summary>
-  public const string F4v = "video/x-f4v";
+  public static MimeEntry F4v { get; } = new(["f4v"], "video/x-f4v");
   ///<summary>fli</summary>
-  public const string Fli = "video/x-fli";
+  public static MimeEntry Fli { get; } = new(["fli"], "video/x-fli");
   ///<summary>flv</summary>
-  public const string Flv = "video/x-flv";
+  public static MimeEntry Flv { get; } = new(["flv"], "video/x-flv");
   ///<summary>m4v</summary>
-  public const string M4v = "video/x-m4v";
+  public static MimeEntry M4v { get; } = new(["m4v"], "video/x-m4v");
   ///<summary>mkv</summary>
-  public const string Mkv = "video/x-matroska";
+  public static MimeEntry Mkv { get; } = new(["mkv", "mk3d", "mks"], "video/x-matroska");
   ///<summary>mk3d</summary>
-  public const string Mk3d = "video/x-matroska";
+  public static MimeEntry Mk3d { get; } = new(["mkv", "mk3d", "mks"], "video/x-matroska");
   ///<summary>mks</summary>
-  public const string Mks = "video/x-matroska";
+  public static MimeEntry Mks { get; } = new(["mkv", "mk3d", "mks"], "video/x-matroska");
   ///<summary>mng</summary>
-  public const string Mng = "video/x-mng";
+  public static MimeEntry Mng { get; } = new(["mng"], "video/x-mng");
   ///<summary>asf</summary>
-  public const string Asf = "video/x-ms-asf";
+  public static MimeEntry Asf { get; } = new(["asf", "asx"], "video/x-ms-asf");
   ///<summary>asx</summary>
-  public const string Asx = "video/x-ms-asf";
+  public static MimeEntry Asx { get; } = new(["asf", "asx"], "video/x-ms-asf");
   ///<summary>vob</summary>
-  public const string Vob = "video/x-ms-vob";
+  public static MimeEntry Vob { get; } = new(["vob"], "video/x-ms-vob");
   ///<summary>wm</summary>
-  public const string Wm = "video/x-ms-wm";
+  public static MimeEntry Wm { get; } = new(["wm"], "video/x-ms-wm");
   ///<summary>wmv</summary>
-  public const string Wmv = "video/x-ms-wmv";
+  public static MimeEntry Wmv { get; } = new(["wmv"], "video/x-ms-wmv");
   ///<summary>wmx</summary>
-  public const string Wmx = "video/x-ms-wmx";
+  public static MimeEntry Wmx { get; } = new(["wmx"], "video/x-ms-wmx");
   ///<summary>wvx</summary>
-  public const string Wvx = "video/x-ms-wvx";
+  public static MimeEntry Wvx { get; } = new(["wvx"], "video/x-ms-wvx");
   ///<summary>avi</summary>
-  public const string Avi = "video/x-msvideo";
+  public static MimeEntry Avi { get; } = new(["avi"], "video/x-msvideo");
   ///<summary>movie</summary>
-  public const string Movie = "video/x-sgi-movie";
+  public static MimeEntry Movie { get; } = new(["movie"], "video/x-sgi-movie");
   ///<summary>smv</summary>
-  public const string Smv = "video/x-smv";
+  public static MimeEntry Smv { get; } = new(["smv"], "video/x-smv");
   ///<summary>ice</summary>
-  public const string Ice = "x-conference/x-cooltalk";
+  public static MimeEntry Ice { get; } = new(["ice"], "x-conference/x-cooltalk");
   ///<summary>map</summary>
-  public const string Map = "application/json";
+  public static MimeEntry Map { get; } = new(["json", "map"], "application/json");
   ///<summary>topojson</summary>
-  public const string Topojson = "application/json";
+  public static MimeEntry Topojson { get; } = new(["json", "map"], "application/json");
   ///<summary>jsonld</summary>
-  public const string Jsonld = "application/ld+json";
+  public static MimeEntry Jsonld { get; } = new(["jsonld"], "application/ld+json");
   ///<summary>geojson</summary>
-  public const string Geojson = "application/geo+json";
+  public static MimeEntry Geojson { get; } = new(["geojson"], "application/geo+json");
   ///<summary>mjs</summary>
-  public const string Mjs = "text/javascript";
+  public static MimeEntry Mjs { get; } = new(["mjs"], "text/javascript");
   ///<summary>wasm</summary>
-  public const string Wasm = "application/wasm";
+  public static MimeEntry Wasm { get; } = new(["wasm"], "application/wasm");
   ///<summary>webmanifest</summary>
-  public const string Webmanifest = "application/manifest+json";
+  public static MimeEntry Webmanifest { get; } = new(["webmanifest"], "application/manifest+json");
   ///<summary>webapp</summary>
-  public const string Webapp = "application/x-web-app-manifest+json";
+  public static MimeEntry Webapp { get; } = new(["webapp"], "application/x-web-app-manifest+json");
   ///<summary>f4a</summary>
-  public const string F4a = "audio/mp4";
+  public static MimeEntry F4a { get; } = new(["m4a", "mp4a"], "audio/mp4");
   ///<summary>f4b</summary>
-  public const string F4b = "audio/mp4";
+  public static MimeEntry F4b { get; } = new(["m4a", "mp4a"], "audio/mp4");
   ///<summary>apng</summary>
-  public const string Apng = "image/apng";
+  public static MimeEntry Apng { get; } = new(["apng"], "image/apng");
   ///<summary>avif</summary>
-  public const string Avif = "image/avif";
+  public static MimeEntry Avif { get; } = new(["avif"], "image/avif");
   ///<summary>avifs</summary>
-  public const string Avifs = "image/avif-sequence";
+  public static MimeEntry Avifs { get; } = new(["avifs"], "image/avif-sequence");
   ///<summary>jxr</summary>
-  public const string Jxr = "image/jxr";
+  public static MimeEntry Jxr { get; } = new(["jxr"], "image/jxr");
   ///<summary>hdp</summary>
-  public const string Hdp = "image/jxr";
+  public static MimeEntry Hdp { get; } = new(["jxr"], "image/jxr");
   ///<summary>jng</summary>
-  public const string Jng = "image/x-jng";
+  public static MimeEntry Jng { get; } = new(["jng"], "image/x-jng");
   ///<summary>3gpp</summary>
-  public const string _3gpp = "video/3gpp";
+  public static MimeEntry _3gpp { get; } = new(["3gp"], "video/3gpp");
   ///<summary>f4p</summary>
-  public const string F4p = "video/mp4";
+  public static MimeEntry F4p { get; } = new(["mp4v"], "video/mp4");
   ///<summary>cur</summary>
-  public const string Cur = "image/x-icon";
+  public static MimeEntry Cur { get; } = new(["cur"], "image/x-icon");
   ///<summary>ear</summary>
-  public const string Ear = "application/java-archive";
+  public static MimeEntry Ear { get; } = new(["jar", "war", "ear"], "application/java-archive");
   ///<summary>war</summary>
-  public const string War = "application/java-archive";
+  public static MimeEntry War { get; } = new(["jar", "war", "ear"], "application/java-archive");
   ///<summary>img</summary>
-  public const string Img = "application/octet-stream";
+  public static MimeEntry Img { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>msm</summary>
-  public const string Msm = "application/octet-stream";
+  public static MimeEntry Msm { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>msp</summary>
-  public const string Msp = "application/octet-stream";
+  public static MimeEntry Msp { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>safariextz</summary>
-  public const string Safariextz = "application/octet-stream";
+  public static MimeEntry Safariextz { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>bbaw</summary>
-  public const string Bbaw = "application/x-bb-appworld";
+  public static MimeEntry Bbaw { get; } = new(["bbaw"], "application/x-bb-appworld");
   ///<summary>crx</summary>
-  public const string Crx = "application/x-chrome-extension";
+  public static MimeEntry Crx { get; } = new(["crx"], "application/x-chrome-extension");
   ///<summary>cco</summary>
-  public const string Cco = "application/x-cocoa";
+  public static MimeEntry Cco { get; } = new(["cco"], "application/x-cocoa");
   ///<summary>jardiff</summary>
-  public const string Jardiff = "application/x-java-archive-diff";
+  public static MimeEntry Jardiff { get; } = new(["jardiff"], "application/x-java-archive-diff");
   ///<summary>run</summary>
-  public const string Run = "application/x-makeself";
+  public static MimeEntry Run { get; } = new(["run"], "application/x-makeself");
   ///<summary>oex</summary>
-  public const string Oex = "application/x-opera-extension";
+  public static MimeEntry Oex { get; } = new(["oex"], "application/x-opera-extension");
   ///<summary>pl</summary>
-  public const string Pl = "application/x-perl";
+  public static MimeEntry Pl { get; } = new(["pl", "pm"], "application/x-perl");
   ///<summary>pm</summary>
-  public const string Pm = "application/x-perl";
+  public static MimeEntry Pm { get; } = new(["pl", "pm"], "application/x-perl");
   ///<summary>rpm</summary>
-  public const string Rpm = "application/x-redhat-package-manager";
+  public static MimeEntry Rpm { get; } = new(["rpm"], "application/x-redhat-package-manager");
   ///<summary>sea</summary>
-  public const string Sea = "application/x-sea";
+  public static MimeEntry Sea { get; } = new(["sea"], "application/x-sea");
   ///<summary>tk</summary>
-  public const string Tk = "application/x-tcl";
+  public static MimeEntry Tk { get; } = new(["tcl", "tk"], "application/x-tcl");
   ///<summary>pem</summary>
-  public const string Pem = "application/x-x509-ca-cert";
+  public static MimeEntry Pem { get; } = new(["der", "crt", "pem"], "application/x-x509-ca-cert");
   ///<summary>shtml</summary>
-  public const string Shtml = "text/html";
+  public static MimeEntry Shtml { get; } = new(["html", "htm", "shtml"], "text/html");
   ///<summary>md</summary>
-  public const string Md = "text/markdown";
+  public static MimeEntry Md { get; } = new(["md", "markdown"], "text/markdown");
   ///<summary>markdown</summary>
-  public const string Markdown = "text/markdown";
+  public static MimeEntry Markdown { get; } = new(["md", "markdown"], "text/markdown");
   ///<summary>mml</summary>
-  public const string Mml = "text/mathml";
+  public static MimeEntry Mml { get; } = new(["mml"], "text/mathml");
   ///<summary>xloc</summary>
-  public const string Xloc = "text/vnd.rim.location.xloc";
+  public static MimeEntry Xloc { get; } = new(["xloc"], "text/vnd.rim.location.xloc");
   ///<summary>vtt</summary>
-  public const string Vtt = "text/vtt";
+  public static MimeEntry Vtt { get; } = new(["vtt"], "text/vtt");
   ///<summary>htc</summary>
-  public const string Htc = "text/x-component";
+  public static MimeEntry Htc { get; } = new(["htc"], "text/x-component");
   ///<summary>bdoc</summary>
-  public const string Bdoc = "application/bdoc";
+  public static MimeEntry Bdoc { get; } = new(["bdoc"], "application/bdoc");
   ///<summary>es</summary>
-  public const string Es = "application/ecmascript";
+  public static MimeEntry Es { get; } = new(["ecma"], "application/ecmascript");
   ///<summary>hjson</summary>
-  public const string Hjson = "application/hjson";
+  public static MimeEntry Hjson { get; } = new(["hjson"], "application/hjson");
   ///<summary>json5</summary>
-  public const string Json5 = "application/json5";
+  public static MimeEntry Json5 { get; } = new(["json5"], "application/json5");
   ///<summary>m4p</summary>
-  public const string M4p = "application/mp4";
+  public static MimeEntry M4p { get; } = new(["mp4", "mpg4", "mp4s", "m4p"], "application/mp4");
   ///<summary>cjs</summary>
-  public const string Cjs = "application/node";
+  public static MimeEntry Cjs { get; } = new(["cjs"], "application/node");
   ///<summary>buffer</summary>
-  public const string Buffer = "application/octet-stream";
+  public static MimeEntry Buffer { get; } = new(["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"], "application/octet-stream");
   ///<summary>raml</summary>
-  public const string Raml = "application/raml+yaml";
+  public static MimeEntry Raml { get; } = new(["raml"], "application/raml+yaml");
   ///<summary>owl</summary>
-  public const string Owl = "application/rdf+xml";
+  public static MimeEntry Owl { get; } = new(["rdf", "owl"], "application/rdf+xml");
   ///<summary>siv</summary>
-  public const string Siv = "application/sieve";
+  public static MimeEntry Siv { get; } = new(["siv", "sieve"], "application/sieve");
   ///<summary>sieve</summary>
-  public const string Sieve = "application/sieve";
+  public static MimeEntry Sieve { get; } = new(["siv", "sieve"], "application/sieve");
   ///<summary>toml</summary>
-  public const string Toml = "application/toml";
+  public static MimeEntry Toml { get; } = new(["toml"], "application/toml");
   ///<summary>ubj</summary>
-  public const string Ubj = "application/ubjson";
+  public static MimeEntry Ubj { get; } = new(["ubj"], "application/ubjson");
   ///<summary>pkpass</summary>
-  public const string Pkpass = "application/vnd.apple.pkpass";
+  public static MimeEntry Pkpass { get; } = new(["pkpass"], "application/vnd.apple.pkpass");
   ///<summary>gdoc</summary>
-  public const string Gdoc = "application/vnd.google-apps.document";
+  public static MimeEntry Gdoc { get; } = new(["gdoc"], "application/vnd.google-apps.document");
   ///<summary>gslides</summary>
-  public const string Gslides = "application/vnd.google-apps.presentation";
+  public static MimeEntry Gslides { get; } = new(["gslides"], "application/vnd.google-apps.presentation");
   ///<summary>gsheet</summary>
-  public const string Gsheet = "application/vnd.google-apps.spreadsheet";
+  public static MimeEntry Gsheet { get; } = new(["gsheet"], "application/vnd.google-apps.spreadsheet");
   ///<summary>msg</summary>
-  public const string Msg = "application/vnd.ms-outlook";
+  public static MimeEntry Msg { get; } = new(["msg"], "application/vnd.ms-outlook");
   ///<summary>arj</summary>
-  public const string Arj = "application/x-arj";
+  public static MimeEntry Arj { get; } = new(["arj"], "application/x-arj");
   ///<summary>php</summary>
-  public const string Php = "application/x-httpd-php";
+  public static MimeEntry Php { get; } = new(["php"], "application/x-httpd-php");
   ///<summary>kdbx</summary>
-  public const string Kdbx = "application/x-keepass2";
+  public static MimeEntry Kdbx { get; } = new(["kdbx"], "application/x-keepass2");
   ///<summary>luac</summary>
-  public const string Luac = "application/x-lua-bytecode";
+  public static MimeEntry Luac { get; } = new(["luac"], "application/x-lua-bytecode");
   ///<summary>pac</summary>
-  public const string Pac = "application/x-ns-proxy-autoconfig";
+  public static MimeEntry Pac { get; } = new(["pac"], "application/x-ns-proxy-autoconfig");
   ///<summary>hdd</summary>
-  public const string Hdd = "application/x-virtualbox-hdd";
+  public static MimeEntry Hdd { get; } = new(["hdd"], "application/x-virtualbox-hdd");
   ///<summary>ova</summary>
-  public const string Ova = "application/x-virtualbox-ova";
+  public static MimeEntry Ova { get; } = new(["ova"], "application/x-virtualbox-ova");
   ///<summary>ovf</summary>
-  public const string Ovf = "application/x-virtualbox-ovf";
+  public static MimeEntry Ovf { get; } = new(["ovf"], "application/x-virtualbox-ovf");
   ///<summary>vbox</summary>
-  public const string Vbox = "application/x-virtualbox-vbox";
+  public static MimeEntry Vbox { get; } = new(["vbox"], "application/x-virtualbox-vbox");
   ///<summary>vbox-extpack</summary>
-  public const string Vboxextpack = "application/x-virtualbox-vbox-extpack";
+  public static MimeEntry Vboxextpack { get; } = new(["vbox-extpack"], "application/x-virtualbox-vbox-extpack");
   ///<summary>vdi</summary>
-  public const string Vdi = "application/x-virtualbox-vdi";
+  public static MimeEntry Vdi { get; } = new(["vdi"], "application/x-virtualbox-vdi");
   ///<summary>vhd</summary>
-  public const string Vhd = "application/x-virtualbox-vhd";
+  public static MimeEntry Vhd { get; } = new(["vhd"], "application/x-virtualbox-vhd");
   ///<summary>vmdk</summary>
-  public const string Vmdk = "application/x-virtualbox-vmdk";
+  public static MimeEntry Vmdk { get; } = new(["vmdk"], "application/x-virtualbox-vmdk");
   ///<summary>xsd</summary>
-  public const string Xsd = "application/xml";
+  public static MimeEntry Xsd { get; } = new(["xml", "xsl", "xsd", "rng"], "application/xml");
   ///<summary>rng</summary>
-  public const string Rng = "application/xml";
+  public static MimeEntry Rng { get; } = new(["xml", "xsl", "xsd", "rng"], "application/xml");
   ///<summary>heic</summary>
-  public const string Heic = "image/heic";
+  public static MimeEntry Heic { get; } = new(["heic"], "image/heic");
   ///<summary>heics</summary>
-  public const string Heics = "image/heic-sequence";
+  public static MimeEntry Heics { get; } = new(["heics"], "image/heic-sequence");
   ///<summary>heif</summary>
-  public const string Heif = "image/heif";
+  public static MimeEntry Heif { get; } = new(["heif"], "image/heif");
   ///<summary>heifs</summary>
-  public const string Heifs = "image/heif-sequence";
+  public static MimeEntry Heifs { get; } = new(["heifs"], "image/heif-sequence");
   ///<summary>jp2</summary>
-  public const string Jp2 = "image/jp2";
+  public static MimeEntry Jp2 { get; } = new(["jp2", "jpg2"], "image/jp2");
   ///<summary>jpg2</summary>
-  public const string Jpg2 = "image/jp2";
+  public static MimeEntry Jpg2 { get; } = new(["jp2", "jpg2"], "image/jp2");
   ///<summary>jpx</summary>
-  public const string Jpx = "image/jpx";
+  public static MimeEntry Jpx { get; } = new(["jpx", "jpf"], "image/jpx");
   ///<summary>jpf</summary>
-  public const string Jpf = "image/jpx";
+  public static MimeEntry Jpf { get; } = new(["jpx", "jpf"], "image/jpx");
   ///<summary>dds</summary>
-  public const string Dds = "image/vnd.ms-dds";
+  public static MimeEntry Dds { get; } = new(["dds"], "image/vnd.ms-dds");
   ///<summary>manifest</summary>
-  public const string Manifest = "text/cache-manifest";
+  public static MimeEntry Manifest { get; } = new(["appcache", "manifest"], "text/cache-manifest");
   ///<summary>coffee</summary>
-  public const string Coffee = "text/coffeescript";
+  public static MimeEntry Coffee { get; } = new(["coffee", "litcoffee"], "text/coffeescript");
   ///<summary>litcoffee</summary>
-  public const string Litcoffee = "text/coffeescript";
+  public static MimeEntry Litcoffee { get; } = new(["coffee", "litcoffee"], "text/coffeescript");
   ///<summary>jade</summary>
-  public const string Jade = "text/jade";
+  public static MimeEntry Jade { get; } = new(["jade"], "text/jade");
   ///<summary>jsx</summary>
-  public const string Jsx = "text/jsx";
+  public static MimeEntry Jsx { get; } = new(["jsx"], "text/jsx");
   ///<summary>less</summary>
-  public const string Less = "text/less";
+  public static MimeEntry Less { get; } = new(["less"], "text/less");
   ///<summary>mdx</summary>
-  public const string Mdx = "text/mdx";
+  public static MimeEntry Mdx { get; } = new(["mdx"], "text/mdx");
   ///<summary>ini</summary>
-  public const string Ini = "text/plain";
+  public static MimeEntry Ini { get; } = new(["txt", "text", "conf", "def", "list", "log", "in", "ini"], "text/plain");
   ///<summary>shex</summary>
-  public const string Shex = "text/shex";
+  public static MimeEntry Shex { get; } = new(["shex"], "text/shex");
   ///<summary>slim</summary>
-  public const string Slim = "text/slim";
+  public static MimeEntry Slim { get; } = new(["slim", "slm"], "text/slim");
   ///<summary>slm</summary>
-  public const string Slm = "text/slim";
+  public static MimeEntry Slm { get; } = new(["slim", "slm"], "text/slim");
   ///<summary>stylus</summary>
-  public const string Stylus = "text/stylus";
+  public static MimeEntry Stylus { get; } = new(["stylus", "styl"], "text/stylus");
   ///<summary>styl</summary>
-  public const string Styl = "text/stylus";
+  public static MimeEntry Styl { get; } = new(["stylus", "styl"], "text/stylus");
   ///<summary>hbs</summary>
-  public const string Hbs = "text/x-handlebars-template";
+  public static MimeEntry Hbs { get; } = new(["hbs"], "text/x-handlebars-template");
   ///<summary>lua</summary>
-  public const string Lua = "text/x-lua";
+  public static MimeEntry Lua { get; } = new(["lua"], "text/x-lua");
   ///<summary>mkd</summary>
-  public const string Mkd = "text/x-markdown";
+  public static MimeEntry Mkd { get; } = new(["mkd"], "text/x-markdown");
   ///<summary>pde</summary>
-  public const string Pde = "text/x-processing";
+  public static MimeEntry Pde { get; } = new(["pde"], "text/x-processing");
   ///<summary>sass</summary>
-  public const string Sass = "text/x-sass";
+  public static MimeEntry Sass { get; } = new(["sass"], "text/x-sass");
   ///<summary>scss</summary>
-  public const string Scss = "text/x-scss";
+  public static MimeEntry Scss { get; } = new(["scss"], "text/x-scss");
   ///<summary>ymp</summary>
-  public const string Ymp = "text/x-suse-ymp";
+  public static MimeEntry Ymp { get; } = new(["ymp"], "text/x-suse-ymp");
   ///<summary>yaml</summary>
-  public const string Yaml = "text/yaml";
+  public static MimeEntry Yaml { get; } = new(["yaml", "yml"], "text/yaml");
   ///<summary>yml</summary>
-  public const string Yml = "text/yaml";
+  public static MimeEntry Yml { get; } = new(["yaml", "yml"], "text/yaml");
 }
