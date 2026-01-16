@@ -61,8 +61,6 @@ public class SqliteBlobStorageTests
   [Theory]
   [Repeat(100)]
   public async Task Doc_Version_And_Dated_Are_Valid(int __)
-#pragma warning restore IDE0060 // Remove unused parameter
-#pragma warning restore xUnit1026 // Theory methods should use all of their parameters
   {
     var lifetime = new Lifetime();
     var dbFile = GetDbTmpPath();
