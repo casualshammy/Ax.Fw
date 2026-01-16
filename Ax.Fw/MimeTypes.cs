@@ -1,15 +1,12 @@
 ﻿using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Data;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace Ax.Fw;
 
 public static class MimeTypes
 {
-  private static readonly ConcurrentDictionary<string, string> p_mimeByExtLut = new();
-
   public static string GetMimeByExtension(string _filename)
   {
     if (_filename.IsNullOrWhiteSpace())
@@ -19,11 +16,8 @@ public static class MimeTypes
     if (ext.IsNullOrEmpty())
       return Bin.Mime;
 
-    return p_mimeByExtLut.GetOrAdd(ext, _ext =>
-    {
-      var mime = MimeEntry.AllEntries.FirstOrDefault(_entry => _entry.Extensions.Any(_ => _ == _ext));
-      return mime?.Mime ?? Bin.Mime;
-    });
+    var mime = MimeEntry.ByExtension.GetValueOrDefault(ext);
+    return mime?.Mime ?? Bin.Mime;
   }
 
   ///<summary>ez</summary>
