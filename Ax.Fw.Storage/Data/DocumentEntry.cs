@@ -1,7 +1,7 @@
 ﻿namespace Ax.Fw.Storage.Data;
 
 public record DocumentEntry<T>(
-  int DocId,
+  long DocId,
   string Namespace,
   string Key,
   DateTimeOffset LastModified,

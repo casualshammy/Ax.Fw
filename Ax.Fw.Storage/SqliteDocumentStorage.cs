@@ -19,7 +19,6 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
   private readonly JsonSerializerContext p_jsonCtx;
   private readonly SemaphoreSlim p_writeSemaphore;
   private readonly SyncCache<CacheKey, object>? p_cache;
-  private long p_documentsCounter = 0;
 
   /// <summary>
   /// Opens existing database or creates new
@@ -65,24 +64,6 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
 
         command.ExecuteNonQuery();
       }
-
-      var counter = -1L;
-      using (var cmd = connection.CreateCommand())
-      {
-        cmd.CommandText =
-          $"SELECT MAX(doc_id) " +
-          $"FROM document_data; ";
-
-        try
-        {
-          var max = (long?)cmd.ExecuteScalar() ?? 0;
-
-          counter = Math.Max(counter, max);
-        }
-        catch { }
-      }
-
-      p_documentsCounter = counter;
     }
 
     if (_cacheOptions != null)
@@ -147,8 +128,8 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     var json = JsonSerializer.Serialize(_data, typeof(T), p_jsonCtx);
 
     const string insertSql =
-      $"INSERT OR REPLACE INTO document_data (doc_id, namespace, key, last_modified, created, version, data) " +
-      $"VALUES (@doc_id, @namespace, @key, @last_modified, @created, @version, @data) " +
+      $"INSERT OR REPLACE INTO document_data (namespace, key, last_modified, created, version, data) " +
+      $"VALUES (@namespace, @key, @last_modified, @created, @version, @data) " +
       $"ON CONFLICT (namespace, key) " +
       $"DO UPDATE SET " +
       $"  last_modified=@last_modified, " +
@@ -162,7 +143,6 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       using var connection = GetConnection();
       using var command = connection.CreateCommand();
       command.CommandText = insertSql;
-      command.Parameters.AddWithValue("@doc_id", Interlocked.Increment(ref p_documentsCounter));
       command.Parameters.AddWithValue("@namespace", _namespace);
       command.Parameters.AddWithValue("@key", _key);
       command.Parameters.AddWithValue("@last_modified", now.UtcTicks);
@@ -173,7 +153,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
       using var reader = command.ExecuteReader();
       if (reader.Read())
       {
-        var docId = reader.GetInt32(0);
+        var docId = reader.GetInt64(0);
         var version = reader.GetInt64(1);
         var created = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
         return new DocumentEntry<T>(docId, _namespace, _key, now, created, version, _data);
@@ -289,7 +269,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     using var reader = cmd.ExecuteReader();
     while (reader.Read())
     {
-      var docId = reader.GetInt32(0);
+      var docId = reader.GetInt64(0);
       var optionalKey = reader.GetString(2);
       var lastModified = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
       var created = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
@@ -329,7 +309,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     using var reader = cmd.ExecuteReader();
     while (reader.Read())
     {
-      var docId = reader.GetInt32(0);
+      var docId = reader.GetInt64(0);
       var ns = reader.GetString(1);
       var optionalKey = reader.GetString(2);
       var lastModified = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
@@ -370,7 +350,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     using var reader = cmd.ExecuteReader();
     while (reader.Read())
     {
-      var docId = reader.GetInt32(0);
+      var docId = reader.GetInt64(0);
       var key = reader.GetString(1);
       var lastModified = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
       var created = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
@@ -417,7 +397,7 @@ public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
     using var reader = cmd.ExecuteReader();
     if (reader.Read())
     {
-      var docId = reader.GetInt32(0);
+      var docId = reader.GetInt64(0);
       var optionalKey = reader.GetString(1);
       var lastModified = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
       var created = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
