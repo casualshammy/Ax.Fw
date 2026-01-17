@@ -103,6 +103,44 @@ public class SqliteBlobStorageTests
   }
 
   [Fact]
+  public async Task Parallel_Write_Stream()
+  {
+    const string ns = "default";
+    const int key = 123;
+    var lifetime = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    var data = GetData();
+    try
+    {
+      var storage = lifetime.ToDisposeOnEnding(new SqliteBlobStorage(dbFile));
+
+      await storage.WriteBlobAsync(ns, key, data, lifetime.Token);
+
+      await Parallel.ForAsync(0, 10, lifetime.Token, async (__, _c) =>
+      {
+        if (!storage.TryReadBlob(ns, key, out BlobStream? blobStream, out _))
+          Assert.Fail("Blob not found after write");
+
+        try
+        {
+          using var ms = new MemoryStream();
+          await blobStream.CopyToAsync(ms, lifetime.Token);
+        }
+        finally
+        {
+          blobStream.Dispose();
+        }
+      });
+    }
+    finally
+    {
+      lifetime.End();
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
+    }
+  }
+
+  [Fact]
   public async Task Write_Same_Key_Multiple_Times_Updates_Blob()
   {
     const string ns = "default";

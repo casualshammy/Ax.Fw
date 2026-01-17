@@ -1,6 +1,7 @@
 ﻿using Ax.Fw.Extensions;
 using Ax.Fw.SharedTypes.Data;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 
 namespace Ax.Fw;
@@ -18,6 +19,32 @@ public static class MimeTypes
 
     var mime = MimeEntry.ByExtension.GetValueOrDefault(ext);
     return mime?.Mime ?? Bin.Mime;
+  }
+
+  public static bool TryGetMimeByExtension(string _filename, [NotNullWhen(true)] out string? _mime)
+  {
+    if (_filename.IsNullOrWhiteSpace())
+    {
+      _mime = null;
+      return false;
+    }
+
+    var ext = Path.GetExtension(_filename)?.TrimStart('.').ToLowerInvariant();
+    if (ext.IsNullOrEmpty())
+    {
+      _mime = null;
+      return false;
+    }
+
+    var mime = MimeEntry.ByExtension.GetValueOrDefault(ext);
+    if (mime == null)
+    {
+      _mime = null;
+      return false;
+    }
+
+    _mime = mime.Mime;
+    return true;
   }
 
   ///<summary>ez</summary>
