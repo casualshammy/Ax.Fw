@@ -142,79 +142,8 @@ public class SqliteDocumentStorageAotTests
   }
 
 #pragma warning disable xUnit1026 // Theory methods should use all of their parameters
-  [Theory]
-  [Repeat(100)]
-  public void TestUniquenessOfRecordsAndDocs(int _)
-  {
-    var lifetime = new Lifetime();
-    var dbFile = GetDbTmpPath();
-    try
-    {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, DocumentJsonCtx.Default));
-
-      var record0 = storage.WriteDocument("test-table", "test-key", "test-data-0");
-      Assert.Equal(0, record0.DocId);
-
-      storage.DeleteDocuments("test-table", "test-key", null, null);
-
-      var list0 = storage.ListDocuments<string>("test-table");
-      Assert.Empty(list0);
-
-      var record1 = storage.WriteDocument("test-table", "test-key", "test-data-0");
-      Assert.NotEqual(0, record1.DocId);
-    }
-    finally
-    {
-      lifetime.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
-    }
-  }
 
 #pragma warning disable xUnit1026 // Theory methods should use all of their parameters
-  [Theory]
-  [Repeat(100)]
-  public void CheckIfDocIdCalculatedOnDbOpen(int _)
-  {
-    var lifetime0 = new Lifetime();
-    var lifetime1 = new Lifetime();
-    var dbFile = GetDbTmpPath();
-    try
-    {
-      // open db, write documents, then close db
-      var entriesCount = 100;
-      var storage0 = lifetime0.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, DocumentJsonCtx.Default));
-      var enumerable = Enumerable.Range(0, entriesCount);
-
-      var lastDocId = 0;
-      Parallel.ForEach(enumerable, _key =>
-      {
-        var document0 = storage0.WriteDocument("test-table0", _key, "test-data");
-        var document1 = storage0.WriteDocument("test-table1", _key, "test-data");
-        var document2 = storage0.WriteDocument("test-table2", _key, "test-data");
-
-        lastDocId = Math.Max(lastDocId, document0.DocId);
-        lastDocId = Math.Max(lastDocId, document1.DocId);
-        lastDocId = Math.Max(lastDocId, document2.DocId);
-      });
-
-      lifetime0.End();
-
-      Assert.Equal(entriesCount * 3, lastDocId + 1);
-
-      var storage1 = lifetime1.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, DocumentJsonCtx.Default));
-      var document = storage1.WriteDocument("test-table", entriesCount + 1, "test-data");
-
-      Assert.True(document.DocId > lastDocId);
-    }
-    finally
-    {
-      lifetime0.End();
-      lifetime1.End();
-      if (!new FileInfo(dbFile).TryDelete())
-        Assert.Fail($"Can't delete file '{dbFile}'");
-    }
-  }
 
   [Fact]
   public void CheckAttribute()

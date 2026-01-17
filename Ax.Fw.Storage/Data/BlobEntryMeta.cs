@@ -1,9 +1,10 @@
 ﻿namespace Ax.Fw.Storage.Data;
 
-public record DocumentEntryMeta(
+public record BlobEntryMeta(
   long DocId,
   string Namespace,
   string Key,
   DateTimeOffset LastModified,
   DateTimeOffset Created,
-  long Version);
+  long Version,
+  long Length);

@@ -3,6 +3,8 @@ using Ax.Fw.Storage.Data;
 using Ax.Fw.Storage.Extensions;
 using Ax.Fw.Storage.Interfaces;
 using Microsoft.Data.Sqlite;
+using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 
@@ -14,7 +16,6 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
 
   private readonly string p_dbFilePath;
   private readonly SemaphoreSlim p_writeSemaphore;
-  private long p_documentsCounter = 0;
 
   /// <summary>
   /// Opens existing database or creates new
@@ -30,48 +31,28 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
     ToDoOnEnded(() => SqliteConnection.ClearAllPools());
 
     using (var connection = GetConnection())
+    using (var command = connection.CreateCommand())
     {
-      using (var command = connection.CreateCommand())
-      {
-        command.CommandText =
-          $"PRAGMA synchronous = NORMAL; " +
-          $"PRAGMA journal_mode = WAL; " +
-          $"PRAGMA case_sensitive_like = true; " +
-          $"CREATE TABLE IF NOT EXISTS document_data " +
-          $"( " +
-          $"  doc_id INTEGER PRIMARY KEY, " +
-          $"  namespace TEXT NOT NULL, " +
-          $"  key TEXT NOT NULL, " +
-          $"  last_modified INTEGER NOT NULL, " +
-          $"  created INTEGER NOT NULL, " +
-          $"  version INTEGER NOT NULL, " +
-          $"  data BLOB NOT NULL, " +
-          $"  UNIQUE(namespace, key) " +
-          $"); " +
-          $"CREATE INDEX IF NOT EXISTS index_namespace_key ON document_data (namespace, key); " +
-          $"CREATE INDEX IF NOT EXISTS index_key ON document_data (key); " +
-          $"CREATE INDEX IF NOT EXISTS index_namespace ON document_data (namespace); ";
+      command.CommandText =
+        $"PRAGMA synchronous = NORMAL; " +
+        $"PRAGMA journal_mode = WAL; " +
+        $"PRAGMA case_sensitive_like = true; " +
+        $"CREATE TABLE IF NOT EXISTS document_data " +
+        $"( " +
+        $"  doc_id INTEGER PRIMARY KEY, " +
+        $"  namespace TEXT NOT NULL, " +
+        $"  key TEXT NOT NULL, " +
+        $"  last_modified INTEGER NOT NULL, " +
+        $"  created INTEGER NOT NULL, " +
+        $"  version INTEGER NOT NULL, " +
+        $"  data BLOB NOT NULL, " +
+        $"  UNIQUE(namespace, key) " +
+        $"); " +
+        $"CREATE INDEX IF NOT EXISTS index_namespace_key ON document_data (namespace, key); " +
+        $"CREATE INDEX IF NOT EXISTS index_key ON document_data (key); " +
+        $"CREATE INDEX IF NOT EXISTS index_namespace ON document_data (namespace); ";
 
-        command.ExecuteNonQuery();
-      }
-
-      var counter = -1L;
-      using (var cmd = connection.CreateCommand())
-      {
-        cmd.CommandText =
-          $"SELECT MAX(doc_id) " +
-          $"FROM document_data; ";
-
-        try
-        {
-          var max = (long?)cmd.ExecuteScalar() ?? 0;
-
-          counter = Math.Max(counter, max);
-        }
-        catch { }
-      }
-
-      p_documentsCounter = counter;
+      command.ExecuteNonQuery();
     }
 
     if (_retentionOptions != null)
@@ -85,11 +66,11 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
         .Subscribe(_ =>
         {
           var now = DateTimeOffset.UtcNow;
-          var docsToDelete = new HashSet<DocumentEntryMeta>();
+          var docsToDelete = new HashSet<BlobEntryMeta>();
 
           foreach (var rule in _retentionOptions.Rules)
           {
-            foreach (var doc in ListDocumentsMeta(rule.Namespace))
+            foreach (var doc in ListBlobsMeta(rule.Namespace))
             {
               var docAge = now - doc.Created;
               var docLastModifiedAge = now - doc.LastModified;
@@ -101,13 +82,17 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
           }
 
           foreach (var doc in docsToDelete)
-            DeleteDocuments(doc.Namespace, doc.Key, null, null);
+            DeleteBlobs(doc.Namespace, doc.Key, null, null);
 
           if (docsToDelete.Count > 0 && _retentionOptions.OnDocsDeleteCallback != null)
           {
             try
             {
-              _retentionOptions.OnDocsDeleteCallback.Invoke(docsToDelete);
+              var data = docsToDelete
+                .Select(_ => new DocumentEntryMeta(_.DocId, _.Namespace, _.Key, _.LastModified, _.Created, _.Version))
+                .ToHashSet();
+
+              _retentionOptions.OnDocsDeleteCallback.Invoke(data);
             }
             catch { }
           }
@@ -117,20 +102,24 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
     }
   }
 
-  private async Task<DocumentEntryMeta> WriteDocumentInternalAsync(
+  /// <summary>
+  /// Upsert blob to database
+  /// </summary>
+  public async Task<BlobEntryMeta> WriteBlobAsync(
     string _namespace,
-    string _key,
+    KeyAlike _key,
     Stream _data,
+    long _size,
     CancellationToken _ct)
   {
     const string insertSql =
-      $"INSERT OR REPLACE INTO document_data (doc_id, namespace, key, last_modified, created, version, data) " +
-      $"VALUES (@doc_id, @namespace, @key, @last_modified, @created, @version, zeroblob(@length)) " +
+      $"INSERT OR REPLACE INTO document_data (namespace, key, last_modified, created, version, data) " +
+      $"VALUES (@namespace, @key, @last_modified, @created, @version, zeroblob(@size)) " +
       $"ON CONFLICT (namespace, key) " +
       $"DO UPDATE SET " +
       $"  last_modified=@last_modified, " +
       $"  version=version+1, " +
-      $"  data=zeroblob(@length) " +
+      $"  data=zeroblob(@size) " +
       $"RETURNING doc_id, version, created; ";
 
     await p_writeSemaphore.WaitAsync(_ct);
@@ -142,26 +131,43 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
       using var command = connection.CreateCommand();
 
       command.CommandText = insertSql;
-      command.Parameters.AddWithValue("@doc_id", Interlocked.Increment(ref p_documentsCounter));
       command.Parameters.AddWithValue("@namespace", _namespace);
-      command.Parameters.AddWithValue("@key", _key);
+      command.Parameters.AddWithValue("@key", _key.Key);
       command.Parameters.AddWithValue("@last_modified", now.UtcTicks);
       command.Parameters.AddWithValue("@created", now.UtcTicks);
       command.Parameters.AddWithValue("@version", 1);
-      command.Parameters.AddWithValue("@length", _data.Length);
+      command.Parameters.AddWithValue("@size", _size);
 
       using var reader = command.ExecuteReader();
       if (!reader.Read())
         throw new InvalidOperationException($"Can't create document - db reader returned no result");
 
-      var docId = reader.GetInt32(0);
+      var docId = reader.GetInt64(0);
       var version = reader.GetInt64(1);
       var created = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
 
       using (var writeStream = new SqliteBlob(connection, "document_data", "data", docId))
-        await _data.CopyToAsync(writeStream, _ct);
+      {
+        var bufferLength = (int)Math.Min(_size, 81920);
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferLength);
+        try
+        {
+          var totalRead = 0L;
+          while (totalRead < _size)
+          {
+            var toRead = (int)Math.Min(bufferLength, _size - totalRead);
+            await _data.ReadExactlyAsync(buffer, 0, toRead, _ct);
+            await writeStream.WriteAsync(buffer.AsMemory(0, toRead), _ct);
+            totalRead += toRead;
+          }
+        }
+        finally
+        {
+          ArrayPool<byte>.Shared.Return(buffer);
+        }
+      }
 
-      return new DocumentEntryMeta(docId, _namespace, _key, now, created, version);
+      return new BlobEntryMeta(docId, _namespace, _key.Key, now, created, version, _size);
     }
     finally
     {
@@ -172,34 +178,58 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
   /// <summary>
   /// Upsert blob to database
   /// </summary>
-  public async Task<DocumentEntryMeta> WriteDocumentAsync(
-    string _namespace,
-    KeyAlike _key,
-    Stream _data,
-    CancellationToken _ct)
-  {
-    var document = await WriteDocumentInternalAsync(_namespace, _key.Key, _data, _ct);
-    return document;
-  }
-
-  /// <summary>
-  /// Upsert blob to database
-  /// </summary>
-  public async Task<DocumentEntryMeta> WriteDocumentAsync(
+  public async Task<BlobEntryMeta> WriteBlobAsync(
     string _namespace,
     KeyAlike _key,
     byte[] _data,
     CancellationToken _ct)
   {
-    using var ms = new MemoryStream(_data);
-    var document = await WriteDocumentInternalAsync(_namespace, _key.Key, ms, _ct);
-    return document;
+    const string insertSql =
+      $"INSERT OR REPLACE INTO document_data (namespace, key, last_modified, created, version, data) " +
+      $"VALUES (@namespace, @key, @last_modified, @created, @version, @data) " +
+      $"ON CONFLICT (namespace, key) " +
+      $"DO UPDATE SET " +
+      $"  last_modified=@last_modified, " +
+      $"  version=version+1, " +
+      $"  data=@data " +
+      $"RETURNING doc_id, version, created; ";
+
+    await p_writeSemaphore.WaitAsync(_ct);
+
+    var now = DateTimeOffset.UtcNow;
+    try
+    {
+      using var connection = GetConnection();
+      using var command = connection.CreateCommand();
+
+      command.CommandText = insertSql;
+      command.Parameters.AddWithValue("@namespace", _namespace);
+      command.Parameters.AddWithValue("@key", _key.Key);
+      command.Parameters.AddWithValue("@last_modified", now.UtcTicks);
+      command.Parameters.AddWithValue("@created", now.UtcTicks);
+      command.Parameters.AddWithValue("@version", 1);
+      command.Parameters.AddWithValue("@data", SqliteType.Blob, _data);
+
+      using var reader = command.ExecuteReader();
+      if (!reader.Read())
+        throw new InvalidOperationException($"Can't create document - db reader returned no result");
+
+      var docId = reader.GetInt64(0);
+      var version = reader.GetInt64(1);
+      var created = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
+
+      return new BlobEntryMeta(docId, _namespace, _key.Key, now, created, version, _data.Length);
+    }
+    finally
+    {
+      p_writeSemaphore.Release();
+    }
   }
 
   /// <summary>
   /// Delete blobs from the database
   /// </summary>
-  public void DeleteDocuments(
+  public void DeleteBlobs(
     string _namespace,
     KeyAlike? _key,
     DateTimeOffset? _from = null,
@@ -228,14 +258,14 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
   /// <summary>
   /// List blobs meta info
   /// </summary>
-  public IEnumerable<DocumentEntryMeta> ListDocumentsMeta(
+  public IEnumerable<BlobEntryMeta> ListBlobsMeta(
     string? _namespace,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null)
   {
     const string listSql =
-      $"SELECT doc_id, namespace, key, last_modified, created, version " +
+      $"SELECT doc_id, namespace, key, last_modified, created, version, length(data) " +
       $"FROM document_data " +
       $"WHERE " +
       $"  (@namespace IS NULL OR @namespace=namespace) AND " +
@@ -260,22 +290,23 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
       var lastModified = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
       var created = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
       var version = reader.GetInt64(5);
+      var length = reader.GetInt64(6);
 
-      yield return new DocumentEntryMeta(docId, _namespace ?? reader.GetString(1), optionalKey, lastModified, created, version);
+      yield return new BlobEntryMeta(docId, _namespace ?? reader.GetString(1), optionalKey, lastModified, created, version, length);
     }
   }
 
   /// <summary>
   /// List blobs meta info
   /// </summary>
-  public IEnumerable<DocumentEntryMeta> ListDocumentsMeta(
+  public IEnumerable<BlobEntryMeta> ListBlobsMeta(
     LikeExpr? _namespaceLikeExpression = null,
     LikeExpr? _keyLikeExpression = null,
     DateTimeOffset? _from = null,
     DateTimeOffset? _to = null)
   {
     const string listSql =
-      $"SELECT doc_id, namespace, key, last_modified, created, version " +
+      $"SELECT doc_id, namespace, key, last_modified, created, version, length(data) " +
       $"FROM document_data " +
       $"WHERE " +
       $"  (@namespace_like IS NULL OR namespace LIKE @namespace_like) AND " +
@@ -301,19 +332,23 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
       var lastModified = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
       var created = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
       var version = reader.GetInt64(5);
+      var length = reader.GetInt64(6);
 
-      yield return new DocumentEntryMeta(docId, ns, optionalKey, lastModified, created, version);
+      yield return new BlobEntryMeta(docId, ns, optionalKey, lastModified, created, version, length);
     }
   }
 
-  private async Task<DocumentEntryMeta?> ReadDocumentInternalAsync(
+  /// <summary>
+  /// Read blob from the database
+  /// </summary>
+  public bool TryReadBlob(
     string _namespace,
-    string _key,
-    Stream _outputStream,
-    CancellationToken _ct)
+    KeyAlike _key,
+    [NotNullWhen(true)] out BlobStream? _outputData,
+    [NotNullWhen(true)] out BlobEntryMeta? _meta)
   {
     const string readSql =
-      $"SELECT doc_id, key, last_modified, created, version " +
+      $"SELECT doc_id, key, last_modified, created, version, length(data) " +
       $"FROM document_data " +
       $"WHERE " +
       $"  @namespace=namespace AND " +
@@ -323,37 +358,78 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
     using var cmd = connection.CreateCommand();
     cmd.CommandText = readSql;
     cmd.Parameters.AddWithValue("@namespace", _namespace);
-    cmd.Parameters.AddWithValue("@key", _key);
+    cmd.Parameters.AddWithValue("@key", _key.Key);
 
     using var reader = cmd.ExecuteReader();
     if (reader.Read())
     {
-      var docId = reader.GetInt32(0);
-      var optionalKey = reader.GetString(1);
-      var lastModified = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
-      var created = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
-      var version = reader.GetInt64(4);
+      var docId = (long)reader["doc_id"];
+      var optionalKey = (string)reader["key"];
+      var lastModified = new DateTimeOffset((long)reader["last_modified"], TimeSpan.Zero);
+      var created = new DateTimeOffset((long)reader["created"], TimeSpan.Zero);
+      var version = (long)reader["version"];
+      var length = reader.GetInt64(5);
 
-      using (var blob = new SqliteBlob(connection, "document_data", "data", docId, readOnly: true))
-        await blob.CopyToAsync(_outputStream, _ct);
-
-      return new DocumentEntryMeta(docId, _namespace, optionalKey, lastModified, created, version);
+      var blobConnection = GetConnection();
+      try
+      {
+        var sqliteBlob = new SqliteBlob(blobConnection, "document_data", "data", docId);
+        _outputData = new BlobStream(blobConnection, sqliteBlob);
+        _meta = new BlobEntryMeta(docId, _namespace, optionalKey, lastModified, created, version, length);
+        return true;
+      }
+      catch
+      {
+        blobConnection.Dispose();
+        throw;
+      }
     }
 
-    return null;
+    _outputData = null;
+    _meta = null;
+    return false;
   }
 
   /// <summary>
   /// Read blob from the database
   /// </summary>
-  public async Task<DocumentEntryMeta?> ReadDocumentAsync(
+  public bool TryReadBlob(
     string _namespace,
     KeyAlike _key,
-    Stream _outputStream,
-    CancellationToken _ct)
+    [NotNullWhen(true)] out byte[]? _outputData,
+    [NotNullWhen(true)] out BlobEntryMeta? _meta)
   {
-    var result = await ReadDocumentInternalAsync(_namespace, _key.Key, _outputStream, _ct);
-    return result;
+    const string readSql =
+      $"SELECT doc_id, key, last_modified, created, version, data " +
+      $"FROM document_data " +
+      $"WHERE " +
+      $"  @namespace=namespace AND " +
+      $"  key=@key; ";
+
+    using var connection = GetConnection();
+    using var cmd = connection.CreateCommand();
+    cmd.CommandText = readSql;
+    cmd.Parameters.AddWithValue("@namespace", _namespace);
+    cmd.Parameters.AddWithValue("@key", _key.Key);
+
+    using var reader = cmd.ExecuteReader();
+    if (reader.Read())
+    {
+      var docId = (long)reader["doc_id"];
+      var optionalKey = (string)reader["key"];
+      var lastModified = new DateTimeOffset((long)reader["last_modified"], TimeSpan.Zero);
+      var created = new DateTimeOffset((long)reader["created"], TimeSpan.Zero);
+      var version = (long)reader["version"];
+      var data = (byte[])reader["data"];
+
+      _outputData = data;
+      _meta = new BlobEntryMeta(docId, _namespace, optionalKey, lastModified, created, version, data.LongLength);
+      return true;
+    }
+
+    _outputData = null;
+    _meta = null;
+    return false;
   }
 
   /// <summary>
@@ -383,7 +459,7 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
   /// <summary>
   /// Returns number of blobs in database
   /// </summary>
-  public int Count(
+  public long Count(
     string? _namespace,
     LikeExpr? _keyLikeExpression)
   {
@@ -405,7 +481,7 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
     using var reader = cmd.ExecuteReader();
     if (reader.Read())
     {
-      var count = reader.GetInt32(0);
+      var count = reader.GetInt64(0);
       return count;
     }
 

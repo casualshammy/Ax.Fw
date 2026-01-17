@@ -30,14 +30,30 @@ internal static class DocumentStorageExtensions
   }
 
   public static SqliteParameter AddWithNullableValue(
-    this SqliteParameterCollection _collection, 
-    string _key, 
+    this SqliteParameterCollection _collection,
+    string _key,
     object? _value)
   {
     if (_value != null)
       return _collection.AddWithValue(_key, _value);
     else
       return _collection.AddWithValue(_key, DBNull.Value);
+  }
+
+  public static SqliteParameter AddWithValue<T>(
+    this SqliteParameterCollection _collection,
+    string _key,
+    SqliteType _type,
+    T _value)
+  {
+    var param = new SqliteParameter
+    {
+      ParameterName = _key,
+      SqliteType = _type,
+      Value = _value
+    };
+
+    return _collection.Add(param);
   }
 
 }
