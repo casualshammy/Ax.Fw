@@ -373,7 +373,7 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
       var blobConnection = GetConnection();
       try
       {
-        var sqliteBlob = new SqliteBlob(blobConnection, "document_data", "data", docId);
+        var sqliteBlob = new SqliteBlob(blobConnection, "document_data", "data", docId, true);
         _outputData = new BlobStream(blobConnection, sqliteBlob);
         _meta = new BlobEntryMeta(docId, _namespace, optionalKey, lastModified, created, version, length);
         return true;
