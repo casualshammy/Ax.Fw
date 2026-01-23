@@ -1,25 +1,21 @@
-﻿using Ax.Fw.SharedTypes.Interfaces;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 
 namespace Ax.Fw.Web.Middlewares;
 
 public class CorsMiddleware : IMiddleware
 {
-  private readonly ILog p_log;
-  private readonly string p_allowedOrigins;
+  private readonly IReadOnlySet<string> p_allowedOrigins;
   private readonly string p_allowedMethods;
   private readonly string p_allowedHeaders;
   private readonly bool p_allowedCredentials;
 
   internal CorsMiddleware(
-    ILog _log,
-    IReadOnlySet<string> _allowedOrigins,
-    IReadOnlySet<string> _allowedMethods,
-    IReadOnlySet<string> _allowedHeaders,
+    IEnumerable<string> _allowedOrigins,
+    IEnumerable<string> _allowedMethods,
+    IEnumerable<string> _allowedHeaders,
     bool _allowedCredentials)
   {
-    p_log = _log;
-    p_allowedOrigins = string.Join(", ", _allowedOrigins);
+    p_allowedOrigins = _allowedOrigins.ToHashSet();
     p_allowedMethods = string.Join(", ", _allowedMethods);
     p_allowedHeaders = string.Join(", ", _allowedHeaders);
     p_allowedCredentials = _allowedCredentials;
@@ -29,9 +25,17 @@ public class CorsMiddleware : IMiddleware
     HttpContext _httpCtx,
     RequestDelegate _next)
   {
-    if (_httpCtx.Request.Method == "OPTIONS")
+    var req = _httpCtx.Request;
+    var origin = req.Headers.Origin.ToString();
+    string corsOrigin;
+    if (p_allowedOrigins.Contains("*") || p_allowedOrigins.Contains(origin))
+      corsOrigin = origin;
+    else
+      corsOrigin = "not-allowed.local";
+
+    if (req.Method == "OPTIONS")
     {
-      _httpCtx.Response.Headers.Append("Access-Control-Allow-Origin", p_allowedOrigins);
+      _httpCtx.Response.Headers.Append("Access-Control-Allow-Origin", corsOrigin);
       _httpCtx.Response.Headers.Append("Access-Control-Allow-Methods", p_allowedMethods);
       _httpCtx.Response.Headers.Append("Access-Control-Allow-Headers", p_allowedHeaders);
       _httpCtx.Response.Headers.Append("Access-Control-Allow-Credentials", p_allowedCredentials ? "true" : "false");
@@ -42,7 +46,7 @@ public class CorsMiddleware : IMiddleware
       return;
     }
 
-    _httpCtx.Response.Headers.Append("Access-Control-Allow-Origin", p_allowedOrigins);
+    _httpCtx.Response.Headers.Append("Access-Control-Allow-Origin", corsOrigin);
     _httpCtx.Response.Headers.Append("Access-Control-Allow-Methods", p_allowedMethods);
     _httpCtx.Response.Headers.Append("Access-Control-Allow-Headers", p_allowedHeaders);
     _httpCtx.Response.Headers.Append("Access-Control-Allow-Credentials", p_allowedCredentials ? "true" : "false");
