@@ -1,6 +1,7 @@
 using Ax.Fw.Extensions;
 using Ax.Fw.Storage.Data;
 using Ax.Fw.Tests.Tools;
+using System.Text;
 using Xunit.Abstractions;
 
 namespace Ax.Fw.Storage.Tests;
@@ -131,6 +132,57 @@ public class SqliteBlobStorageTests
           blobStream.Dispose();
         }
       });
+    }
+    finally
+    {
+      lifetime.End();
+      if (!new FileInfo(dbFile).TryDelete())
+        Assert.Fail($"Can't delete file '{dbFile}'");
+    }
+  }
+
+  [Fact]
+  public async Task Custom_Header()
+  {
+    const string ns = "default";
+    const int key = 123;
+    var lifetime = new Lifetime();
+    var dbFile = GetDbTmpPath();
+    var data = GetData();
+    try
+    {
+      var storage = lifetime.ToDisposeOnEnding(new SqliteBlobStorage(dbFile));
+
+      const int headerSize = 128;
+      const string mime = "application/octet-stream";
+
+      using (var ms = new MemoryStream())
+      {
+        var header = new byte[headerSize];
+        Encoding.UTF8.GetBytes(mime, header);
+
+        await ms.WriteAsync(header, lifetime.Token);
+        await ms.WriteAsync(data, lifetime.Token);
+        await ms.FlushAsync(lifetime.Token);
+
+        ms.Position = 0;
+        await storage.WriteBlobAsync(ns, key, ms, ms.Length, lifetime.Token);
+      }
+
+      if (!storage.TryReadBlob(ns, key, out BlobStream? blobStream, out _))
+        Assert.Fail("Blob not found after write");
+
+      using (blobStream)
+      {
+        var header = new byte[headerSize];
+        await blobStream.ReadExactlyAsync(header, lifetime.Token);
+
+        var storedMime = Encoding.UTF8.GetString([.. header.TakeWhile(_ => _ != 0)]);
+        Assert.Equal(mime, storedMime);
+
+        var payload = blobStream.ToArray();
+        Assert.Equal(data, payload);
+      }
     }
     finally
     {
