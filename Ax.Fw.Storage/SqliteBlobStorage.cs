@@ -12,15 +12,15 @@ namespace Ax.Fw.Storage;
 
 public class SqliteBlobStorage : DisposableStack, IBlobStorage
 {
-  record CacheKey(string Namespace, string Key);
-
   private readonly string p_dbFilePath;
   private readonly SemaphoreSlim p_writeSemaphore;
 
   /// <summary>
-  /// Opens existing database or creates new
+  /// Initializes a new instance of the <see cref="SqliteBlobStorage"/> class.
+  /// Opens existing database or creates new one with automatic retention policy support.
   /// </summary>
-  /// <param name="_dbFilePath">Path to database file</param>
+  /// <param name="_dbFilePath">Path to the SQLite database file</param>
+  /// <param name="_retentionOptions">Optional retention policy configuration for automatic document cleanup</param>
   public SqliteBlobStorage(
     string _dbFilePath,
     StorageRetentionOptions? _retentionOptions = null)
@@ -103,8 +103,15 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
   }
 
   /// <summary>
-  /// Upsert blob to database
+  /// Writes a blob to the database from a stream using SQLite's incremental I/O.
+  /// If a blob with the same namespace and key exists, it will be updated.
   /// </summary>
+  /// <param name="_namespace">The namespace for organizing blobs</param>
+  /// <param name="_key">The unique key within the namespace</param>
+  /// <param name="_data">The stream containing blob data to write</param>
+  /// <param name="_size">The total size of the blob in bytes</param>
+  /// <param name="_ct">Cancellation token</param>
+  /// <returns>Metadata about the written blob entry</returns>
   public async Task<BlobEntryMeta> WriteBlobAsync(
     string _namespace,
     KeyAlike _key,
@@ -176,8 +183,14 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
   }
 
   /// <summary>
-  /// Upsert blob to database
+  /// Writes a blob to the database from a byte array.
+  /// If a blob with the same namespace and key exists, it will be updated.
   /// </summary>
+  /// <param name="_namespace">The namespace for organizing blobs</param>
+  /// <param name="_key">The unique key within the namespace</param>
+  /// <param name="_data">The byte array containing blob data to write</param>
+  /// <param name="_ct">Cancellation token</param>
+  /// <returns>Metadata about the written blob entry</returns>
   public async Task<BlobEntryMeta> WriteBlobAsync(
     string _namespace,
     KeyAlike _key,
@@ -227,8 +240,13 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
   }
 
   /// <summary>
-  /// Delete blobs from the database
+  /// Deletes blobs from the database based on specified criteria.
+  /// All parameters except namespace can be null to delete all matching blobs.
   /// </summary>
+  /// <param name="_namespace">The namespace to delete blobs from</param>
+  /// <param name="_key">Optional specific key to delete. If null, all keys in namespace are considered</param>
+  /// <param name="_from">Optional start time filter based on last modified timestamp</param>
+  /// <param name="_to">Optional end time filter based on last modified timestamp</param>
   public void DeleteBlobs(
     string _namespace,
     KeyAlike? _key,
@@ -256,8 +274,13 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
   }
 
   /// <summary>
-  /// List blobs meta info
+  /// Lists metadata for blobs in a specific namespace with optional filtering.
   /// </summary>
+  /// <param name="_namespace">The namespace to query. If null, all namespaces are included</param>
+  /// <param name="_keyLikeExpression">Optional SQL LIKE expression to filter keys</param>
+  /// <param name="_from">Optional start time filter based on last modified timestamp</param>
+  /// <param name="_to">Optional end time filter based on last modified timestamp</param>
+  /// <returns>Enumerable collection of blob metadata entries</returns>
   public IEnumerable<BlobEntryMeta> ListBlobsMeta(
     string? _namespace,
     LikeExpr? _keyLikeExpression = null,
@@ -297,8 +320,13 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
   }
 
   /// <summary>
-  /// List blobs meta info
+  /// Lists metadata for blobs with optional filtering by both namespace and key patterns.
   /// </summary>
+  /// <param name="_namespaceLikeExpression">Optional SQL LIKE expression to filter namespaces</param>
+  /// <param name="_keyLikeExpression">Optional SQL LIKE expression to filter keys</param>
+  /// <param name="_from">Optional start time filter based on last modified timestamp</param>
+  /// <param name="_to">Optional end time filter based on last modified timestamp</param>
+  /// <returns>Enumerable collection of blob metadata entries</returns>
   public IEnumerable<BlobEntryMeta> ListBlobsMeta(
     LikeExpr? _namespaceLikeExpression = null,
     LikeExpr? _keyLikeExpression = null,
@@ -339,8 +367,14 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
   }
 
   /// <summary>
-  /// Read blob from the database
+  /// Attempts to read a blob from the database as a stream.
+  /// Caller is responsible for disposing the returned <see cref="BlobStream"/>.
   /// </summary>
+  /// <param name="_namespace">The namespace containing the blob</param>
+  /// <param name="_key">The key of the blob to read</param>
+  /// <param name="_outputData">Output parameter containing the blob stream if found</param>
+  /// <param name="_meta">Output parameter containing blob metadata if found</param>
+  /// <returns>True if the blob was found, false otherwise</returns>
   public bool TryReadBlob(
     string _namespace,
     KeyAlike _key,
@@ -391,8 +425,13 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
   }
 
   /// <summary>
-  /// Read blob from the database
+  /// Attempts to read a blob from the database as a byte array.
   /// </summary>
+  /// <param name="_namespace">The namespace containing the blob</param>
+  /// <param name="_key">The key of the blob to read</param>
+  /// <param name="_outputData">Output parameter containing the blob data as byte array if found</param>
+  /// <param name="_meta">Output parameter containing blob metadata if found</param>
+  /// <returns>True if the blob was found, false otherwise</returns>
   public bool TryReadBlob(
     string _namespace,
     KeyAlike _key,
@@ -433,7 +472,8 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
   }
 
   /// <summary>
-  /// Rebuilds the database file, repacking it into a minimal amount of disk space
+  /// Rebuilds the database file, repacking it into a minimal amount of disk space.
+  /// This operation runs VACUUM command which can be time-consuming for large databases.
   /// </summary>
   public void CompactDatabase()
   {
@@ -444,10 +484,9 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
   }
 
   /// <summary>
-  /// Flushes temporary file to main database file
+  /// Flushes the Write-Ahead Log (WAL) to the main database file.
   /// </summary>
-  /// <param name="_force">If true, forcefully performs full flush and then truncates temporary file to zero bytes</param>
-  /// <returns></returns>
+  /// <param name="_force">If true, performs a full checkpoint and truncates the WAL file to zero bytes. If false, performs a passive checkpoint.</param>
   public void Flush(bool _force)
   {
     using var connection = GetConnection();
@@ -457,8 +496,11 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
   }
 
   /// <summary>
-  /// Returns number of blobs in database
+  /// Returns the total number of blobs in the database matching the specified criteria.
   /// </summary>
+  /// <param name="_namespace">The namespace to count blobs in. If null, all namespaces are included</param>
+  /// <param name="_keyLikeExpression">Optional SQL LIKE expression to filter keys</param>
+  /// <returns>The count of matching blobs</returns>
   public long Count(
     string? _namespace,
     LikeExpr? _keyLikeExpression)
@@ -488,6 +530,10 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
     return 0;
   }
 
+  /// <summary>
+  /// Creates and opens a new SQLite connection to the database.
+  /// </summary>
+  /// <returns>An open SQLite connection</returns>
   private SqliteConnection GetConnection()
   {
     var connection = new SqliteConnection($"Data Source={p_dbFilePath};");

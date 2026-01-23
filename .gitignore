@@ -34,3 +34,5 @@ Ax.Fw.TcpBus/obj
 /Ax.Fw.Log/obj
 /Ax.Fw.App/bin
 /Ax.Fw.App/obj
+/Ax.Fw.Web/bin/
+/Ax.Fw.Web/obj/
