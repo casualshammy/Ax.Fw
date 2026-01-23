@@ -1,15 +1,15 @@
 ﻿namespace Ax.Fw.Web.Data;
 
-internal sealed class RestControllerInfo
+public sealed class RestControllerInfo
 {
   public RestControllerInfo(
     string _type,
-    string _swaggerTag)
+    string _tag)
   {
     Type = _type;
-    SwaggerTag = _swaggerTag;
+    Tag = _tag;
   }
 
   public string Type { get; init; }
-  public string SwaggerTag { get; init; }
+  public string Tag { get; init; }
 }
