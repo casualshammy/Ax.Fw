@@ -4,37 +4,82 @@ using Ax.Fw.Web.Data;
 using Microsoft.AspNetCore.Http;
 using System.Collections.Concurrent;
 using System.Net;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 
 namespace Ax.Fw.Web.Middlewares;
 
 public class FailToBanMiddleware : IMiddleware
 {
-  private readonly ConcurrentDictionary<IPAddress, int> p_failedReqLut;
+  readonly record struct BanInfo(
+    int FailedRequests,
+    bool IsBanned,
+    DateTimeOffset BanUntil);
+
+  record FailReport(
+    IPAddress IpAddress,
+    int MaxFailedRequests,
+    TimeSpan BanTime);
+
   private readonly ILog p_log;
+  private readonly Subject<FailReport> p_failReportSubj = new();
+  private readonly ConcurrentDictionary<IPAddress, BanInfo> p_banLut = new();
 
   public FailToBanMiddleware(
     IReadOnlyLifetime _lifetime,
     ILog _log)
   {
     p_log = _log["fail-to-ban"];
-    p_failedReqLut = new();
+
+    var scheduler = _lifetime.ToDisposeOnEnded(new EventLoopScheduler());
+
+    p_failReportSubj
+      .ObserveOn(scheduler)
+      .Subscribe(_failReport =>
+      {
+        var now = DateTimeOffset.UtcNow;
+
+        p_banLut.AddOrUpdate(
+          _failReport.IpAddress,
+          _ => new BanInfo(1, false, now + _failReport.BanTime),
+          (_, _prev) =>
+          {
+            var failedRequests = _prev.FailedRequests + 1;
+            var isBanned = failedRequests >= _failReport.MaxFailedRequests;
+            var banUntil = now + _failReport.BanTime;
+            if (banUntil < _prev.BanUntil)
+              banUntil = _prev.BanUntil;
+
+            if (isBanned)
+            {
+              if (!_prev.IsBanned)
+                p_log.Info($"IP address '__{_failReport.IpAddress}__' is **banned** until __{banUntil:u}__ after __{failedRequests}__ failed requests");
+              else
+                p_log.Info($"IP address '__{_failReport.IpAddress}__' is **re-banned** until __{banUntil:u}__ after __{failedRequests}__ failed requests");
+            }
+
+            return new BanInfo(failedRequests, isBanned, banUntil);
+          });
+      }, _lifetime);
 
     Observable
-      .Interval(TimeSpan.FromSeconds(1))
+      .Interval(TimeSpan.FromMinutes(1))
+      .ObserveOn(scheduler)
       .Subscribe(__ =>
       {
-        foreach (var (ip, failCount) in p_failedReqLut)
+        var now = DateTimeOffset.UtcNow;
+
+        foreach (var (ip, banInfo) in p_banLut)
         {
-          var newValue = failCount - 1;
-          if (newValue <= 0)
+          if (banInfo.BanUntil < now)
           {
-            p_failedReqLut.TryRemove(ip, out _);
-            p_log.Info($"IP address '__{ip}__' is **unbanned**");
-          }
-          else
-          {
-            p_failedReqLut.TryUpdate(ip, newValue, failCount);
+            p_banLut.TryRemove(ip, out _);
+
+            if (banInfo.IsBanned)
+              p_log.Info($"IP address '__{ip}__' is **unbanned** after serving its ban time");
+            else
+              p_log.Info($"IP address '__{ip}__' is **cleared of suspicion**");
           }
         }
       }, _lifetime);
@@ -57,21 +102,18 @@ public class FailToBanMiddleware : IMiddleware
       return;
     }
 
-    if (p_failedReqLut.TryGetValue(remoteIP, out var failedReq) && failedReq >= attr.MaxFailedRequests)
+    if (p_banLut.TryGetValue(remoteIP, out var banInfo) && banInfo.IsBanned)
     {
-      p_log.Warn($"IP address '{remoteIP}' is banned, but still trying to make requests ({failedReq})");
       _ctx.Response.StatusCode = (int)HttpStatusCode.TooManyRequests;
-      p_failedReqLut.AddOrUpdate(remoteIP, 1, (_, _prev) => ++_prev);
       return;
     }
 
     await _next(_ctx);
 
-    var response = _ctx.Response;
-    if (!attr.BannedHttpCodes.Contains((HttpStatusCode)response.StatusCode))
+    if (!attr.BannedHttpCodes.Contains((HttpStatusCode)_ctx.Response.StatusCode))
       return;
 
-    p_failedReqLut.AddOrUpdate(remoteIP, 1, (_, _prev) => ++_prev);
+    p_failReportSubj.OnNext(new(remoteIP, attr.MaxFailedRequests, TimeSpan.FromSeconds(attr.BanTimeSec)));
   }
 
 }
