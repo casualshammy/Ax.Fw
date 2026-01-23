@@ -64,8 +64,7 @@ public static class ServiceCollectionExtensions
   {
     _services.AddSingleton(_sp =>
     {
-      var log = _sp.GetRequiredService<ILog>();
-      var mw = new CorsMiddleware(log["cors"], _allowedOrigins, _allowedMethods, _allowedHeaders, _allowedCredentials);
+      var mw = new CorsMiddleware(_allowedOrigins, _allowedMethods, _allowedHeaders, _allowedCredentials);
 
       return mw;
     });
