@@ -145,6 +145,35 @@ public sealed class AppDependencyManager : IReadOnlyDependencyContainer
     return this;
   }
 
+  public AppDependencyManager ActivateOnStart<T1, T2, T3, T4>(Action<T1, T2, T3, T4> _action)
+  {
+    p_actions = p_actions.Add(() =>
+    {
+      var t1 = Locate<T1>();
+      var t2 = Locate<T2>();
+      var t3 = Locate<T3>();
+      var t4 = Locate<T4>();
+      _action(t1, t2, t3, t4);
+    });
+
+    return this;
+  }
+
+  public AppDependencyManager ActivateOnStart<T1, T2, T3, T4, T5>(Action<T1, T2, T3, T4, T5> _action)
+  {
+    p_actions = p_actions.Add(() =>
+    {
+      var t1 = Locate<T1>();
+      var t2 = Locate<T2>();
+      var t3 = Locate<T3>();
+      var t4 = Locate<T4>();
+      var t5 = Locate<T5>();
+      _action(t1, t2, t3, t4, t5);
+    });
+
+    return this;
+  }
+
   public T Locate<T>()
   {
     if (!p_dependencies.TryGetValue(typeof(T), out var instanceFactory))

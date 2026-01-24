@@ -155,4 +155,16 @@ public sealed class AppBase
     return this;
   }
 
+  public AppBase ActivateOnStart<T1, T2, T3, T4>(Action<T1, T2, T3, T4> _action)
+  {
+    p_depMgr.ActivateOnStart(_action);
+    return this;
+  }
+
+  public AppBase ActivateOnStart<T1, T2, T3, T4, T5>(Action<T1, T2, T3, T4, T5> _action)
+  {
+    p_depMgr.ActivateOnStart(_action);
+    return this;
+  }
+
 }
