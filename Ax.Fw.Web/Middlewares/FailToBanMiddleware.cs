@@ -54,9 +54,9 @@ public class FailToBanMiddleware : IMiddleware
             if (isBanned)
             {
               if (!_prev.IsBanned)
-                p_log.Info($"IP address '__{_failReport.IpAddress}__' is **banned** until __{banUntil:u}__ after __{failedRequests}__ failed requests");
+                p_log.Warn($"IP address '{_failReport.IpAddress}' is banned until {banUntil:u} after {failedRequests} failed requests");
               else
-                p_log.Info($"IP address '__{_failReport.IpAddress}__' is **re-banned** until __{banUntil:u}__ after __{failedRequests}__ failed requests");
+                p_log.Warn($"IP address '{_failReport.IpAddress}' is re-banned until {banUntil:u} after {failedRequests} failed requests");
             }
 
             return new BanInfo(failedRequests, isBanned, banUntil);
