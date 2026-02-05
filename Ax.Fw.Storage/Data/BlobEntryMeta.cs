@@ -7,4 +7,4 @@ public record BlobEntryMeta(
   DateTimeOffset LastModified,
   DateTimeOffset Created,
   long Version,
-  long Length);
+  long RawLength);

@@ -55,7 +55,7 @@ internal class Program
     }
 
     return;
-    var docStorage = new SqliteDocumentStorage(Path.GetTempFileName(), ProgramJsonCtx.Default);
+    var docStorage = new SqliteDocumentStorageV2(Path.GetTempFileName(), ProgramJsonCtx.Default);
     docStorage.WriteDocument("test-ns", "test-key", "test-data");
     var doc = docStorage.ReadDocument<string>("test-ns", "test-key");
     Console.WriteLine($"{doc?.Namespace}/{doc?.Key} = {doc?.Data}");

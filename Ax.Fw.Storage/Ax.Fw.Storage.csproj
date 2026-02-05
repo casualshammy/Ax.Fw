@@ -20,8 +20,8 @@
 				<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		</PropertyGroup>
 		<ItemGroup>
-				<PackageReference Include="AWSSDK.S3" Version="4.0.6.3" />
-				<PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.8" />
+				<PackageReference Include="AWSSDK.S3" Version="4.0.18.2" />
+				<PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.2" />
 		</ItemGroup>
 		<ItemGroup>
 				<None Include="README.md" Pack="true" PackagePath="\" />

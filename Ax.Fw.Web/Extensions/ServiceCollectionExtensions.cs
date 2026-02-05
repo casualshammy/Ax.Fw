@@ -24,7 +24,9 @@ public static class ServiceCollectionExtensions
     return _services;
   }
 
-  public static IServiceCollection AddCustomRequestLog(this IServiceCollection _services)
+  public static IServiceCollection AddCustomRequestLog(
+    this IServiceCollection _services,
+    bool _includeIpAddress)
   {
     _services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
@@ -35,9 +37,20 @@ public static class ServiceCollectionExtensions
       var httpCtx = _sp.GetRequiredService<IHttpContextAccessor>().HttpContext;
       var ctrlInfo = httpCtx?.GetEndpoint()?.Metadata.GetMetadata<RestControllerInfo>();
 
-      return ctrlInfo != null
-        ? new ScopedLogImpl(log[ctrlInfo.Type][reqId.Id.ToString()[..8]])
-        : new ScopedLogImpl(log["unknown-ctrl"][reqId.Id.ToString()[..8]]);
+      if (ctrlInfo != null)
+      {
+        if (_includeIpAddress)
+          return new ScopedLogImpl(log[ctrlInfo.Type][reqId.Id.ToString()[..8]][httpCtx?.Request.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown-ip"]);
+        else
+          return new ScopedLogImpl(log[ctrlInfo.Type][reqId.Id.ToString()[..8]]);
+      }
+      else
+      {
+        if (_includeIpAddress)
+          return new ScopedLogImpl(log["unknown-ctrl"][reqId.Id.ToString()[..8]][httpCtx?.Request.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown-ip"]);
+        else
+          return new ScopedLogImpl(log["unknown-ctrl"][reqId.Id.ToString()[..8]]);
+      }
     });
 
     return _services;

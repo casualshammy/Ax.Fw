@@ -3,12 +3,9 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Ax.Fw.Storage.Interfaces;
 
-public interface IBlobStorage : IDisposable
+public interface IBlobStorage : IGenericStorage, IDisposable
 {
-  void CompactDatabase();
-  long Count(string? _namespace, LikeExpr? _keyLikeExpression);
   void DeleteBlobs(string _namespace, KeyAlike? _key, DateTimeOffset? _from = null, DateTimeOffset? _to = null);
-  void Flush(bool _force);
   IEnumerable<BlobEntryMeta> ListBlobsMeta(string? _namespace, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null);
   IEnumerable<BlobEntryMeta> ListBlobsMeta(LikeExpr? _namespaceLikeExpression = null, LikeExpr? _keyLikeExpression = null, DateTimeOffset? _from = null, DateTimeOffset? _to = null);
   bool TryReadBlob(string _namespace, KeyAlike _key, [NotNullWhen(true)] out BlobStream? _outputData, [NotNullWhen(true)] out BlobEntryMeta? _meta);

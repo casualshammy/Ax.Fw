@@ -26,7 +26,7 @@ public class StressTests
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, CompareDbTestsV2JsonCtx.Default));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile, CompareDbTestsV2JsonCtx.Default));
 
       var enumerable = Enumerable.Range(0, PROBLEM_SIZE);
 
@@ -80,7 +80,7 @@ public class StressTests
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, CompareDbTestsV2JsonCtx.Default));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile, CompareDbTestsV2JsonCtx.Default));
 
       var enumerable = Enumerable.Range(0, PROBLEM_SIZE);
 
