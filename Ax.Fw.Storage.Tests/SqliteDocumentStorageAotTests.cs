@@ -21,7 +21,7 @@ public class SqliteDocumentStorageAotTests
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, DocumentJsonCtx.Default));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile, DocumentJsonCtx.Default));
       var doc = storage.WriteSimpleDocument(123, _data: "test_data");
 
       var data0 = storage.ReadSimpleDocument<string>(123);
@@ -53,7 +53,7 @@ public class SqliteDocumentStorageAotTests
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, DocumentJsonCtx.Default));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile, DocumentJsonCtx.Default));
       var doc0 = storage.WriteSimpleDocument(123, "test_data");
       var doc1 = storage.ReadSimpleDocument<string>(123);
 
@@ -85,7 +85,7 @@ public class SqliteDocumentStorageAotTests
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, DocumentJsonCtx.Default));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile, DocumentJsonCtx.Default));
 
       var record0 = storage.WriteSimpleDocument(123, "test-data-0");
       var record1 = storage.WriteSimpleDocument(123, "test-data-1");
@@ -118,7 +118,7 @@ public class SqliteDocumentStorageAotTests
       var ns = "test_table";
       var key = "test-key";
 
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, DocumentJsonCtx.Default));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile, DocumentJsonCtx.Default));
 
       var record0 = storage.WriteDocument(_namespace: ns, _key: key, _data: "test-data-0");
 
@@ -152,7 +152,7 @@ public class SqliteDocumentStorageAotTests
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, DocumentJsonCtx.Default));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile, DocumentJsonCtx.Default));
 
       var document0 = storage.WriteSimpleDocument(100, new DataRecord(100, "100"));
       var document1 = storage.ReadSimpleDocument<DataRecord>(100);
@@ -178,7 +178,7 @@ public class SqliteDocumentStorageAotTests
     try
     {
       var wrongNs = "wrong_ns";
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, DocumentJsonCtx.Default));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile, DocumentJsonCtx.Default));
       Assert.Equal(0, storage.CountSimpleDocuments<DataRecord>(null));
       Assert.Equal(0, storage.Count(wrongNs, null));
 
@@ -212,7 +212,7 @@ public class SqliteDocumentStorageAotTests
     try
     {
       var totalEntriesCount = 10000;
-      IDocumentStorage storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, DocumentJsonCtx.Default));
+      IDocumentStorage storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile, DocumentJsonCtx.Default));
       for (var i = 0; i < 10000; i++)
       {
         var entry = new DataRecord(i % 100, string.Empty);
@@ -281,7 +281,7 @@ public class SqliteDocumentStorageAotTests
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, DocumentJsonCtx.Default));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile, DocumentJsonCtx.Default));
       for (var i = 0; i < 1000; i++)
       {
         var entry = new DataRecord(i % 100, string.Empty);
@@ -315,7 +315,7 @@ public class SqliteDocumentStorageAotTests
     var dbFile = GetDbTmpPath();
     try
     {
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, DocumentJsonCtx.Default));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile, DocumentJsonCtx.Default));
 
       var list = new[] { 1, 2, 3 };
       var dictionary = ImmutableDictionary.CreateBuilder<string, int>();

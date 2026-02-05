@@ -30,6 +30,10 @@ public class CommonErrorsHandlerMiddleware : IMiddleware
       p_log.Warn($"Bad request: {bhEx}");
       await Results.Problem(detail: bhEx.Message, statusCode: (int)HttpStatusCode.BadRequest).ExecuteAsync(_ctx);
     }
+    catch (TaskCanceledException)
+    {
+      p_log.Warn($"Request is canceled by client");
+    }
     catch (Exception ex)
     {
       p_log.Error($"Request is failed: {ex}");

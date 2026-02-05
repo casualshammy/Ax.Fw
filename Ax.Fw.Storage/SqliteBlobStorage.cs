@@ -1,5 +1,6 @@
 ﻿using Ax.Fw.Extensions;
 using Ax.Fw.Storage.Data;
+using Ax.Fw.Storage.Data.Retention;
 using Ax.Fw.Storage.Extensions;
 using Ax.Fw.Storage.Interfaces;
 using Microsoft.Data.Sqlite;
@@ -65,34 +66,15 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
         .ObserveOn(scheduler)
         .Subscribe(_ =>
         {
-          var now = DateTimeOffset.UtcNow;
-          var docsToDelete = new HashSet<BlobEntryMeta>();
+          var removedDocs = _retentionOptions.Rules
+            .SelectMany(_ => _.Apply(this))
+            .ToHashSet();
 
-          foreach (var rule in _retentionOptions.Rules)
-          {
-            foreach (var doc in ListBlobsMeta(rule.Namespace))
-            {
-              var docAge = now - doc.Created;
-              var docLastModifiedAge = now - doc.LastModified;
-              if (rule.DocumentMaxAgeFromCreation != null && docAge > rule.DocumentMaxAgeFromCreation)
-                docsToDelete.Add(doc);
-              else if (rule.DocumentMaxAgeFromLastChange != null && docLastModifiedAge > rule.DocumentMaxAgeFromLastChange)
-                docsToDelete.Add(doc);
-            }
-          }
-
-          foreach (var doc in docsToDelete)
-            DeleteBlobs(doc.Namespace, doc.Key, null, null);
-
-          if (docsToDelete.Count > 0 && _retentionOptions.OnDocsDeleteCallback != null)
+          if (removedDocs.Count > 0 && _retentionOptions.OnDocsDeleteCallback != null)
           {
             try
             {
-              var data = docsToDelete
-                .Select(_ => new DocumentEntryMeta(_.DocId, _.Namespace, _.Key, _.LastModified, _.Created, _.Version))
-                .ToHashSet();
-
-              _retentionOptions.OnDocsDeleteCallback.Invoke(data);
+              _retentionOptions.OnDocsDeleteCallback.Invoke(removedDocs);
             }
             catch { }
           }
@@ -101,6 +83,11 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
       ToDispose(subs);
     }
   }
+
+  /// <summary>
+  /// Gets the file system path to the database file.
+  /// </summary>
+  public string FilePath => p_dbFilePath;
 
   /// <summary>
   /// Writes a blob to the database from a stream using SQLite's incremental I/O.
@@ -208,6 +195,61 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
       $"RETURNING doc_id, version, created; ";
 
     await p_writeSemaphore.WaitAsync(_ct);
+
+    var now = DateTimeOffset.UtcNow;
+    try
+    {
+      using var connection = GetConnection();
+      using var command = connection.CreateCommand();
+
+      command.CommandText = insertSql;
+      command.Parameters.AddWithValue("@namespace", _namespace);
+      command.Parameters.AddWithValue("@key", _key.Key);
+      command.Parameters.AddWithValue("@last_modified", now.UtcTicks);
+      command.Parameters.AddWithValue("@created", now.UtcTicks);
+      command.Parameters.AddWithValue("@version", 1);
+      command.Parameters.AddWithValue("@data", SqliteType.Blob, _data);
+
+      using var reader = command.ExecuteReader();
+      if (!reader.Read())
+        throw new InvalidOperationException($"Can't create document - db reader returned no result");
+
+      var docId = reader.GetInt64(0);
+      var version = reader.GetInt64(1);
+      var created = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
+
+      return new BlobEntryMeta(docId, _namespace, _key.Key, now, created, version, _data.Length);
+    }
+    finally
+    {
+      p_writeSemaphore.Release();
+    }
+  }
+
+  /// <summary>
+  /// Writes a blob to the database from a byte array.
+  /// If a blob with the same namespace and key exists, it will be updated.
+  /// </summary>
+  /// <param name="_namespace">The namespace for organizing blobs</param>
+  /// <param name="_key">The unique key within the namespace</param>
+  /// <param name="_data">The byte array containing blob data to write</param>
+  /// <returns>Metadata about the written blob entry</returns>
+  public BlobEntryMeta WriteBlob(
+    string _namespace,
+    KeyAlike _key,
+    byte[] _data)
+  {
+    const string insertSql =
+      $"INSERT OR REPLACE INTO document_data (namespace, key, last_modified, created, version, data) " +
+      $"VALUES (@namespace, @key, @last_modified, @created, @version, @data) " +
+      $"ON CONFLICT (namespace, key) " +
+      $"DO UPDATE SET " +
+      $"  last_modified=@last_modified, " +
+      $"  version=version+1, " +
+      $"  data=@data " +
+      $"RETURNING doc_id, version, created; ";
+
+    p_writeSemaphore.Wait();
 
     var now = DateTimeOffset.UtcNow;
     try
@@ -363,6 +405,70 @@ public class SqliteBlobStorage : DisposableStack, IBlobStorage
       var length = reader.GetInt64(6);
 
       yield return new BlobEntryMeta(docId, ns, optionalKey, lastModified, created, version, length);
+    }
+  }
+
+  /// <summary>
+  /// Lists blobs from that match the specified criteria, transforming each blob's data using the
+  /// provided function.
+  /// </summary>
+  /// <remarks>Enumeration is deferred; blobs are retrieved and transformed as the returned sequence is
+  /// iterated. The caller is responsible for ensuring that the provided transformation function correctly processes the
+  /// blob data stream. This method is not thread-safe.</remarks>
+  /// <typeparam name="T">The type of the transformed data returned for each blob entry.</typeparam>
+  /// <param name="_namespace">The namespace to filter blobs by. If <paramref name="_namespace"/> is <see langword="null"/>, blobs from all
+  /// namespaces are included.</param>
+  /// <param name="_dataTransformFunc">A function that transforms the raw blob data stream and associated metadata into an object of type <typeparamref
+  /// name="T"/>. The function receives the blob's data stream and a tuple containing the document ID and raw data
+  /// length.</param>
+  /// <param name="_keyLikeExpression">An optional pattern used to filter blobs by key. If <paramref name="_keyLikeExpression"/> is <see
+  /// langword="null"/>, all keys are included.</param>
+  /// <param name="_from">An optional lower bound for the blob's last modified timestamp. Only blobs modified on or after this time are
+  /// included. If <paramref name="_from"/> is <see langword="null"/>, no lower bound is applied.</param>
+  /// <param name="_to">An optional upper bound for the blob's last modified timestamp. Only blobs modified on or before this time are
+  /// included. If <paramref name="_to"/> is <see langword="null"/>, no upper bound is applied.</param>
+  /// <returns>An enumerable collection of <see cref="BlobEntry{T}"/> objects representing the blobs that match the specified
+  /// filters. Each entry contains the transformed data and associated metadata.</returns>
+  public IEnumerable<BlobEntry<T>> ListBlobs<T>(
+    string? _namespace,
+    Func<Stream, (long DocId, long RawLength), T> _dataTransformFunc,
+    LikeExpr? _keyLikeExpression = null,
+    DateTimeOffset? _from = null,
+    DateTimeOffset? _to = null)
+  {
+    const string listSql =
+      $"SELECT doc_id, namespace, key, last_modified, created, version, length(data) as length " +
+      $"FROM document_data " +
+      $"WHERE " +
+      $"  (@namespace IS NULL OR @namespace=namespace) AND " +
+      $"  (@key_like IS NULL OR key LIKE @key_like) AND " +
+      $"  (@from IS NULL OR last_modified>=@from) AND " +
+      $"  (@to IS NULL OR last_modified<=@to); ";
+
+    using var connection = GetConnection();
+    using var cmd = connection.CreateCommand();
+    cmd.CommandText = listSql;
+
+    cmd.Parameters.AddWithNullableValue("@namespace", _namespace);
+    cmd.Parameters.AddWithNullableValue("@key_like", _keyLikeExpression?.Pattern);
+    cmd.Parameters.AddWithNullableValue("@from", _from?.UtcTicks);
+    cmd.Parameters.AddWithNullableValue("@to", _to?.UtcTicks);
+
+    using var reader = cmd.ExecuteReader();
+    while (reader.Read())
+    {
+      var docId = reader.GetInt32(0);
+      var ns = (string)reader["namespace"];
+      var optionalKey = reader.GetString(2);
+      var lastModified = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
+      var created = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
+      var version = reader.GetInt64(5);
+      var length = (long)reader["length"];
+
+      using var sqliteBlob = new SqliteBlob(connection, "document_data", "data", docId, true);
+      var data = _dataTransformFunc(sqliteBlob, (docId, length));
+
+      yield return new BlobEntry<T>(docId, ns, optionalKey, lastModified, created, version, length, data);
     }
   }
 

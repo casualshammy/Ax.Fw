@@ -38,7 +38,7 @@ public class SqliteBlobStorageTests
 
         Assert.NotNull(storedData);
         Assert.NotNull(meta);
-        Assert.Equal(data.Length, meta.Length);
+        Assert.Equal(data.Length, meta.RawLength);
         Assert.Equal(data, storedData);
       }
 
@@ -80,7 +80,7 @@ public class SqliteBlobStorageTests
 
         Assert.NotNull(storedData);
         Assert.NotNull(meta);
-        Assert.Equal(data.Length, meta.Length);
+        Assert.Equal(data.Length, meta.RawLength);
         Assert.Equal(data.ToArray(), storedData.ToArray());
         storedData.Dispose();
       }
@@ -257,7 +257,7 @@ public class SqliteBlobStorageTests
 
         Assert.NotNull(storedData);
         Assert.NotNull(meta);
-        Assert.Equal(dataBytes.Length - 1, meta.Length);
+        Assert.Equal(dataBytes.Length - 1, meta.RawLength);
         Assert.Equal(dataBytes.AsMemory(0, dataBytes.Length - 1), storedData.ToArray());
         storedData.Dispose();
       }
@@ -358,10 +358,12 @@ public class SqliteBlobStorageTests
 
       var origWalFileSize = walFile.Length;
       storage.Flush(false);
+      await Task.Delay(1000);
       walFile.Refresh();
       Assert.Equal(origWalFileSize, walFile.Length);
 
       storage.Flush(true);
+      await Task.Delay(1000);
       walFile.Refresh();
       Assert.Equal(0, walFile.Length);
     }

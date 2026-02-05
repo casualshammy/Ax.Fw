@@ -1,5 +1,6 @@
 ﻿using Ax.Fw.Extensions;
 using Ax.Fw.Storage.Data;
+using Ax.Fw.Storage.Data.Retention;
 using Ax.Fw.Storage.Tests.Data;
 using System.Diagnostics;
 using System.Text.Json.Serialization;
@@ -25,9 +26,9 @@ public class ImprovedDocumentStorageTests
     try
     {
       var entries = Enumerable.Range(0, 1000).ToArray();
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, ImprovedDocumentStorageTestsV2JsonCtx.Default));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile, ImprovedDocumentStorageTestsV2JsonCtx.Default));
       var cachedStorage = lifetime.ToDisposeOnEnding(
-        new SqliteDocumentStorage(cachedDbPath, ImprovedDocumentStorageTestsV2JsonCtx.Default, new StorageCacheOptions(entries.Length, TimeSpan.FromSeconds(60))));
+        new SqliteDocumentStorageV2(cachedDbPath, ImprovedDocumentStorageTestsV2JsonCtx.Default, new StorageCacheOptions(entries.Length, TimeSpan.FromSeconds(60))));
 
       // warm-up
       foreach (var entry in entries)
@@ -47,7 +48,7 @@ public class ImprovedDocumentStorageTests
       {
         storage.WriteSimpleDocument(entry, new DataRecord(entry, entry.ToString()));
 
-        DocumentEntry<DataRecord>? document = null;
+        BlobEntry<DataRecord>? document = null;
         for (int i = 0; i < 100; i++)
           document = storage.ReadSimpleDocument<DataRecord>(entry);
         Assert.NotNull(document);
@@ -64,7 +65,7 @@ public class ImprovedDocumentStorageTests
       {
         cachedStorage.WriteSimpleDocument(entry, new DataRecord(entry, entry.ToString()));
 
-        DocumentEntry<DataRecord>? document = null;
+        BlobEntry<DataRecord>? document = null;
         for (int i = 0; i < 100; i++)
           document = cachedStorage.ReadSimpleDocument<DataRecord>(entry);
         Assert.NotNull(document);
@@ -97,12 +98,12 @@ public class ImprovedDocumentStorageTests
       var entries = Enumerable.Range(0, 1000).ToArray();
 
       var counter = 0;
-      var storage = new SqliteDocumentStorage(
+      var storage = new SqliteDocumentStorageV2(
         dbFile,
         ImprovedDocumentStorageTestsV2JsonCtx.Default,
         null,
         new StorageRetentionOptions(
-          [StorageRetentionRule.CreateForType<DataRecord>(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1))],
+          [StorageRetentionRuleAge.CreateForType<DataRecord>(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1))],
           TimeSpan.FromMilliseconds(100),
           _deletedDocsMeta => counter += _deletedDocsMeta.Count));
 
