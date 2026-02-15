@@ -6,6 +6,7 @@ using Ax.Fw.SharedTypes.Attributes;
 using Ax.Fw.SharedTypes.Data.Bus;
 using Ax.Fw.SharedTypes.Data.Workers;
 using Ax.Fw.SharedTypes.Interfaces;
+using Ax.Fw.TcpBus.JsonCtx;
 using Ax.Fw.Workers;
 using System;
 using System.Collections.Concurrent;
@@ -19,6 +20,7 @@ using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using WatsonTcp;
@@ -28,53 +30,57 @@ namespace Ax.Fw.TcpBus;
 public static class TcpBusClientFactory
 {
   public static IDisposable Create(
-      int _port,
-      IReadOnlyList<Type> _types,
-      out TcpBusClient _serverInstance)
+    int _port,
+    IReadOnlyList<Type> _types,
+    JsonSerializerContext _jsonCtx,
+    out TcpBusClient _serverInstance)
   {
     var lifetime = new Lifetime();
 
-    _serverInstance = new TcpBusClient(lifetime, _types, _port);
+    _serverInstance = new TcpBusClient(lifetime, _types, _jsonCtx, _port);
 
     return Disposable.Create(lifetime.End);
   }
 
   public static IDisposable Create(
-      int _port,
-      string _host,
-      IReadOnlyList<Type> _types,
-      out TcpBusClient _serverInstance)
+    int _port,
+    string _host,
+    IReadOnlyList<Type> _types,
+    JsonSerializerContext _jsonCtx,
+    out TcpBusClient _serverInstance)
   {
     var lifetime = new Lifetime();
 
-    _serverInstance = new TcpBusClient(lifetime, _types, _port, _host);
+    _serverInstance = new TcpBusClient(lifetime, _types, _jsonCtx, _port, _host);
 
     return Disposable.Create(lifetime.End);
   }
 
   public static IDisposable Create(
-      int _port,
-      IScheduler _scheduler,
-      IReadOnlyList<Type> _types,
-      out TcpBusClient _serverInstance)
+    int _port,
+    IScheduler _scheduler,
+    IReadOnlyList<Type> _types,
+    JsonSerializerContext _jsonCtx,
+    out TcpBusClient _serverInstance)
   {
     var lifetime = new Lifetime();
 
-    _serverInstance = new TcpBusClient(lifetime, _scheduler, _types, _port);
+    _serverInstance = new TcpBusClient(lifetime, _scheduler, _types, _jsonCtx, _port);
 
     return Disposable.Create(lifetime.End);
   }
 
   public static IDisposable Create(
-      int _port,
-      string _host,
-      IScheduler _scheduler,
-      IReadOnlyList<Type> _types,
-      out TcpBusClient _serverInstance)
+    int _port,
+    string _host,
+    IScheduler _scheduler,
+    IReadOnlyList<Type> _types,
+    JsonSerializerContext _jsonCtx,
+    out TcpBusClient _serverInstance)
   {
     var lifetime = new Lifetime();
 
-    _serverInstance = new TcpBusClient(lifetime, _scheduler, _types, _port, _host);
+    _serverInstance = new TcpBusClient(lifetime, _scheduler, _types, _jsonCtx, _port, _host);
 
     return Disposable.Create(lifetime.End);
   }
@@ -88,6 +94,7 @@ public class TcpBusClient : ITcpBusClient
   private readonly ConcurrentDictionary<Type, TcpMsg> p_lastMsg = new();
   private readonly IReadOnlyLifetime p_lifetime;
   private readonly IScheduler p_scheduler;
+  private readonly JsonSerializerContext p_jsonCtx;
   private readonly byte[]? p_password;
   private readonly IReadOnlyDictionary<string, Type> p_typesCache;
   private readonly IReadOnlyDictionary<Type, string> p_typesCacheReverse;
@@ -98,6 +105,7 @@ public class TcpBusClient : ITcpBusClient
     IReadOnlyLifetime _lifetime,
     IScheduler _scheduler,
     IReadOnlyList<Type> _types,
+    JsonSerializerContext _jsonCtx,
     int _port,
     string _host = "127.0.0.1",
     string? _password = null)
@@ -118,6 +126,7 @@ public class TcpBusClient : ITcpBusClient
     p_typesCacheReverse = typesCacheReverse;
     p_lifetime = _lifetime;
     p_scheduler = _scheduler;
+    p_jsonCtx = _jsonCtx;
     p_password = _password != null ? Encoding.UTF8.GetBytes(_password) : null;
     _lifetime.ToDisposeOnEnded(p_msgFlow);
     _lifetime.ToDisposeOnEnded(p_incomingMsgFlow);
@@ -171,10 +180,11 @@ public class TcpBusClient : ITcpBusClient
   public TcpBusClient(
     IReadOnlyLifetime _lifetime,
     IReadOnlyList<Type> _types,
+    JsonSerializerContext _jsonCtx,
     int _port,
     string _host = "127.0.0.1",
     string? _password = null)
-    : this(_lifetime, ThreadPoolScheduler.Instance, _types, _port, _host, _password)
+    : this(_lifetime, ThreadPoolScheduler.Instance, _types, _jsonCtx, _port, _host, _password)
   { }
 
   public bool Connected => p_client.Connected;
@@ -191,7 +201,7 @@ public class TcpBusClient : ITcpBusClient
 
     try
     {
-      var msg = JsonSerializer.Deserialize(bytes, typeof(TcpMsg)) as TcpMsg;
+      var msg = JsonSerializer.Deserialize(bytes, TcpBusJsonCtx.Default.TcpMsg);
 
       if (msg == null)
         return;
@@ -215,20 +225,21 @@ public class TcpBusClient : ITcpBusClient
   /// <returns></returns>
   public IObservable<T> OfType<T>(bool _includeLastValue = false) where T : notnull
   {
-    if (!p_typesCacheReverse.TryGetValue(typeof(T), out var typeSlug))
+    var type = typeof(T);
+    if (!p_typesCacheReverse.TryGetValue(type, out var typeSlug))
       throw new ArgumentNullException(nameof(T), $"This type cannot be deserialized!");
 
-    if (_includeLastValue && p_lastMsg.TryGetValue(typeof(T), out var lastMsg))
+    if (_includeLastValue && p_lastMsg.TryGetValue(type, out var lastMsg))
       return p_msgFlow
         .Merge(Observable.Return(lastMsg))
         .Where(_ => _.TypeSlug == typeSlug)
-        .Select(_ => JsonSerializer.Deserialize<T>(_.Data))
+        .Select(_ => (T?)JsonSerializer.Deserialize(_.Data, type, p_jsonCtx))
         .WhereNotNull()
         .ObserveOn(p_scheduler);
     else
       return p_msgFlow
         .Where(_ => _.TypeSlug == typeSlug)
-        .Select(_ => JsonSerializer.Deserialize<T>(_.Data))
+        .Select(_ => (T?)JsonSerializer.Deserialize(_.Data, type, p_jsonCtx))
         .WhereNotNull()
         .ObserveOn(p_scheduler);
   }
@@ -263,12 +274,14 @@ public class TcpBusClient : ITcpBusClient
   /// <param name="_data"></param>
   public async Task PostMsgAsync<T>(T _data, CancellationToken _ct) where T : notnull
   {
+    var type = typeof(T);
+
     if (_data == null)
       throw new ArgumentNullException(nameof(_data));
-    if (!p_typesCacheReverse.TryGetValue(typeof(T), out var typeSlug))
+    if (!p_typesCacheReverse.TryGetValue(type, out var typeSlug))
       throw new ArgumentNullException(nameof(T), $"This type cannot be serialized!");
 
-    var dataJson = JsonSerializer.Serialize(_data);
+    var dataJson = JsonSerializer.Serialize(_data, type, p_jsonCtx);
 
     var tcpMsg = new TcpMsg(
       Guid.NewGuid(),
@@ -283,7 +296,7 @@ public class TcpBusClient : ITcpBusClient
     p_lastMsg[_tcpMsg.Data.GetType()] = _tcpMsg;
     p_msgFlow.OnNext(_tcpMsg);
 
-    var tcpMsgBytes = JsonSerializer.SerializeToUtf8Bytes(_tcpMsg);
+    var tcpMsgBytes = JsonSerializer.SerializeToUtf8Bytes(_tcpMsg, TcpBusJsonCtx.Default.TcpMsg);
     if (p_password != null)
       tcpMsgBytes = await AesCbc.EncryptAsync(tcpMsgBytes, p_password, true, _ct);
 
@@ -308,17 +321,17 @@ public class TcpBusClient : ITcpBusClient
       var value = await Observable
           .Merge(
               p_msgFlow.ObserveOn(p_scheduler).Where(_x => _x.Guid == guid && _x.TypeSlug == resTypeSlug),
-              Observable.Timer(_timeout, p_scheduler).Select(_ => new TcpMsg(Guid.Empty, "", Array.Empty<byte>())),
+              Observable.Timer(_timeout, p_scheduler).Select(_ => new TcpMsg(Guid.Empty, "", [])),
               Observable.Return(Unit.Default).SelectAsync(async (_, _ct) =>
               {
-                await PostMsgAsync(new TcpMsg(guid, reqTypeSlug, JsonSerializer.SerializeToUtf8Bytes(_req)), _ct);
-                return new TcpMsg(ignoredGuid, "", Array.Empty<byte>());
+                await PostMsgAsync(new TcpMsg(guid, reqTypeSlug, JsonSerializer.SerializeToUtf8Bytes(_req, typeof(TReq), p_jsonCtx)), _ct);
+                return new TcpMsg(ignoredGuid, "", []);
               }))
           .FirstOrDefaultAsync(_x => _x.Guid != ignoredGuid)
           .ToTask(_ct);
 
       if (value != default && value.Guid != Guid.Empty)
-        return JsonSerializer.Deserialize<TRes>(value.Data);
+        return (TRes?)JsonSerializer.Deserialize(value.Data, typeof(TRes), p_jsonCtx);
 
       return default;
     }
@@ -350,12 +363,12 @@ public class TcpBusClient : ITcpBusClient
         .SelectAsync(async (_tcpMsg, _ct) =>
         {
           var guid = _tcpMsg.Guid;
-          var msg = JsonSerializer.Deserialize<TReq>(_tcpMsg.Data);
+          var msg = (TReq?)JsonSerializer.Deserialize(_tcpMsg.Data, typeof(TReq), p_jsonCtx);
           if (msg == null)
             return;
 
           var result = _func(msg);
-          await PostMsgAsync(new TcpMsg(guid, resTypeSlug, JsonSerializer.SerializeToUtf8Bytes(result)), _ct);
+          await PostMsgAsync(new TcpMsg(guid, resTypeSlug, JsonSerializer.SerializeToUtf8Bytes(result, typeof(TRes), p_jsonCtx)), _ct);
         }, p_scheduler)
         .Subscribe();
   }
@@ -382,12 +395,12 @@ public class TcpBusClient : ITcpBusClient
         .SelectAsync(async (_tcpMsg, _ct) =>
         {
           var guid = _tcpMsg.Guid;
-          var msg = JsonSerializer.Deserialize<TReq>(_tcpMsg.Data);
+          var msg = (TReq?)JsonSerializer.Deserialize(_tcpMsg.Data, typeof(TReq), p_jsonCtx);
           if (msg == null)
             return;
 
           var result = await _func(msg);
-          await PostMsgAsync(new TcpMsg(guid, resTypeSlug, JsonSerializer.SerializeToUtf8Bytes(result)), _ct);
+          await PostMsgAsync(new TcpMsg(guid, resTypeSlug, JsonSerializer.SerializeToUtf8Bytes(result, typeof(TRes), p_jsonCtx)), _ct);
         }, p_scheduler)
         .Subscribe();
   }
@@ -414,12 +427,12 @@ public class TcpBusClient : ITcpBusClient
       .SelectAsync(async (_tcpMsg, _ct) =>
       {
         var guid = _tcpMsg.Guid;
-        var msg = JsonSerializer.Deserialize<TReq>(_tcpMsg.Data);
+        var msg = (TReq?)JsonSerializer.Deserialize(_tcpMsg.Data, typeof(TReq), p_jsonCtx);
         if (msg == null)
           return;
 
         var result = _func(msg);
-        await PostMsgAsync(new TcpMsg(guid, resTypeSlug, JsonSerializer.SerializeToUtf8Bytes(result)), _ct);
+        await PostMsgAsync(new TcpMsg(guid, resTypeSlug, JsonSerializer.SerializeToUtf8Bytes(result, typeof(TRes), p_jsonCtx)), _ct);
       }, p_scheduler)
       .Subscribe(_lifetime);
   }
@@ -446,12 +459,12 @@ public class TcpBusClient : ITcpBusClient
       .SelectAsync(async (_tcpMsg, _ct) =>
       {
         var guid = _tcpMsg.Guid;
-        var msg = JsonSerializer.Deserialize<TReq>(_tcpMsg.Data);
+        var msg = (TReq?)JsonSerializer.Deserialize(_tcpMsg.Data, typeof(TReq), p_jsonCtx);
         if (msg == null)
           return;
 
         var result = await _func(msg);
-        await PostMsgAsync(new TcpMsg(guid, resTypeSlug, JsonSerializer.SerializeToUtf8Bytes(result)), _ct);
+        await PostMsgAsync(new TcpMsg(guid, resTypeSlug, JsonSerializer.SerializeToUtf8Bytes(result, typeof(TRes), p_jsonCtx)), _ct);
       }, p_scheduler)
       .Subscribe(_lifetime);
   }

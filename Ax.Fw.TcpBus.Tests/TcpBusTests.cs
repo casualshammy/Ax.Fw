@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using System.Reactive.Concurrency;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -14,6 +15,10 @@ using Xunit.Abstractions;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 namespace Ax.Fw.TcpBus.Tests;
+
+[JsonSerializable(typeof(SimpleMsgReq))]
+[JsonSerializable(typeof(SimpleMsgRes))]
+internal partial class CustomTcpBusJsonCtx : JsonSerializerContext { }
 
 public class TcpBusTests
 {
@@ -24,11 +29,11 @@ public class TcpBusTests
     typeof(SimpleMsgRes)
   ];
 
-private readonly ITestOutputHelper p_output;
+  private readonly ITestOutputHelper p_output;
 
-  public TcpBusTests(ITestOutputHelper output)
+  public TcpBusTests(ITestOutputHelper _output)
   {
-    p_output = output;
+    p_output = _output;
   }
 
   [Theory]
@@ -46,8 +51,8 @@ private readonly ITestOutputHelper p_output;
       {
         var scheduler = lifetime.ToDisposeOnEnding(new EventLoopScheduler());
         var server = new TcpBusServer(lifetime, 9600);
-        var client0 = new TcpBusClient(lifetime, scheduler, p_types, 9600);
-        var client1 = new TcpBusClient(lifetime, scheduler, p_types, 9600);
+        var client0 = new TcpBusClient(lifetime, scheduler, p_types, CustomTcpBusJsonCtx.Default, 9600);
+        var client1 = new TcpBusClient(lifetime, scheduler, p_types, CustomTcpBusJsonCtx.Default, 9600);
 
         Thread.Sleep(TimeSpan.FromSeconds(1));
         Assert.Equal(2, server.ClientsCount);
@@ -106,9 +111,9 @@ private readonly ITestOutputHelper p_output;
       try
       {
         var server = new TcpBusServer(lifetime, 9600);
-        var receiverClient = new TcpBusClient(lifetime, p_types, 9600, _password: "test-password");
-        var senderClient = new TcpBusClient(lifetime, p_types, 9600, _password: "test-password");
-        var brokenClient = new TcpBusClient(lifetime, p_types, 9600);
+        var receiverClient = new TcpBusClient(lifetime, p_types, CustomTcpBusJsonCtx.Default, 9600, _password: "test-password");
+        var senderClient = new TcpBusClient(lifetime, p_types, CustomTcpBusJsonCtx.Default, 9600, _password: "test-password");
+        var brokenClient = new TcpBusClient(lifetime, p_types, CustomTcpBusJsonCtx.Default, 9600);
 
         Thread.Sleep(TimeSpan.FromSeconds(1));
         Assert.Equal(3, server.ClientsCount);
@@ -158,8 +163,8 @@ private readonly ITestOutputHelper p_output;
       {
         var scheduler = lifetime.ToDisposeOnEnding(new EventLoopScheduler());
         var server = new TcpBusServer(lifetime, 9600);
-        var client0 = new TcpBusClient(lifetime, scheduler, p_types, 9600, _password: "test-password");
-        var client1 = new TcpBusClient(lifetime, scheduler, p_types, 9600, _password: "test-password");
+        var client0 = new TcpBusClient(lifetime, scheduler, p_types, CustomTcpBusJsonCtx.Default, 9600, _password: "test-password");
+        var client1 = new TcpBusClient(lifetime, scheduler, p_types, CustomTcpBusJsonCtx.Default, 9600, _password: "test-password");
 
         Thread.Sleep(TimeSpan.FromSeconds(1));
         Assert.Equal(2, server.ClientsCount);
