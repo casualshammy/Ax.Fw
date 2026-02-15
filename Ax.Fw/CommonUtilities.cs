@@ -255,4 +255,54 @@ public static class TaskUtils
     return new Tuple<T1, T2, T3, T4, T5, T6>(_task1.Result, _task2.Result, _task3.Result, _task4.Result, _task5.Result, _task6.Result);
   }
 
+  public static async Task<Tuple<T1, T2>> WhenAll<T1, T2>(
+    ValueTask<T1> _task1,
+    ValueTask<T2> _task2)
+  {
+    await Task.WhenAll(_task1.AsTask(), _task2.AsTask());
+    return new Tuple<T1, T2>(_task1.Result, _task2.Result);
+  }
+
+  public static async Task<Tuple<T1, T2, T3>> WhenAll<T1, T2, T3>(
+    ValueTask<T1> _task1,
+    ValueTask<T2> _task2,
+    ValueTask<T3> _task3)
+  {
+    await Task.WhenAll(_task1.AsTask(), _task2.AsTask(), _task3.AsTask());
+    return new Tuple<T1, T2, T3>(_task1.Result, _task2.Result, _task3.Result);
+  }
+
+  public static async Task<Tuple<T1, T2, T3, T4>> WhenAll<T1, T2, T3, T4>(
+    ValueTask<T1> _task1,
+    ValueTask<T2> _task2,
+    ValueTask<T3> _task3,
+    ValueTask<T4> _task4)
+  {
+    await Task.WhenAll(_task1.AsTask(), _task2.AsTask(), _task3.AsTask(), _task4.AsTask());
+    return new Tuple<T1, T2, T3, T4>(_task1.Result, _task2.Result, _task3.Result, _task4.Result);
+  }
+
+  public static async Task<Tuple<T1, T2, T3, T4, T5>> WhenAll<T1, T2, T3, T4, T5>(
+    ValueTask<T1> _task1,
+    ValueTask<T2> _task2,
+    ValueTask<T3> _task3,
+    ValueTask<T4> _task4,
+    ValueTask<T5> _task5)
+  {
+    await Task.WhenAll(_task1.AsTask(), _task2.AsTask(), _task3.AsTask(), _task4.AsTask(), _task5.AsTask());
+    return new Tuple<T1, T2, T3, T4, T5>(_task1.Result, _task2.Result, _task3.Result, _task4.Result, _task5.Result);
+  }
+
+  public static async Task<Tuple<T1, T2, T3, T4, T5, T6>> WhenAll<T1, T2, T3, T4, T5, T6>(
+    ValueTask<T1> _task1,
+    ValueTask<T2> _task2,
+    ValueTask<T3> _task3,
+    ValueTask<T4> _task4,
+    ValueTask<T5> _task5,
+    ValueTask<T6> _task6)
+  {
+    await Task.WhenAll(_task1.AsTask(), _task2.AsTask(), _task3.AsTask(), _task4.AsTask(), _task5.AsTask(), _task6.AsTask());
+    return new Tuple<T1, T2, T3, T4, T5, T6>(_task1.Result, _task2.Result, _task3.Result, _task4.Result, _task5.Result, _task6.Result);
+  }
+
 }
