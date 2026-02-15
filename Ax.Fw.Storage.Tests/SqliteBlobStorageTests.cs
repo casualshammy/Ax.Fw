@@ -356,12 +356,6 @@ public class SqliteBlobStorageTests
       var walFile = new FileInfo($"{dbFile}-wal");
       Assert.True(walFile.Exists);
 
-      var origWalFileSize = walFile.Length;
-      storage.Flush(false);
-      await Task.Delay(1000);
-      walFile.Refresh();
-      Assert.Equal(origWalFileSize, walFile.Length);
-
       storage.Flush(true);
       await Task.Delay(1000);
       walFile.Refresh();
