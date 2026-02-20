@@ -24,18 +24,18 @@ namespace Ax.Fw.Web.Modules.WebSocketServer;
 /// integrates with .NET's reactive streams for event notification. Thread safety is ensured for session management and
 /// broadcasting operations. Use this class to build scalable WebSocket-based applications where clients are organized
 /// into logical groups.</remarks>
-/// <typeparam name="TSessionId">The type used to uniquely identify WebSocket sessions.</typeparam>
+/// <typeparam name="TClientId">The type used to identify WebSocket clients.</typeparam>
 /// <typeparam name="TSessionGroup">The type used to group WebSocket sessions.</typeparam>
-public class WebSocketServer<TSessionId, TSessionGroup>
+public class WebSocketServer<TClientId, TSessionGroup>
+  where TClientId : notnull, IEquatable<TClientId>
   where TSessionGroup : notnull, IEquatable<TSessionGroup>
-  where TSessionId : notnull, IEquatable<TSessionId>
 {
-  private sealed record WsMsg(TSessionId Sender, TSessionGroup SessionGroup, object Msg);
+  private sealed record WsMsg(Guid ConnectionId, TClientId Sender, TSessionGroup SessionGroup, object Msg);
   private sealed record BroadcastTask(TSessionGroup SessionGroup, byte[] Data, bool Compressed);
 
   private readonly Subject<WsMsg> p_incomingMsgs = new();
-  private readonly Subject<WebSocketSession<TSessionId, TSessionGroup>> p_clientConnectedFlow = new();
-  private readonly Subject<WebSocketSession<TSessionId, TSessionGroup>> p_clientDisconnectedFlow = new();
+  private readonly Subject<WebSocketSession<TClientId, TSessionGroup>> p_clientConnectedFlow = new();
+  private readonly Subject<WebSocketSession<TClientId, TSessionGroup>> p_clientDisconnectedFlow = new();
   private readonly Subject<BroadcastTask> p_broadcastQueueSubj = new();
   private readonly IReadOnlyLifetime p_lifetime;
   private readonly JsonSerializerContext p_jsonCtx;
@@ -43,8 +43,7 @@ public class WebSocketServer<TSessionId, TSessionGroup>
   private readonly IReadOnlyDictionary<Type, string> p_msgTypesReverse;
   private readonly int p_connectionMaxIdleTimeMs;
   private readonly Action<string>? p_onError;
-  private readonly ConcurrentDictionary<long, WebSocketSession<TSessionId, TSessionGroup>> p_sessions = new();
-  private long p_sessionsCount = 0;
+  private readonly ConcurrentDictionary<Guid, WebSocketSession<TClientId, TSessionGroup>> p_sessions = new();
 
   /// <summary>
   /// Initializes a new instance of the WebSocketServer class, configuring message serialization, supported message
@@ -107,35 +106,37 @@ public class WebSocketServer<TSessionId, TSessionGroup>
   /// <summary>
   /// Gets an observable sequence that signals when a new client establishes a WebSocket connection.
   /// </summary>
-  public IObservable<WebSocketSession<TSessionId, TSessionGroup>> ClientConnected => p_clientConnectedFlow;
+  public IObservable<WebSocketSession<TClientId, TSessionGroup>> ClientConnected => p_clientConnectedFlow;
 
   /// <summary>
   /// Gets an observable sequence that signals when a client disconnects from a WebSocket session.
   /// </summary>
-  public IObservable<WebSocketSession<TSessionId, TSessionGroup>> ClientDisconnected => p_clientDisconnectedFlow;
+  public IObservable<WebSocketSession<TClientId, TSessionGroup>> ClientDisconnected => p_clientDisconnectedFlow;
 
   /// <summary>
   /// Gets a read-only list of all active WebSocket sessions.
   /// </summary>
-  public IReadOnlyList<WebSocketSession<TSessionId, TSessionGroup>> Sessions => [.. p_sessions.Values];
+  public IReadOnlyList<WebSocketSession<TClientId, TSessionGroup>> Sessions => [.. p_sessions.Values];
 
   /// <summary>
   /// Accepts a WebSocket connection and initializes a new session asynchronously.
   /// </summary>
   /// <remarks>If the provided WebSocket is not open, the method returns <see langword="false"/> immediately.
   /// Otherwise, it creates a new session and waits for session to end.</remarks>
-  /// <param name="_id">The unique identifier for the session to be created.</param>
+  /// <param name="_connectionId">The unique identifier for the WebSocket connection.</param>
+  /// <param name="_id">The identifier for the client.</param>
   /// <param name="_sessionGroup">The session group associated with the new WebSocket session.</param>
   /// <param name="_webSocket">The WebSocket instance to be accepted. Must be in the <see cref="WebSocketState.Open"/> state.</param>
   public async Task<bool> AcceptSocketAsync(
-    TSessionId _id,
+    Guid _connectionId,
+    TClientId _id,
     TSessionGroup _sessionGroup,
     WebSocket _webSocket)
   {
     if (_webSocket.State != WebSocketState.Open)
       return false;
 
-    var session = new WebSocketSession<TSessionId, TSessionGroup>(_sessionGroup, _id, _webSocket);
+    var session = new WebSocketSession<TClientId, TSessionGroup>(_connectionId, _sessionGroup, _id, _webSocket);
     using var semaphore = new SemaphoreSlim(0, 1);
     using var scheduler = new EventLoopScheduler();
 
@@ -163,15 +164,15 @@ public class WebSocketServer<TSessionId, TSessionGroup>
   /// sequence.</param>
   /// <returns>An observable sequence containing messages of type T from the specified session group. The sequence emits only
   /// messages that match the type and group criteria.</returns>
-  public IObservable<T> IncomingMessagesOfType<T>(TSessionGroup _group)
-    where T : class
+  public IObservable<IncomingWsMsg<TClientId, TSessionGroup, TData>> IncomingMessagesOfType<TData>(TSessionGroup _group)
+    where TData : class
   {
     return p_incomingMsgs
       .Where(_ => _.SessionGroup.Equals(_group))
       .Select(_ =>
       {
-        if (_.Msg.GetType() is T typedMsg)
-          return typedMsg;
+        if (_.Msg.GetType() is TData typedMsg)
+          return new IncomingWsMsg<TClientId, TSessionGroup, TData>(_.ConnectionId, _.Sender, _.SessionGroup, typedMsg);
         else
           return null;
       })
@@ -230,7 +231,7 @@ public class WebSocketServer<TSessionId, TSessionGroup>
       }
       catch (Exception ex)
       {
-        p_onError?.Invoke($"Can't send msg to socket '#{connectionIndex} / {session.Id}': {ex}");
+        p_onError?.Invoke($"Can't send msg to socket '#{connectionIndex} / {session.SessionGroup} / {session.SessionId}': {ex}");
       }
     });
 
@@ -265,7 +266,7 @@ public class WebSocketServer<TSessionId, TSessionGroup>
   /// (<see langword="false"/>).</param>
   /// <param name="_ct">A cancellation token that can be used to cancel the send operation.</param>
   public async Task SendMsgAsync<T>(
-    WebSocketSession<TSessionId, TSessionGroup> _session,
+    WebSocketSession<TClientId, TSessionGroup> _session,
     T _msg,
     bool _compress,
     CancellationToken _ct) where T : notnull
@@ -293,7 +294,7 @@ public class WebSocketServer<TSessionId, TSessionGroup>
   /// (<see langword="false"/>).</param>
   /// <param name="_ct">A cancellation token that can be used to cancel the send operation.</param>
   public async Task SendMsgAsync<T>(
-    IEnumerable<WebSocketSession<TSessionId, TSessionGroup>> _sessions,
+    IEnumerable<WebSocketSession<TClientId, TSessionGroup>> _sessions,
     T _msg,
     bool _compress,
     CancellationToken _ct) where T : notnull
@@ -315,12 +316,11 @@ public class WebSocketServer<TSessionId, TSessionGroup>
   }
 
   private async Task CreateNewLoopAsync(
-    WebSocketSession<TSessionId, TSessionGroup> _session,
+    WebSocketSession<TClientId, TSessionGroup> _session,
     SemaphoreSlim _completeSignal)
   {
     var session = _session;
-    var sessionIndex = Interlocked.Increment(ref p_sessionsCount);
-    p_sessions.TryAdd(sessionIndex, session);
+    p_sessions.TryAdd(session.ConnectionId, session);
 
     using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(p_connectionMaxIdleTimeMs));
 
@@ -341,7 +341,7 @@ public class WebSocketServer<TSessionId, TSessionGroup>
         try
         {
           if (TryParseWsMsg(buffer[..receiveResult.Count], out var msg, out var msgType))
-            p_incomingMsgs.OnNext(new WsMsg(_session.Id, session.SessionGroup, msg));
+            p_incomingMsgs.OnNext(new WsMsg(_session.ConnectionId, _session.SessionId, session.SessionGroup, msg));
         }
         finally
         {
@@ -364,7 +364,7 @@ public class WebSocketServer<TSessionId, TSessionGroup>
     finally
     {
       ArrayPool<byte>.Shared.Return(buffer, false);
-      p_sessions.TryRemove(sessionIndex, out _);
+      p_sessions.TryRemove(session.ConnectionId, out _);
       p_clientDisconnectedFlow.OnNext(session);
     }
 
@@ -375,7 +375,7 @@ public class WebSocketServer<TSessionId, TSessionGroup>
         if (receiveResult is not null)
           await session.Socket.CloseAsync(receiveResult.CloseStatus ?? WebSocketCloseStatus.NormalClosure, receiveResult.CloseStatusDescription, CancellationToken.None);
         else
-          await session.Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, $"Closed normally (session: '{sessionIndex}')", CancellationToken.None);
+          await session.Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, $"Closed normally (session: '{session.ConnectionId}')", CancellationToken.None);
       }
     }
     catch (Exception ex)

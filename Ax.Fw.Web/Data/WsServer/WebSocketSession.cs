@@ -2,9 +2,10 @@
 
 namespace Ax.Fw.Web.Data.WsServer;
 
-public sealed record WebSocketSession<TSessionId, TSessionGroup>(
+public sealed record WebSocketSession<TClientId, TSessionGroup>(
+  Guid ConnectionId,
   TSessionGroup SessionGroup,
-  TSessionId Id,
+  TClientId SessionId,
   WebSocket Socket)
   where TSessionGroup : notnull, IEquatable<TSessionGroup>
-  where TSessionId : notnull, IEquatable<TSessionId>;
+  where TClientId : notnull, IEquatable<TClientId>;

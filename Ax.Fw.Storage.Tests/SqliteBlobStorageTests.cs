@@ -369,12 +369,12 @@ public class SqliteBlobStorageTests
     }
   }
 
-  private static string GetDbTmpPath() => $"{Path.GetTempFileName()}";
+  private static string GetDbTmpPath() => Path.GetTempFileName();
 
   private static byte[] GetData(int _size = 1024)
   {
     var buffer = new byte[_size];
-    new Random().NextBytes(buffer);
+    Random.Shared.NextBytes(buffer);
     return buffer;
   }
 
