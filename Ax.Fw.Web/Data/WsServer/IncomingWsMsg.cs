@@ -3,17 +3,17 @@
 /// <summary>
 /// Incoming WebSocket message.
 /// </summary>
-/// <typeparam name="TClientId">Type of identifier of client.</typeparam>
-/// <typeparam name="TSessionGroup">Type of identifier of session group.</typeparam>
+/// <typeparam name="TClientData">The type used to store some client-specific data.</typeparam>
+/// <typeparam name="TClientGroup">The type used to group WebSocket clients.</typeparam>
 /// <typeparam name="TData">Type of payload.</typeparam>
 /// <param name="ConnectionId">Unique identifier of connection.</param>
-/// <param name="ClientId">Identifier of client.<</param>
-/// <param name="SessionGroup">Identifier of session group.</param>
+/// <param name="ClientData">Data of client.<</param>
+/// <param name="ClientGroup">Group of client.</param>
 /// <param name="Data">Payload.</param>
-public record class IncomingWsMsg<TClientId, TSessionGroup, TData>(
+public record class IncomingWsMsg<TClientData, TClientGroup, TData>(
   Guid ConnectionId,
-  TClientId ClientId,
-  TSessionGroup SessionGroup,
+  TClientData ClientData,
+  TClientGroup ClientGroup,
   TData Data)
-  where TSessionGroup : notnull, IEquatable<TSessionGroup>
-  where TClientId : notnull, IEquatable<TClientId>;
+  where TClientData : notnull, IEquatable<TClientData>
+  where TClientGroup : notnull, IEquatable<TClientGroup>;

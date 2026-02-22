@@ -359,7 +359,7 @@ public class SqliteBlobStorageTests
       storage.Flush(true);
       await Task.Delay(1000);
       walFile.Refresh();
-      Assert.Equal(0, walFile.Length);
+      Assert.True(!walFile.Exists || walFile.Length == 0);
     }
     finally
     {
