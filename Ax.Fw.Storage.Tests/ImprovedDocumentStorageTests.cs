@@ -103,7 +103,7 @@ public class ImprovedDocumentStorageTests
         ImprovedDocumentStorageTestsV2JsonCtx.Default,
         null,
         new StorageRetentionOptions(
-          [StorageRetentionRuleAge.CreateForType<DataRecord>(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1))],
+          [StorageRetentionRuleAge.CreateForType<DataRecord>(null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1))],
           TimeSpan.FromMilliseconds(100),
           _deletedDocsMeta => counter += _deletedDocsMeta.Count));
 
