@@ -133,7 +133,10 @@ public class WebSocketServer<TClientData, TClientGroup>
     if (_webSocket.State != WebSocketState.Open)
       return false;
 
-    var session = new WebSocketSession<TClientData, TClientGroup>(p_lifetime, Guid.NewGuid(), _clientData, _clientGroup, _webSocket);
+    using var life = p_lifetime.GetChildLifetime()
+      ?? throw new InvalidOperationException("Failed to create child lifetime for WebSocket session.");
+
+    var session = new WebSocketSession<TClientData, TClientGroup>(life, Guid.NewGuid(), _clientData, _clientGroup, _webSocket);
     using var semaphore = new SemaphoreSlim(0, 1);
     using var scheduler = new EventLoopScheduler();
 
@@ -324,7 +327,7 @@ public class WebSocketServer<TClientData, TClientGroup>
     ReadOnlyMemory<byte> _data,
     CancellationToken _ct)
   {
-    if (_session.Socket.State != WebSocketState.Open)
+    if (_session.SocketState != WebSocketState.Open)
       return false;
 
     await _session.SendAsync(_data, _asBinary ? WebSocketMessageType.Binary : WebSocketMessageType.Text, true, _ct);
@@ -347,7 +350,7 @@ public class WebSocketServer<TClientData, TClientGroup>
     {
       p_clientConnectedFlow.OnNext(_session);
 
-      receiveResult = await _session.Socket.ReceiveAsync(buffer, cts.Token);
+      receiveResult = await _session.ReceiveAsync(buffer, cts.Token);
 
       while (!receiveResult.CloseStatus.HasValue && !cts.IsCancellationRequested)
       {
@@ -366,7 +369,7 @@ public class WebSocketServer<TClientData, TClientGroup>
         }
         finally
         {
-          receiveResult = await _session.Socket.ReceiveAsync(buffer, cts.Token);
+          receiveResult = await _session.ReceiveAsync(buffer, cts.Token);
         }
       }
     }
@@ -391,13 +394,13 @@ public class WebSocketServer<TClientData, TClientGroup>
 
     try
     {
-      if (_session.Socket.State == WebSocketState.Open)
+      if (_session.SocketState == WebSocketState.Open)
       {
         using var closeCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         if (receiveResult is not null)
-          await _session.Socket.CloseAsync(receiveResult.CloseStatus ?? WebSocketCloseStatus.NormalClosure, receiveResult.CloseStatusDescription, closeCts.Token);
+          await _session.CloseAsync(receiveResult.CloseStatus ?? WebSocketCloseStatus.NormalClosure, receiveResult.CloseStatusDescription, closeCts.Token);
         else
-          await _session.Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, $"Closed normally (session: '{_session.ConnectionId}')", closeCts.Token);
+          await _session.CloseAsync(WebSocketCloseStatus.NormalClosure, $"Closed normally (session: '{_session.ConnectionId}')", closeCts.Token);
       }
     }
     catch (Exception ex)
