@@ -114,37 +114,43 @@ namespace Ax.Fw.Tests
     public async Task NotEnoughWorkersTestAsync()
     {
       var lifetime = new Lifetime();
+      var scheduler = lifetime.ToDisposeOnEnded(new EventLoopScheduler());
       try
       {
         var jobs = Observable
-            .Return(TimeSpan.FromMilliseconds(1000))
-            .Repeat(5);
+          .Return(TimeSpan.FromMilliseconds(1000))
+          .Repeat(5);
 
         var actuallyDoneWorkCount = 0;
 
         var worker = WorkerTeam.Run(
-            jobs,
-            async _ctx =>
-            {
-              await Task.Delay(_ctx.JobInfo.Job, _ctx.CancellationToken);
-              Interlocked.Increment(ref actuallyDoneWorkCount);
-              return true;
-            },
-            _ctx => Task.FromResult(new PenaltyInfo(true, TimeSpan.FromSeconds(1))),
-            lifetime,
-            4);
+          jobs,
+          async _ctx =>
+          {
+            await Task.Delay(_ctx.JobInfo.Job, _ctx.CancellationToken);
+            Interlocked.Increment(ref actuallyDoneWorkCount);
+            return true;
+          },
+          _ctx => Task.FromResult(new PenaltyInfo(true, TimeSpan.FromSeconds(1))),
+          lifetime,
+          4);
 
         var list = new List<int>();
         worker.SuccessfullyCompletedJobs
-            .ObserveOn(lifetime.ToDisposeOnEnding(new EventLoopScheduler())!)
-            .Subscribe(_ => list.Add(0), lifetime.Token);
+          .ObserveOn(scheduler)
+          .Subscribe(_ => list.Add(0), lifetime.Token);
 
         await Task.Delay(TimeSpan.FromMilliseconds(1500));
 
         Assert.Equal(4, actuallyDoneWorkCount);
         Assert.Equal(4, list.Count);
 
-        await Task.Delay(TimeSpan.FromMilliseconds(1000));
+        var counter = 0;
+        while (counter < 50 && (actuallyDoneWorkCount != 5 || list.Count != 5))
+        {
+          await Task.Delay(TimeSpan.FromMilliseconds(100));
+          counter++;
+        }
 
         Assert.Equal(5, actuallyDoneWorkCount);
         Assert.Equal(5, list.Count);
