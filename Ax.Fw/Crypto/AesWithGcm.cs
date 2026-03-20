@@ -31,21 +31,27 @@ public class AesWithGcm : DisposableStack, ICryptoAlgorithm
 
   public Span<byte> Encrypt(ReadOnlySpan<byte> _data)
   {
-    var nonceSize = AesGcm.NonceByteSizes.MaxSize;
-    var tagSize = AesGcm.TagByteSizes.MaxSize;
-    var encryptedDataLength = 4 + nonceSize + 4 + tagSize + _data.Length;
-
+    var encryptedDataLength = GetEncryptedSize(_data.Length, out _, out _);
     Span<byte> result = new byte[encryptedDataLength];
-    var nonce = result.Slice(4, nonceSize);
-    var tag = result.Slice(4 + nonceSize + 4, tagSize);
-    var cipherBytes = result.Slice(4 + nonceSize + 4 + tagSize, _data.Length);
+    Encrypt(_data, result, out _);
+    return result;
+  }
 
-    BinaryPrimitives.WriteInt32LittleEndian(result[..4], nonceSize);
-    BinaryPrimitives.WriteInt64LittleEndian(result.Slice(4, nonceSize), Interlocked.Increment(ref p_nonce));
-    BinaryPrimitives.WriteInt32LittleEndian(result.Slice(4 + nonceSize, 4), tagSize);
+  public void Encrypt(ReadOnlySpan<byte> _data, Span<byte> _output, out int _writtenBytes)
+  {
+    _writtenBytes = GetEncryptedSize(_data.Length, out var nonceSize, out var tagSize);
+    if (_output.Length < _writtenBytes)
+      throw new InvalidDataException($"Output span is too small. Required length: {_writtenBytes}");
+
+    var nonce = _output.Slice(4, nonceSize);
+    var tag = _output.Slice(4 + nonceSize + 4, tagSize);
+    var cipherBytes = _output.Slice(4 + nonceSize + 4 + tagSize, _data.Length);
+
+    BinaryPrimitives.WriteInt32LittleEndian(_output[..4], nonceSize);
+    BinaryPrimitives.WriteInt64LittleEndian(_output.Slice(4, nonceSize), Interlocked.Increment(ref p_nonce));
+    BinaryPrimitives.WriteInt32LittleEndian(_output.Slice(4 + nonceSize, 4), tagSize);
 
     p_aesGcm.Encrypt(nonce, _data, cipherBytes, tag);
-    return result;
   }
 
   public Span<byte> Decrypt(ReadOnlySpan<byte> _data)
@@ -61,6 +67,13 @@ public class AesWithGcm : DisposableStack, ICryptoAlgorithm
     Span<byte> result = new byte[cipherSize];
     p_aesGcm.Decrypt(nonce, cipherBytes, tag, result);
     return result;
+  }
+
+  public static int GetEncryptedSize(int _plainSize, out int _nonceSize, out int _tagSize)
+  {
+    _nonceSize = AesGcm.NonceByteSizes.MaxSize;
+    _tagSize = AesGcm.TagByteSizes.MaxSize;
+    return 4 + _nonceSize + 4 + _tagSize + _plainSize;
   }
 
   public static void EncryptStream(Stream _in, Stream _out, byte[] _key, int _keyLengthBits = 256, CancellationToken _ct = default)

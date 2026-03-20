@@ -1,4 +1,6 @@
 using Ax.Fw.Extensions;
+using Ax.Fw.Log;
+using Ax.Fw.SharedTypes.Data.Log;
 using Ax.Fw.SharedTypes.Interfaces;
 using Ax.Fw.Web.Data.WsServer;
 using System.Buffers;
@@ -29,8 +31,9 @@ public class WebSocketServer<TClientData, TClientGroup>
   where TClientData : notnull, IEquatable<TClientData>
   where TClientGroup : notnull, IEquatable<TClientGroup>
 {
-  private sealed record WsMsg(Guid ConnectionId, TClientData Sender, TClientGroup SessionGroup, object Msg);
-  private sealed record BroadcastTask(TClientGroup SessionGroup, byte[] Data, bool Compressed);
+  private sealed record WsMsg(Guid ConnectionId, TClientData Sender, TClientGroup ClientGroup, object Msg);
+  private sealed record BroadcastTask(TClientGroup ClientGroup, byte[] Data, bool Compressed);
+  private sealed record SpecificUserTask(TClientGroup ClientGroup, TClientData ClientData, byte[] Data, bool Compressed);
 
   private readonly IReadOnlyLifetime p_lifetime;
   private readonly ILog p_log;
@@ -41,22 +44,16 @@ public class WebSocketServer<TClientData, TClientGroup>
   private readonly Subject<WebSocketSession<TClientData, TClientGroup>> p_clientConnectedFlow = new();
   private readonly Subject<WebSocketSession<TClientData, TClientGroup>> p_clientDisconnectedFlow = new();
   private readonly Subject<BroadcastTask> p_broadcastQueueSubj = new();
+  private readonly Subject<SpecificUserTask> p_specificUserQueueSubj = new();
   private readonly TimeSpan p_connectionMaxIdleTime;
   private readonly ConcurrentDictionary<Guid, WebSocketSession<TClientData, TClientGroup>> p_sessions = new();
 
   /// <summary>
-  /// Initializes a new instance of the WebSocketServer class, configuring message serialization, supported message
-  /// types, connection idle timeout, and error handling.
+  /// Initializes a new instance of the WebSocketServer class.
   /// </summary>
-  /// <remarks>The server uses the provided lifetime to manage its resources and ensure proper cleanup. The
-  /// error callback allows custom handling of operational errors, such as failures during message broadcasting.
-  /// Supported message types must be registered in the msgTypes dictionary; unregistered types will not be
-  /// processed.</remarks>
-  /// <param name="_lifetime">The lifetime scope that controls the disposal and shutdown of the server and its resources. The server will be
-  /// disposed when this lifetime ends.</param>
+  /// <param name="_lifetime">The lifetime scope that controls the disposal and shutdown of the server and its resources.</param>
   /// <param name="_log">The logger instance used for logging server operations and errors.</param>
-  /// <param name="_jsonCtx">The JSON serializer context used for serializing and deserializing messages. Must be of type
-  /// <see cref="WebSocketServerJsonCtx"/>.</param>
+  /// <param name="_jsonCtx">The JSON serializer context used for serializing and deserializing messages. Must include serialization of type <see cref="WsBaseMsg"></param>
   /// <param name="_msgTypes">A read-only dictionary mapping message type names to their corresponding .NET types. Defines the set of supported
   /// message types for the server.</param>
   /// <param name="_connectionMaxIdleTime">The maximum duration that a connection can remain idle before being closed.</param>
@@ -85,20 +82,42 @@ public class WebSocketServer<TClientData, TClientGroup>
     p_connectionMaxIdleTime = _connectionMaxIdleTime;
     p_log = _log;
 
-    var broadcastScheduler = _lifetime.ToDisposeOnEnded(new EventLoopScheduler());
+    var postScheduler = _lifetime.ToDisposeOnEnded(new EventLoopScheduler());
     p_broadcastQueueSubj
-      .ObserveOn(broadcastScheduler)
+      .ObserveOn(postScheduler)
       .SelectAsync(async (_msg, _ct) =>
       {
         try
         {
-          await BroadcastMsgAsync(_msg.SessionGroup, _msg.Data, _msg.Compressed, _ct);
+          await BroadcastMsgAsync(_msg.ClientGroup, _msg.Data, _msg.Compressed, _ct);
         }
         catch (Exception ex)
         {
           p_log.Error($"Can't broadcast msg from post queue: {ex}");
         }
-      }, broadcastScheduler)
+      }, postScheduler)
+      .Subscribe(_lifetime);
+
+    p_specificUserQueueSubj
+      .ObserveOn(postScheduler)
+      .SelectAsync(async (_msg, _ct) =>
+      {
+        var sessions = p_sessions.Values
+          .Where(_ => _.ClientGroup.Equals(_msg.ClientGroup) && _.ClientData.Equals(_msg.ClientData))
+          .ToArray();
+
+        foreach (var session in sessions)
+        {
+          try
+          {
+            await SendMsgUnsafeAsync(session, _msg.Compressed, _msg.Data, _ct);
+          }
+          catch (Exception ex)
+          {
+            p_log.Error($"Can't send msg to client {session.ClientGroup}/{session.ClientData}: {ex}");
+          }
+        }
+      }, postScheduler)
       .Subscribe(_lifetime);
   }
 
@@ -136,7 +155,7 @@ public class WebSocketServer<TClientData, TClientGroup>
     using var life = p_lifetime.GetChildLifetime()
       ?? throw new InvalidOperationException("Failed to create child lifetime for WebSocket session.");
 
-    var session = new WebSocketSession<TClientData, TClientGroup>(life, Guid.NewGuid(), _clientData, _clientGroup, _webSocket);
+    using var session = new WebSocketSession<TClientData, TClientGroup>(Guid.NewGuid(), _clientData, _clientGroup, _webSocket);
     using var semaphore = new SemaphoreSlim(0, 1);
     using var scheduler = new EventLoopScheduler();
 
@@ -168,11 +187,11 @@ public class WebSocketServer<TClientData, TClientGroup>
     where TData : class
   {
     return p_incomingMsgs
-      .Where(_ => _.SessionGroup.Equals(_group))
+      .Where(_ => _.ClientGroup.Equals(_group))
       .Select(_ =>
       {
         if (_.Msg is TData typedMsg)
-          return new IncomingWsMsg<TClientData, TClientGroup, TData>(_.ConnectionId, _.Sender, _.SessionGroup, typedMsg);
+          return new IncomingWsMsg<TClientData, TClientGroup, TData>(_.ConnectionId, _.Sender, _.ClientGroup, typedMsg);
         else
           return null;
       })
@@ -226,7 +245,7 @@ public class WebSocketServer<TClientData, TClientGroup>
     {
       try
       {
-        var sent = await SendMsgAsync(_session, _asBinary, _msg, _c);
+        var sent = await SendMsgUnsafeAsync(_session, _asBinary, _msg, _c);
         if (sent)
           Interlocked.Increment(ref totalSent);
       }
@@ -244,17 +263,17 @@ public class WebSocketServer<TClientData, TClientGroup>
   /// </summary>
   /// <remarks>This method enqueues the broadcast message for asynchronous delivery to all sessions in the group.</remarks>
   /// <typeparam name="T">The type of the message to broadcast.</typeparam>
-  /// <param name="_sessionGroup">The group to which the broadcast message will be sent.</param>
+  /// <param name="_clientGroup">The group to which the broadcast message will be sent.</param>
   /// <param name="_msg">The message to broadcast to all sessions in the group.</param>
   /// <param name="_compress">Indicates whether the message should be compressed before broadcasting. Set to <see langword="true"/> to enable
   /// compression; otherwise, <see langword="false"/>.</param>
   public void PostBroadcastMsg<T>(
-    TClientGroup _sessionGroup,
+    TClientGroup _clientGroup,
     T _msg,
     bool _compress = false) where T : notnull
   {
     var buffer = CreateWsMessage(_msg, _compress);
-    p_broadcastQueueSubj.OnNext(new BroadcastTask(_sessionGroup, buffer, _compress));
+    p_broadcastQueueSubj.OnNext(new BroadcastTask(_clientGroup, buffer, _compress));
   }
 
   /// <summary>
@@ -276,7 +295,7 @@ public class WebSocketServer<TClientData, TClientGroup>
 
     try
     {
-      await SendMsgAsync(_session, _compress, buffer, _ct);
+      await SendMsgUnsafeAsync(_session, _compress, buffer, _ct);
     }
     catch (Exception ex)
     {
@@ -308,7 +327,7 @@ public class WebSocketServer<TClientData, TClientGroup>
     {
       try
       {
-        var sent = await SendMsgAsync(_session, _compress, buffer, _c);
+        var sent = await SendMsgUnsafeAsync(_session, _compress, buffer, _c);
         if (sent)
           Interlocked.Increment(ref totalSent);
       }
@@ -321,7 +340,33 @@ public class WebSocketServer<TClientData, TClientGroup>
     return totalSent;
   }
 
-  public async Task<bool> SendMsgAsync(
+  /// <summary>
+  /// Posts a message to a specific client group and client data, optionally compressing the message before sending.
+  /// </summary>
+  /// <typeparam name="T">The type of the message to be sent. Must not be null.</typeparam>
+  /// <param name="_clientGroup">The client group that identifies the set of clients to which the message will be sent.</param>
+  /// <param name="_clientData">The client-specific data used to further target the message delivery.</param>
+  /// <param name="_msg">The message to send. Cannot be null.</param>
+  /// <param name="_compress">true to compress the message before sending; otherwise, false. The default is false.</param>
+  public void PostMsg<T>(
+    TClientGroup _clientGroup,
+    TClientData _clientData,
+    T _msg,
+    bool _compress = false)
+    where T : notnull
+  {
+    var buffer = CreateWsMessage(_msg, _compress);
+    p_specificUserQueueSubj.OnNext(new SpecificUserTask(_clientGroup, _clientData, buffer, _compress));
+  }
+
+  /// <summary>Asynchronously sends a message to the specified WebSocket session.</summary>
+  /// <remarks>This method does not catch exceptions caused by network error.</remarks>
+  /// <param name="_session">The WebSocket session through which the message will be sent.</param>
+  /// <param name="_asBinary">true to send the message as binary data; otherwise, false to send as text.</param>
+  /// <param name="_data">The message payload to send, as a read-only memory buffer of bytes.</param>
+  /// <param name="_ct">A cancellation token that can be used to cancel the send operation.</param>
+  /// <returns>true if the message was sent successfully; otherwise, false if the session is not open.</returns>
+  private async Task<bool> SendMsgUnsafeAsync(
     WebSocketSession<TClientData, TClientGroup> _session,
     bool _asBinary,
     ReadOnlyMemory<byte> _data,
@@ -464,4 +509,40 @@ public class WebSocketServer<TClientData, TClientGroup>
     }
   }
 
+}
+
+public static class WebSocketServer
+{
+  /// <summary>
+  /// Creates and initializes a new WebSocket server instance with the specified configuration and logging callback.
+  /// </summary>
+  /// <remarks>The caller is responsible for disposing the returned IDisposable to ensure proper cleanup of
+  /// server resources. The server instance is provided via the out parameter and is valid until the returned
+  /// IDisposable is disposed.</remarks>
+  /// <typeparam name="TClientData">The type used to identify individual clients. Must be non-null and support value equality.</typeparam>
+  /// <typeparam name="TClientGroup">The type used to identify client groups. Must be non-null and support value equality.</typeparam>
+  /// <param name="_onLog">A callback action that is invoked for each log entry generated by the server.</param>
+  /// <param name="_jsonCtx">The JSON serializer context used for message serialization and deserialization. Must include serialization of type <see cref="WsBaseMsg"></param>
+  /// <param name="_msgTypes">A read-only dictionary mapping message type names to their corresponding .NET types. Used to resolve message types during communication.</param>
+  /// <param name="_connectionMaxIdleTime">The maximum duration a connection can remain idle before being closed.</param>
+  /// <param name="_serverInstance">When this method returns, contains the initialized WebSocket server instance.</param>
+  /// <returns>An IDisposable that controls the lifetime of the server. Disposing the returned object will shut down the server and release associated resources.</returns>
+  public static IDisposable Create<TClientData, TClientGroup>(
+    Action<LogEntry> _onLog,
+    JsonSerializerContext _jsonCtx,
+    IReadOnlyDictionary<string, Type> _msgTypes,
+    TimeSpan _connectionMaxIdleTime,
+    out WebSocketServer<TClientData, TClientGroup> _serverInstance)
+    where TClientData : notnull, IEquatable<TClientData>
+    where TClientGroup : notnull, IEquatable<TClientGroup>
+  {
+    var lifetime = new Lifetime();
+    var log = new GenericLog();
+
+    log.LogEntries
+      .Subscribe(_ => _onLog(_), lifetime);
+
+    _serverInstance = new WebSocketServer<TClientData, TClientGroup>(lifetime, log, _jsonCtx, _msgTypes, _connectionMaxIdleTime);
+    return lifetime;
+  }
 }

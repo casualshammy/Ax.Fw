@@ -1,23 +1,22 @@
-﻿using Ax.Fw.SharedTypes.Interfaces;
-using System.Net.WebSockets;
+﻿using System.Net.WebSockets;
 
 namespace Ax.Fw.Web.Data.WsServer;
 
-public sealed class WebSocketSession<TClientData, TClientGroup>
+public sealed class WebSocketSession<TClientData, TClientGroup> : IDisposable
   where TClientData : notnull, IEquatable<TClientData>
   where TClientGroup : notnull, IEquatable<TClientGroup>
 {
   private readonly WebSocket p_webSocket;
   private readonly SemaphoreSlim p_sendSemaphore;
+  private bool p_disposedValue;
 
   internal WebSocketSession(
-    IReadOnlyLifetime _lifetime,
     Guid _connectionId,
     TClientData _clientData,
     TClientGroup _clientGroup,
     WebSocket _socket)
   {
-    p_sendSemaphore = _lifetime.ToDisposeOnEnded(new SemaphoreSlim(1, 1));
+    p_sendSemaphore = new SemaphoreSlim(1, 1);
 
     ConnectionId = _connectionId;
     ClientData = _clientData;
@@ -57,5 +56,15 @@ public sealed class WebSocketSession<TClientData, TClientGroup>
     string? _statusDescription,
     CancellationToken _ct)
     => p_webSocket.CloseAsync(_closeStatus, _statusDescription, _ct);
+
+  public void Dispose()
+  {
+    if (!p_disposedValue)
+    {
+      p_sendSemaphore.Dispose();
+      p_disposedValue = true;
+    }
+    GC.SuppressFinalize(this);
+  }
 
 }

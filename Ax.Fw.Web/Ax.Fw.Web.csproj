@@ -16,10 +16,11 @@
 				<RepositoryType>git</RepositoryType>
 				<RepositoryUrl>https://github.com/casualshammy/Ax.Fw</RepositoryUrl>
 				<!--<PackageReadmeFile>README.md</PackageReadmeFile>-->
-				<PackageTags>asp.net;kestrel</PackageTags>
+				<PackageTags>asp.net;kestrel;websocket</PackageTags>
 				<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		</PropertyGroup>
 		<ItemGroup>
+				<ProjectReference Include="..\Ax.Fw.Log\Ax.Fw.Log.csproj" />
 				<ProjectReference Include="..\Ax.Fw\Ax.Fw.csproj" />
 		</ItemGroup>
 		<ItemGroup>

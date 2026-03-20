@@ -21,6 +21,11 @@ public class Bijection<K, V> : IEnumerable<KeyValuePair<K, V>>
   private readonly Dictionary<V, K> p_reverse = [];
 
   /// <summary>
+  /// Gets the number of elements contained in the collection.
+  /// </summary>
+  public int Count => p_forward.Count;
+
+  /// <summary>
   /// Associates the specified key with the specified value, updating existing mappings as necessary to maintain a
   /// one-to-one relationship between keys and values.
   /// </summary>
@@ -48,11 +53,11 @@ public class Bijection<K, V> : IEnumerable<KeyValuePair<K, V>>
   /// <param name="_value">When this method returns, contains the value associated with the specified key, if the key is found; otherwise,
   /// the default value for the type of the value parameter.</param>
   /// <returns>true if the key was found and the value was retrieved successfully; otherwise, false.</returns>
-  public bool TryGetByKey(K _key, [NotNullWhen(true)] out V _value)
+  public bool TryGetByKey(K _key, [NotNullWhen(true)] out V? _value)
   {
     if (!p_forward.TryGetValue(_key, out var value))
     {
-      _value = default!;
+      _value = default;
       return false;
     }
 
@@ -67,11 +72,11 @@ public class Bijection<K, V> : IEnumerable<KeyValuePair<K, V>>
   /// <param name="_key">When this method returns, contains the key associated with the specified value, if the value is found; otherwise,
   /// the default value for the key type.</param>
   /// <returns>true if the collection contains an entry with the specified value; otherwise, false.</returns>
-  public bool TryGetByValue(V _value, [NotNullWhen(true)] out K _key)
+  public bool TryGetByValue(V _value, [NotNullWhen(true)] out K? _key)
   {
     if (!p_reverse.TryGetValue(_value, out var key))
     {
-      _key = default!;
+      _key = default;
       return false;
     }
 

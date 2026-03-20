@@ -221,6 +221,49 @@ public class EncryptTests
   }
 
   [Theory]
+  [InlineData(EncryptionKeyLength.Bits128, 512)]
+  [InlineData(EncryptionKeyLength.Bits128, 1024 * 1024)]
+  [InlineData(EncryptionKeyLength.Bits128, 1165217)]
+  [InlineData(EncryptionKeyLength.Bits128, 11652170)]
+  [InlineData(EncryptionKeyLength.Bits256, 512)]
+  [InlineData(EncryptionKeyLength.Bits256, 1024 * 1024)]
+  [InlineData(EncryptionKeyLength.Bits256, 1165217)]
+  [InlineData(EncryptionKeyLength.Bits256, 11652170)]
+  public void AesGcmSimpleTest2(EncryptionKeyLength _keySize, int _taskSize)
+  {
+    using var lifetime = new Lifetime();
+    var key = CommonUtilities.GetRandomString(8, false);
+    var data = new byte[_taskSize];
+    Random.Shared.NextBytes(data);
+
+    var aesGcm = lifetime.ToDisposeOnEnding(new AesWithGcm(key, _keySize));
+    var sw = Stopwatch.StartNew();
+    var elapsed = 0L;
+
+    sw.Restart();
+    var requiredSize = AesWithGcm.GetEncryptedSize(data.Length, out _, out _);
+    Span<byte> encryptedData = new byte[requiredSize];
+    aesGcm.Encrypt(data, encryptedData, out _);
+    elapsed = sw.ElapsedMilliseconds;
+    p_output.WriteLine($"Encrypt: {elapsed}ms");
+    Console.WriteLine($"Encrypt: {elapsed}ms");
+
+    var encryptedDataBytes = encryptedData.ToArray();
+    Assert.NotEmpty(encryptedData.ToArray());
+    Assert.NotEqual(data, encryptedDataBytes);
+
+    sw.Restart();
+    var decryptedData = aesGcm.Decrypt(encryptedData);
+    elapsed = sw.ElapsedMilliseconds;
+    p_output.WriteLine($"Decrypt: {elapsed}ms");
+    Console.WriteLine($"Decrypt: {elapsed}ms");
+
+    var decryptedDataBytes = decryptedData.ToArray();
+    Assert.NotEmpty(decryptedDataBytes);
+    Assert.Equal(data, decryptedDataBytes);
+  }
+
+  [Theory]
   [InlineData(EncryptionKeyLength.Bits128, 512, 80)]
   [InlineData(EncryptionKeyLength.Bits128, 512, 800)]
   [InlineData(EncryptionKeyLength.Bits128, 1165217, 800)]
