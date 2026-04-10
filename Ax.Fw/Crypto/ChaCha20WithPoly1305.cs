@@ -10,7 +10,6 @@ using System.Threading;
 
 namespace Ax.Fw.Crypto;
 
-#if NET6_0_OR_GREATER
 public class ChaCha20WithPoly1305 : DisposableStack, ICryptoAlgorithm
 {
   private readonly ChaCha20Poly1305 p_chacha;
@@ -20,10 +19,10 @@ public class ChaCha20WithPoly1305 : DisposableStack, ICryptoAlgorithm
   {
     var key = Encoding.UTF8.GetBytes(_key);
     var hashSource = SHA512.HashData(key);
-    p_chacha = ToDispose(new ChaCha20Poly1305(hashSource.Take(32).ToArray()));
+    p_chacha = ToDispose(new ChaCha20Poly1305([.. hashSource.Take(32)]));
   }
 
-  public Span<byte> Encrypt(ReadOnlySpan<byte> _data)
+  public ReadOnlySpan<byte> Encrypt(ReadOnlySpan<byte> _data)
   {
     const int nonceSize = 12;
     const int tagSize = 16;
@@ -42,7 +41,7 @@ public class ChaCha20WithPoly1305 : DisposableStack, ICryptoAlgorithm
     return result;
   }
 
-  public Span<byte> Decrypt(ReadOnlySpan<byte> _data)
+  public ReadOnlySpan<byte> Decrypt(ReadOnlySpan<byte> _data)
   {
     var nonceSize = BinaryPrimitives.ReadInt32LittleEndian(_data[..4]);
     var tagSize = BinaryPrimitives.ReadInt32LittleEndian(_data.Slice(4 + nonceSize, 4));
@@ -169,4 +168,3 @@ public class ChaCha20WithPoly1305 : DisposableStack, ICryptoAlgorithm
   }
 
 }
-#endif

@@ -43,7 +43,8 @@ public class JsonStorage<T> : IJsonStorage<T>, IObservable<T?>
   private readonly SemaphoreSlim p_fileAccessSemaphore;
 
   /// <summary>
-  ///
+  /// Opens existing JSON file or creates new if it doesn't exist. 
+  /// Subscribing to this storage will produce values from file when it changes. Values will be deserialized using provided <see cref="JsonSerializerContext"/>.
   /// </summary>
   /// <param name="_jsonFilePath">Path to JSON file. Can't be null or empty.</param>
   public JsonStorage(

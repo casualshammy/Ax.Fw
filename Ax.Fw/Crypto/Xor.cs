@@ -27,7 +27,7 @@ public class Xor : ICryptoAlgorithm
     p_magicWord = BinaryPrimitives.ReadInt64LittleEndian(buffer.Slice(237, 8));
   }
 
-  public Span<byte> Encrypt(ReadOnlySpan<byte> _data)
+  public ReadOnlySpan<byte> Encrypt(ReadOnlySpan<byte> _data)
   {
     Span<byte> result = new byte[_data.Length + 8];
     BinaryPrimitives.WriteInt64LittleEndian(result.Slice(0, 8), p_magicWord);
@@ -35,14 +35,14 @@ public class Xor : ICryptoAlgorithm
     return result;
   }
 
-  public Span<byte> Decrypt(ReadOnlySpan<byte> _data)
+  public ReadOnlySpan<byte> Decrypt(ReadOnlySpan<byte> _data)
   {
-    var magicWord = BinaryPrimitives.ReadInt64LittleEndian(_data.Slice(0, 8));
+    var magicWord = BinaryPrimitives.ReadInt64LittleEndian(_data[..8]);
     if (magicWord != p_magicWord)
       throw new CryptographicException($"Can't decrypt message - header is invalid");
 
     Span<byte> result = new byte[_data.Length - 8];
-    Transform2(_data.Slice(8), result);
+    Transform2(_data[8..], result);
 
     return result;
   }

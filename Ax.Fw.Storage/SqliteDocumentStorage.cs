@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 
 namespace Ax.Fw.Storage;
 
-public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
+public class SqliteDocumentStorage : DisposableStack, IDocumentStorage
 {
   record CacheKey(string Namespace, string Key);
 
@@ -21,7 +21,7 @@ public class SqliteDocumentStorageV2 : DisposableStack, IDocumentStorage
   /// </summary>
   /// <param name="_dbFilePath">Path to database file</param>
   /// <param name="_jsonCtx">Serialization context that will be used for internal (de-)serialization</param>
-  public SqliteDocumentStorageV2(
+  public SqliteDocumentStorage(
     string _dbFilePath,
     JsonSerializerContext _jsonCtx,
     StorageCacheOptions? _cacheOptions = null,

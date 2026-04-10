@@ -39,7 +39,7 @@ public class RsaAesGcm : DisposableStack, ICryptoAlgorithm
     p_keyLength = _aesKeyLength;
   }
 
-  public Span<byte> Encrypt(ReadOnlySpan<byte> _data)
+  public ReadOnlySpan<byte> Encrypt(ReadOnlySpan<byte> _data)
   {
     if (p_publicKeyPem == null && p_privateKeyPem == null)
       throw new InvalidOperationException("You must provide either public or private key to encrypt data");
@@ -64,7 +64,7 @@ public class RsaAesGcm : DisposableStack, ICryptoAlgorithm
     return result;
   }
 
-  public Span<byte> Decrypt(ReadOnlySpan<byte> _data)
+  public ReadOnlySpan<byte> Decrypt(ReadOnlySpan<byte> _data)
   {
     if (!(p_privateKeyPem?.Length > 0))
       throw new InvalidOperationException("Private key is not set");

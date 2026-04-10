@@ -1,7 +1,6 @@
 ﻿using Ax.Fw.Extensions;
 using Ax.Fw.Log.Data;
 using Ax.Fw.SharedTypes.Data.Log;
-using Ax.Fw.SharedTypes.Interfaces;
 using System.Collections.Concurrent;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;

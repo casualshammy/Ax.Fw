@@ -1,4 +1,5 @@
-﻿using Ax.Fw.SharedTypes.Attributes;
+﻿using Ax.Fw.Extensions;
+using Ax.Fw.SharedTypes.Attributes;
 using Microsoft.Data.Sqlite;
 using System.Collections.Concurrent;
 using System.Reflection;
@@ -16,7 +17,7 @@ internal static class DocumentStorageExtensions
 
     ns = _type.GetCustomAttribute<SimpleDocumentAttribute>()?.Namespace;
 
-    if (ns == null)
+    if (ns.IsNullOrWhiteSpace())
     {
       var underlyingType = Nullable.GetUnderlyingType(_type);
       if (underlyingType != null)
