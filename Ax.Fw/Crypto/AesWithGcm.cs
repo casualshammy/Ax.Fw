@@ -26,10 +26,10 @@ public class AesWithGcm : DisposableStack, ICryptoAlgorithm
     p_nonce = GetRandomNegativeInt64();
 
     var hashSource = SHA512.HashData(_key);
-    p_aesGcm = ToDispose(new AesGcm(hashSource.Take((int)_keyLength / 8).ToArray(), AesGcm.TagByteSizes.MaxSize));
+    p_aesGcm = ToDispose(new AesGcm([.. hashSource.Take((int)_keyLength / 8)], AesGcm.TagByteSizes.MaxSize));
   }
 
-  public Span<byte> Encrypt(ReadOnlySpan<byte> _data)
+  public ReadOnlySpan<byte> Encrypt(ReadOnlySpan<byte> _data)
   {
     var encryptedDataLength = GetEncryptedSize(_data.Length, out _, out _);
     Span<byte> result = new byte[encryptedDataLength];
@@ -54,7 +54,7 @@ public class AesWithGcm : DisposableStack, ICryptoAlgorithm
     p_aesGcm.Encrypt(nonce, _data, cipherBytes, tag);
   }
 
-  public Span<byte> Decrypt(ReadOnlySpan<byte> _data)
+  public ReadOnlySpan<byte> Decrypt(ReadOnlySpan<byte> _data)
   {
     var nonceSize = BinaryPrimitives.ReadInt32LittleEndian(_data[..4]);
     var tagSize = BinaryPrimitives.ReadInt32LittleEndian(_data.Slice(4 + nonceSize, 4));

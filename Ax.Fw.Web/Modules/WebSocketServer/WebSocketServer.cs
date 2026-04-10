@@ -1,3 +1,4 @@
+using Ax.Fw.Collections;
 using Ax.Fw.Extensions;
 using Ax.Fw.Log;
 using Ax.Fw.SharedTypes.Data.Log;
@@ -37,8 +38,7 @@ public class WebSocketServer<TClientData, TClientGroup>
 
   private readonly IReadOnlyLifetime p_lifetime;
   private readonly ILog p_log;
-  private readonly IReadOnlyDictionary<string, Type> p_msgTypes;
-  private readonly IReadOnlyDictionary<Type, string> p_msgTypesReverse;
+  private readonly IReadOnlyBijection<string, Type> p_msgTypesLut;
   private readonly JsonSerializerContext p_jsonCtx;
   private readonly Subject<WsMsg> p_incomingMsgs = new();
   private readonly Subject<WebSocketSession<TClientData, TClientGroup>> p_clientConnectedFlow = new();
@@ -72,12 +72,11 @@ public class WebSocketServer<TClientData, TClientGroup>
 
     p_lifetime = _lifetime;
     p_jsonCtx = _jsonCtx;
-    p_msgTypes = _msgTypes;
 
-    var msgTypesReverse = new Dictionary<Type, string>();
+    var msgTypesLut = new Bijection<string, Type>();
+    p_msgTypesLut = msgTypesLut;
     foreach (var entry in _msgTypes)
-      msgTypesReverse[entry.Value] = entry.Key;
-    p_msgTypesReverse = msgTypesReverse;
+      msgTypesLut.Set(entry.Key, entry.Value);
 
     p_connectionMaxIdleTime = _connectionMaxIdleTime;
     p_log = _log;
@@ -459,7 +458,7 @@ public class WebSocketServer<TClientData, TClientGroup>
   private byte[] CreateWsMessage<T>(T _msg, bool _gzipped = false) where T : notnull
   {
     var type = typeof(T);
-    if (!p_msgTypesReverse.TryGetValue(type, out var typeSlug))
+    if (!p_msgTypesLut.TryGetByValue(type, out var typeSlug))
       throw new InvalidOperationException($"Unknown type '{type}'");
 
     var baseMsg = new WsBaseMsg(typeSlug, _msg);
@@ -493,7 +492,7 @@ public class WebSocketServer<TClientData, TClientGroup>
       if (JsonSerializer.Deserialize(_msg, typeof(WsBaseMsg), p_jsonCtx) is not WsBaseMsg baseMsg)
         return false;
 
-      if (!p_msgTypes.TryGetValue(baseMsg.Type, out var type))
+      if (!p_msgTypesLut.TryGetByKey(baseMsg.Type, out var type))
         return false;
 
       _payload = ((JsonElement)baseMsg.Payload).Deserialize(type, p_jsonCtx);

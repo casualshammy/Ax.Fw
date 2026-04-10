@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using Ax.Fw.SharedTypes.Interfaces;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
@@ -13,7 +14,7 @@ namespace Ax.Fw.Collections;
 /// replace any existing mapping for the specified key or value. This class is not thread-safe.</remarks>
 /// <typeparam name="K">The type of the keys in the bijection. Each key must be unique and not null.</typeparam>
 /// <typeparam name="V">The type of the values in the bijection. Each value must be unique and not null.</typeparam>
-public class Bijection<K, V> : IEnumerable<KeyValuePair<K, V>>
+public class Bijection<K, V> : IReadOnlyBijection<K, V>
   where K : notnull
   where V : notnull
 {

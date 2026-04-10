@@ -31,9 +31,9 @@ public class AesCbc : DisposableStack, ICryptoAlgorithm
       .Take(p_aes.BlockSize / 8)];
   }
 
-  public Span<byte> Encrypt(ReadOnlySpan<byte> _data) => p_aes.EncryptCbc(_data, p_iv, PaddingMode.PKCS7);
+  public ReadOnlySpan<byte> Encrypt(ReadOnlySpan<byte> _data) => p_aes.EncryptCbc(_data, p_iv, PaddingMode.PKCS7);
 
-  public Span<byte> Decrypt(ReadOnlySpan<byte> _data) => p_aes.DecryptCbc(_data, p_iv, PaddingMode.PKCS7);
+  public ReadOnlySpan<byte> Decrypt(ReadOnlySpan<byte> _data) => p_aes.DecryptCbc(_data, p_iv, PaddingMode.PKCS7);
 
   public static async Task EncryptAsync(
     Stream _inStream,

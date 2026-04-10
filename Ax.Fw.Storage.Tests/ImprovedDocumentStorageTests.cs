@@ -26,9 +26,9 @@ public class ImprovedDocumentStorageTests
     try
     {
       var entries = Enumerable.Range(0, 1000).ToArray();
-      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorageV2(dbFile, ImprovedDocumentStorageTestsV2JsonCtx.Default));
+      var storage = lifetime.ToDisposeOnEnding(new SqliteDocumentStorage(dbFile, ImprovedDocumentStorageTestsV2JsonCtx.Default));
       var cachedStorage = lifetime.ToDisposeOnEnding(
-        new SqliteDocumentStorageV2(cachedDbPath, ImprovedDocumentStorageTestsV2JsonCtx.Default, new StorageCacheOptions(entries.Length, TimeSpan.FromSeconds(60))));
+        new SqliteDocumentStorage(cachedDbPath, ImprovedDocumentStorageTestsV2JsonCtx.Default, new StorageCacheOptions(entries.Length, TimeSpan.FromSeconds(60))));
 
       // warm-up
       foreach (var entry in entries)
@@ -98,7 +98,7 @@ public class ImprovedDocumentStorageTests
       var entries = Enumerable.Range(0, 1000).ToArray();
 
       var counter = 0;
-      var storage = new SqliteDocumentStorageV2(
+      var storage = new SqliteDocumentStorage(
         dbFile,
         ImprovedDocumentStorageTestsV2JsonCtx.Default,
         null,
