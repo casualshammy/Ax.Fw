@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers.Binary;
+using System.Security.Cryptography;
 
 namespace Ax.Fw.SharedTypes.Data;
 
@@ -18,7 +19,7 @@ public static class OrderedGuid
   {
     Span<byte> bytes = stackalloc byte[16];
     BinaryPrimitives.WriteInt32LittleEndian(bytes, _data);
-    Random.Shared.NextBytes(bytes[4..]);
+    RandomNumberGenerator.Fill(bytes[4..]);
     return new Guid(bytes);
   }
 
@@ -31,7 +32,7 @@ public static class OrderedGuid
   {
     Span<byte> bytes = stackalloc byte[16];
     BinaryPrimitives.WriteInt64LittleEndian(bytes, _data);
-    Random.Shared.NextBytes(bytes[8..]);
+    RandomNumberGenerator.Fill(bytes[8..]);
     return new Guid(bytes);
   }
 

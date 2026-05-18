@@ -342,6 +342,32 @@ public class ObservableExtensionsTests
     Assert.Empty(result);
   }
 
+  [Fact]
+  public async Task SelectAsync_NotRaceExecutionAsync()
+  {
+    using var lifetime = new Lifetime();
+    var list = new List<int>();
+
+    Observable
+      .Range(0, 3)
+      .SelectAsync(async (_value, _ct) =>
+      {
+        if (_value == 0)
+          await Task.Delay(2000, _ct);
+        if (_value == 1)
+          await Task.Delay(1000, _ct);
+
+        list.Add(_value);
+      })
+      .Subscribe(lifetime);
+
+    await Task.Delay(5000, lifetime.Token);
+    Assert.Equal(3, list.Count);
+    Assert.Equal(0, list[0]);
+    Assert.Equal(1, list[1]);
+    Assert.Equal(2, list[2]);
+  }
+
   private class CustomArrayComparer : IEqualityComparer<int>
   {
     public bool Equals(int _x, int _y) => Math.Abs(_x - _y) < 10;

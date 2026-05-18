@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Concurrency;
@@ -15,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace Ax.Fw.Extensions;
 
-public static class IObservableExtensions
+public static class ObservableExtensions
 {
   record AliveCtx<T>(ILifetime? Lifetime, T? Value);
 
@@ -97,6 +96,40 @@ public static class IObservableExtensions
           return Observable.FromAsync(_c => _selector(_x, _c), _scheduler);
         })
         .Concat();
+  }
+
+  /// <summary>
+  /// Projects each element of an observable sequence into an async task, processing items sequentially,
+  /// while preventing backpressure by dropping incoming items when the number of items waiting in the
+  /// queue exceeds <paramref name="_maxBackpressureItems"/>. The item currently being processed is not
+  /// counted towards the limit.
+  /// </summary>
+  /// <param name="_observable">The source observable sequence.</param>
+  /// <param name="_maxBackpressureItems">
+  /// Maximum number of items allowed to wait in the processing queue, not counting the item currently
+  /// being processed. Incoming items are dropped when this limit is exceeded.
+  /// </param>
+  /// <param name="_selectAsyncFunc">An async transform function to apply to each admitted element.</param>
+  public static IObservable<TOut> SelectAsyncPreventBackpressure<TIn, TOut>(
+    this IObservable<TIn> _observable,
+    int _maxBackpressureItems,
+    Func<TIn, CancellationToken, Task<TOut>> _selectAsyncFunc)
+  {
+    var counter = -1;
+
+    return _observable
+      .Where(_ =>
+      {
+        var newCounter = Interlocked.Increment(ref counter);
+        if (newCounter > _maxBackpressureItems)
+        {
+          Interlocked.Decrement(ref counter);
+          return false;
+        }
+        return true;
+      })
+      .SelectAsync(_selectAsyncFunc)
+      .Do(_ => Interlocked.Decrement(ref counter));
   }
 
   public static IObservable<Unit> Select<TIn>(this IObservable<TIn?> _this, Action<TIn?> _selector)
@@ -251,7 +284,7 @@ public static class IObservableExtensions
       var waitingNotificationsCount = 0L;
 
       var handlerSubs = notificationSubj
-        .ObserveOn(Scheduler.Default)
+        .ObserveOn(_scheduler)
         .SelectAsync(async (_, _ct) =>
         {
           try
@@ -265,6 +298,8 @@ public static class IObservableExtensions
             var result = await _transform(item, _ct);
             _observer.OnNext(result);
           }
+          catch (OperationCanceledException)
+          { }
           catch (Exception ex)
           {
             _observer.OnError(ex);
@@ -283,13 +318,13 @@ public static class IObservableExtensions
           channel.Writer.TryWrite(_item);
 
           // в очереди достаточно уведомлений, больше не требуется
-          if (Interlocked.Read(ref waitingNotificationsCount) >= 100)
+          if (Interlocked.Read(ref waitingNotificationsCount) >= 2)
             return;
 
           // посылаем уведомление
           Interlocked.Increment(ref waitingNotificationsCount);
-          notificationSubj.OnNext(Unit.Default);
-        }, () =>
+          notificationSubj.OnNext();
+        }, _observer.OnError, () =>
         {
           int maxWaitIterations = 50; // 5 sec
           // мы должны дать время последнему уведомлению прожеваться
@@ -305,6 +340,7 @@ public static class IObservableExtensions
 
   public static async Task<T?> FirstOrDefaultAsync<T>(
     this IObservable<T> _observable,
+    TimeSpan _timeout,
     CancellationToken _ct)
   {
     T? result = default;
@@ -321,12 +357,17 @@ public static class IObservableExtensions
 
     try
     {
-      await Task.Delay(-1, cts.Token);
+      await Task.Delay(_timeout, cts.Token);
     }
     catch (OperationCanceledException) { }
 
     return result;
   }
+
+  public static Task<T?> FirstOrDefaultAsync<T>(
+    this IObservable<T> _observable,
+    CancellationToken _ct)
+    => _observable.FirstOrDefaultAsync(Timeout.InfiniteTimeSpan, _ct);
 
   static class ImmutableHashSetComparer<T>
   {
