@@ -29,5 +29,8 @@
 		<ItemGroup>
 		  <Folder Include="Properties\" />
 		</ItemGroup>
+		<ItemGroup>
+		  <PackageReference Include="System.Linq.AsyncEnumerable" Version="10.0.8" />
+		</ItemGroup>
 
 </Project>
