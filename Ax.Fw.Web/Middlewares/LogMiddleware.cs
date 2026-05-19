@@ -24,8 +24,9 @@ public class LogMiddleware : IMiddleware
   {
     var request = _context.Request;
     var reqIndex = Interlocked.Increment(ref p_reqCount);
+    var httpVersion = GetHttpVersion(request);
 
-    p_log.Info($"[{reqIndex}] --> **{request.Method}** __{request.Path}__");
+    p_log.Info($"[{reqIndex}] --> **{request.Method}/{httpVersion}** __{request.Path}__");
 
     var sw = Stopwatch.StartNew();
     await _next(_context);
@@ -36,4 +37,17 @@ public class LogMiddleware : IMiddleware
     else
       p_log.Info($"[{reqIndex}] <-- **{request.Method}** __{request.Path}__ **{(HttpStatusCode)_context.Response.StatusCode}** (__{sw.ElapsedMilliseconds} ms__) ({problemDetails})");
   }
+
+  private static string GetHttpVersion(HttpRequest _request)
+  {
+    return _request.Protocol switch
+    {
+      "HTTP/1.0" => "1.0",
+      "HTTP/1.1" => "1.1",
+      "HTTP/2" => "2",
+      "HTTP/3" => "3",
+      _ => _request.Protocol
+    };
+  }
+
 }
