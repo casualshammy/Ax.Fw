@@ -33,9 +33,9 @@ public class LogMiddleware : IMiddleware
 
     var problemDetails = _context.Features.Get<ProblemFeature>()?.Details;
     if (problemDetails.IsNullOrWhiteSpace())
-      p_log.Info($"[{reqIndex}] <-- **{request.Method}** __{request.Path}__ **{(HttpStatusCode)_context.Response.StatusCode}** (__{sw.ElapsedMilliseconds} ms__)");
+      p_log.Info($"[{reqIndex}] <-- **{request.Method}/{httpVersion}** __{request.Path}__ **{(HttpStatusCode)_context.Response.StatusCode}** (__{sw.ElapsedMilliseconds} ms__)");
     else
-      p_log.Info($"[{reqIndex}] <-- **{request.Method}** __{request.Path}__ **{(HttpStatusCode)_context.Response.StatusCode}** (__{sw.ElapsedMilliseconds} ms__) ({problemDetails})");
+      p_log.Info($"[{reqIndex}] <-- **{request.Method}/{httpVersion}** __{request.Path}__ **{(HttpStatusCode)_context.Response.StatusCode}** (__{sw.ElapsedMilliseconds} ms__) ({problemDetails})");
   }
 
   private static string GetHttpVersion(HttpRequest _request)

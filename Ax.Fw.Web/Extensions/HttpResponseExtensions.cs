@@ -11,6 +11,7 @@ public static class HttpResponseExtensions
     _response.Headers.ContentType = "text/event-stream";
     _response.Headers.CacheControl = "no-cache";
     _response.Headers.Connection = "keep-alive";
+    _response.Headers["X-Accel-Buffering"] = "no";
   }
 
   public static async Task WriteSseMsgAsync(
