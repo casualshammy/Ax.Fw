@@ -10,6 +10,7 @@ public interface IRequestToolkit
   IResult Forbidden(string _message);
   IResult InternalServerError(string _message);
   IResult Json<T>(T _data);
+  IResult NotAcceptable(string? _details = null);
   IResult NotFound(string? _message = null);
   IResult Ok();
 }

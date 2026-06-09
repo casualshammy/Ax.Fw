@@ -57,18 +57,23 @@ public class AsyncCacheTests
   public async Task ResultIsReturnedEvenIfCacheIsDisposed()
   {
     using var lifetime = new Lifetime();
+    using var factoryStarted = new SemaphoreSlim(0, 1);
+    using var factoryCanContinue = new SemaphoreSlim(0, 1);
 
     var cachedValue = new AsyncCachedValue<int>(TimeSpan.FromMinutes(1), async _c =>
     {
-      await Task.Delay(1000, _c);
+      factoryStarted.Release();
+      await factoryCanContinue.WaitAsync(_c);
       return 999;
     });
 
     var task = cachedValue.GetValueAsync(lifetime.Token);
-    cachedValue.Dispose();
+    await factoryStarted.WaitAsync(lifetime.Token); // wait until factory is actually running
 
+    cachedValue.Dispose();
     Assert.False(task.IsCompleted);
 
+    factoryCanContinue.Release(); // let factory finish
     var taskResult = await task;
     Assert.Equal(999, taskResult);
   }

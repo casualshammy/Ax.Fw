@@ -23,5 +23,6 @@ internal class RequestToolkitImpl : IRequestToolkit
   public IResult Forbidden(string _message) => Results.Problem(_message, statusCode: (int)HttpStatusCode.Forbidden);
   public IResult NotFound(string? _message = null) => Results.Problem(_message, statusCode: (int)HttpStatusCode.NotFound);
   public IResult Conflict(string? _details = null) => Results.Problem(_details, statusCode: (int)HttpStatusCode.Conflict);
+  public IResult NotAcceptable(string? _details = null) => Results.Problem(_details, statusCode: (int)HttpStatusCode.NotAcceptable);
 
 }
