@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Net.WebSockets;
 using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
@@ -368,6 +369,99 @@ public static class ObservableExtensions
     this IObservable<T> _observable,
     CancellationToken _ct)
     => _observable.FirstOrDefaultAsync(Timeout.InfiniteTimeSpan, _ct);
+
+  /// <summary>
+  /// Rate-limits an observable sequence. If an element arrives after more time than the specified
+  /// interval since the last emitted element, it passes through immediately. If an element arrives
+  /// sooner, it is delayed until the interval expires. A delayed element is replaced by any newer
+  /// element that arrives before the interval expires.
+  /// </summary>
+  public static IObservable<T> SampleWithImmediate<T>(
+    this IObservable<T> _observable,
+    TimeSpan _interval)
+  {
+    return Observable.Create<T>(_observer =>
+    {
+      var gate = new object();
+      long? lastEmitTick = null;
+      T? pendingValue = default;
+      bool hasPending = false;
+      var timerDisp = new SerialDisposable();
+      var sourceCompleted = false;
+      var intervalMs = _interval.TotalMilliseconds;
+
+      void Emit(T _value)
+      {
+        lastEmitTick = Environment.TickCount64;
+        hasPending = false;
+        timerDisp.Disposable = null;
+        _observer.OnNext(_value);
+        TryComplete();
+      }
+
+      void TryComplete()
+      {
+        if (sourceCompleted)
+        {
+          if (hasPending)
+            Emit(pendingValue!);
+          else
+            _observer.OnCompleted();
+        }
+      }
+
+      var sourceSubscription = _observable
+        .Subscribe(
+        _value =>
+        {
+          lock (gate)
+          {
+            var now = Environment.TickCount64;
+            var elapsed = lastEmitTick.HasValue ? now - lastEmitTick.Value : long.MaxValue;
+
+            if (elapsed >= intervalMs)
+            {
+              Emit(_value);
+            }
+            else
+            {
+              pendingValue = _value;
+              hasPending = true;
+
+              var remaining = TimeSpan.FromMilliseconds(intervalMs - elapsed);
+              timerDisp.Disposable = Observable.Timer(remaining).Subscribe(_ =>
+              {
+                lock (gate)
+                {
+                  if (!hasPending)
+                    return;
+
+                  Emit(pendingValue!);
+                }
+              });
+            }
+          }
+        },
+        _error =>
+        {
+          lock (gate)
+          {
+            timerDisp.Disposable = null;
+            _observer.OnError(_error);
+          }
+        },
+        () =>
+        {
+          lock (gate)
+          {
+            sourceCompleted = true;
+            TryComplete();
+          }
+        });
+
+      return new CompositeDisposable(sourceSubscription, timerDisp);
+    });
+  }
 
   static class ImmutableHashSetComparer<T>
   {
