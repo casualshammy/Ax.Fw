@@ -8,7 +8,7 @@ public sealed class SseSession<TClientData, TClientGroup>
   where TClientGroup : notnull, IEquatable<TClientGroup>
 {
   private static long p_msgCounter = -1;
-  private readonly Channel<SseBaseIdMsg> p_channel;
+  private readonly Channel<SsePreparedMsg> p_channel;
 
   internal SseSession(
     Guid _connectionId,
@@ -20,7 +20,7 @@ public sealed class SseSession<TClientData, TClientGroup>
     ClientData = _clientData;
     ClientGroup = _clientGroup;
 
-    p_channel = Channel.CreateBounded<SseBaseIdMsg>(new BoundedChannelOptions(_queueSize)
+    p_channel = Channel.CreateBounded<SsePreparedMsg>(new BoundedChannelOptions(_queueSize)
     {
       FullMode = BoundedChannelFullMode.DropOldest,
     });
@@ -30,15 +30,15 @@ public sealed class SseSession<TClientData, TClientGroup>
   public TClientData ClientData { get; }
   public TClientGroup ClientGroup { get; }
 
-  internal void Write(SseBaseMsg _msg)
-    => p_channel.Writer.TryWrite(new SseBaseIdMsg(Interlocked.Increment(ref p_msgCounter), _msg.Type, _msg.JsonData));
+  internal void Write(SseMsgJson _msg)
+    => p_channel.Writer.TryWrite(new SsePreparedMsg(Interlocked.Increment(ref p_msgCounter), _msg.MsgType, _msg.JsonData));
 
   /// <summary>
   /// Gets the channel reader used to receive server-sent event messages.
   /// </summary>
   /// <returns>A <see cref="ChannelReader{SseBaseIdMsg}"/> that provides asynchronous access to incoming server-sent event
   /// messages.</returns>
-  public ChannelReader<SseBaseIdMsg> GetReader()
+  public ChannelReader<SsePreparedMsg> GetReader()
     => p_channel.Reader;
 
   /// <summary>
@@ -50,8 +50,8 @@ public sealed class SseSession<TClientData, TClientGroup>
   /// scenarios.</remarks>
   /// <param name="_httpRequest">The HTTP request.</param>
   /// <param name="_ct">A cancellation token that can be used to cancel the asynchronous operation.</param>
-  /// <returns>An asynchronous stream of <see cref="SseBaseIdMsg"/> messages.</returns>
-  public IAsyncEnumerable<SseBaseIdMsg> ReadMessagesAsync(
+  /// <returns>An asynchronous stream of <see cref="SsePreparedMsg"/> messages.</returns>
+  public IAsyncEnumerable<SsePreparedMsg> ReadMessagesAsync(
     HttpRequest _httpRequest,
     CancellationToken _ct)
   {

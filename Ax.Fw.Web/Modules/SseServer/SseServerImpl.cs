@@ -1,5 +1,4 @@
-﻿using Ax.Fw.Collections;
-using Ax.Fw.Extensions;
+﻿using Ax.Fw.Extensions;
 using Ax.Fw.Log;
 using Ax.Fw.SharedTypes.Data.Log;
 using Ax.Fw.SharedTypes.Interfaces;
@@ -24,10 +23,9 @@ public class SseServerImpl<TClientData, TClientGroup>
   where TClientData : notnull, IEquatable<TClientData>
   where TClientGroup : notnull, IEquatable<TClientGroup>
 {
-  private sealed record BroadcastTask(TClientGroup ClientGroup, SseBaseMsg Msg);
+  private sealed record BroadcastTask(TClientGroup ClientGroup, SseMsgJson Msg);
 
   private readonly ILog p_log;
-  private readonly IReadOnlyBijection<string, Type> p_msgTypesLut;
   private readonly JsonSerializerContext p_jsonCtx;
   private readonly int p_maxMsgInQueuePerClient;
   private readonly Subject<SseSession<TClientData, TClientGroup>> p_clientConnectedFlow = new();
@@ -39,18 +37,12 @@ public class SseServerImpl<TClientData, TClientGroup>
     IReadOnlyLifetime _lifetime,
     ILog _log,
     JsonSerializerContext _jsonCtx,
-    IReadOnlyDictionary<string, Type> _msgTypes,
     TimeSpan _aliveMsgInterval,
     int _maxMsgInQueuePerClient)
   {
     p_jsonCtx = _jsonCtx;
     p_maxMsgInQueuePerClient = _maxMsgInQueuePerClient;
     p_log = _log;
-
-    var msgTypesLut = new Bijection<string, Type>();
-    p_msgTypesLut = msgTypesLut;
-    foreach (var entry in _msgTypes)
-      msgTypesLut.Set(entry.Key, entry.Value);
 
     var postScheduler = _lifetime.ToDisposeOnEnded(new EventLoopScheduler());
     p_broadcastQueueSubj
@@ -71,7 +63,7 @@ public class SseServerImpl<TClientData, TClientGroup>
       .Interval(_aliveMsgInterval)
       .Subscribe(_ =>
       {
-        var aliveMsg = new SseBaseMsg("alive", $"{{ \"index\": {_} }}");
+        var aliveMsg = new SseMsgJson("alive", $"{{ \"msgType\": \"alive\", \"index\": {_} }}");
         foreach (var session in p_sessions.Values)
           session.Write(aliveMsg);
       }, _lifetime);
@@ -127,7 +119,7 @@ public class SseServerImpl<TClientData, TClientGroup>
   public void PostBroadcastMsg<T>(
     TClientGroup _clientGroup,
     T _msg)
-    where T : notnull
+    where T : notnull, SseAbstractMsg
   {
     var msg = CreateMessage(_msg);
     p_broadcastQueueSubj.OnNext(new BroadcastTask(_clientGroup, msg));
@@ -142,7 +134,7 @@ public class SseServerImpl<TClientData, TClientGroup>
   public void SendMsg<T>(
     SseSession<TClientData, TClientGroup> _session,
     T _msg)
-    where T : notnull
+    where T : notnull, SseAbstractMsg
   {
     var msg = CreateMessage(_msg);
     _session.Write(msg);
@@ -150,7 +142,7 @@ public class SseServerImpl<TClientData, TClientGroup>
 
   private int BroadcastMsg(
     TClientGroup _sessionGroup,
-    SseBaseMsg _msg)
+    SseMsgJson _msg)
   {
     var totalSent = 0;
     var sessionsToSendEE = p_sessions.Values
@@ -165,15 +157,12 @@ public class SseServerImpl<TClientData, TClientGroup>
     return totalSent;
   }
 
-  private SseBaseMsg CreateMessage<T>(T _msg)
-    where T : notnull
+  private SseMsgJson CreateMessage<T>(T _msg)
+    where T : notnull, SseAbstractMsg
   {
     var type = typeof(T);
-    if (!p_msgTypesLut.TryGetByValue(type, out var typeSlug))
-      throw new InvalidOperationException($"Unknown type '{type}'");
-
     var jsonData = JsonSerializer.Serialize(_msg, type, p_jsonCtx);
-    return new SseBaseMsg(typeSlug, jsonData);
+    return new SseMsgJson(_msg.MsgType, jsonData);
   }
 
 }
@@ -187,7 +176,6 @@ public static class SseServerImpl
   /// <typeparam name="TClientGroup">Type used to group clients for targeted broadcasts.</typeparam>
   /// <param name="_onLog">A callback invoked for each log entry produced by the server.</param>
   /// <param name="_jsonCtx">The <see cref="JsonSerializerContext"/> used for message serialization.</param>
-  /// <param name="_msgTypes">A dictionary mapping type slugs to their corresponding .NET types.</param>
   /// <param name="_aliveMsgInterval">The interval at which keep-alive messages are sent to all connected clients.</param>
   /// <param name="_maxMsgInQueuePerClient">The maximum number of messages that can be queued per client.</param>
   /// <param name="_serverInstance">The created server instance.</param>
@@ -195,7 +183,6 @@ public static class SseServerImpl
   public static IDisposable Create<TClientData, TClientGroup>(
     Action<LogEntry> _onLog,
     JsonSerializerContext _jsonCtx,
-    IReadOnlyDictionary<string, Type> _msgTypes,
     TimeSpan _aliveMsgInterval,
     int _maxMsgInQueuePerClient,
     out SseServerImpl<TClientData, TClientGroup> _serverInstance)
@@ -208,7 +195,7 @@ public static class SseServerImpl
     log.LogEntries
       .Subscribe(_ => _onLog(_), lifetime);
 
-    _serverInstance = new SseServerImpl<TClientData, TClientGroup>(lifetime, log, _jsonCtx, _msgTypes, _aliveMsgInterval, _maxMsgInQueuePerClient);
+    _serverInstance = new SseServerImpl<TClientData, TClientGroup>(lifetime, log, _jsonCtx, _aliveMsgInterval, _maxMsgInQueuePerClient);
     return lifetime;
   }
 }
