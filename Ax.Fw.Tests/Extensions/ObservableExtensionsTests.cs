@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
@@ -373,5 +374,289 @@ public class ObservableExtensionsTests
     public bool Equals(int _x, int _y) => Math.Abs(_x - _y) < 10;
 
     public int GetHashCode(int _obj) => _obj;
+  }
+
+  [Fact(Timeout = 30000)]
+  public async Task SampleWithImmediate_FirstElementPassesImmediately()
+  {
+    var interval = TimeSpan.FromMilliseconds(200);
+    var subject = new Subject<int>();
+
+    var results = new List<(int Value, long ElapsedMs)>();
+    var sw = Stopwatch.StartNew();
+
+    var subscription = subject
+      .SampleWithImmediate(interval)
+      .Subscribe(_value => results.Add((_value, sw.ElapsedMilliseconds)));
+
+    subject.OnNext(1);
+
+    await Task.Delay(50);
+
+    Assert.Single(results);
+    var first = results.First();
+    Assert.Equal(1, results[0].Value);
+    Assert.True(first.ElapsedMs < 100, $"First element should pass immediately, elapsed: {first.ElapsedMs}ms");
+
+    subscription.Dispose();
+  }
+
+  [Fact(Timeout = 30000)]
+  public async Task SampleWithImmediate_ElementDelayedWhenWithinInterval()
+  {
+    var interval = TimeSpan.FromMilliseconds(200);
+    var subject = new Subject<int>();
+
+    var results = new List<(int Value, long ElapsedMs)>();
+    var sw = Stopwatch.StartNew();
+
+    var subscription = subject
+      .SampleWithImmediate(interval)
+      .Subscribe(_value =>
+      {
+        lock (results)
+          results.Add((_value, sw.ElapsedMilliseconds));
+      });
+
+    subject.OnNext(1);
+    await Task.Delay(50);
+    subject.OnNext(2);
+
+    await Task.Delay(500);
+
+    lock (results)
+    {
+      Assert.Equal(2, results.Count);
+      Assert.Equal(1, results[0].Value);
+      Assert.Equal(2, results[1].Value);
+      var gap = results[1].ElapsedMs - results[0].ElapsedMs;
+      Assert.True(gap >= 180, $"Gap should be ~200ms, was {gap}ms");
+    }
+
+    subscription.Dispose();
+  }
+
+  [Fact(Timeout = 30000)]
+  public async Task SampleWithImmediate_ValueReplacedDuringDelay()
+  {
+    var interval = TimeSpan.FromMilliseconds(300);
+    var subject = new Subject<int>();
+
+    var results = new List<int>();
+
+    var subscription = subject
+      .SampleWithImmediate(interval)
+      .Subscribe(_value =>
+      {
+        lock (results)
+          results.Add(_value);
+      });
+
+    subject.OnNext(1);
+    await Task.Delay(50);
+    subject.OnNext(2);
+    await Task.Delay(50);
+    subject.OnNext(3);
+
+    await Task.Delay(600);
+
+    lock (results)
+    {
+      Assert.Equal(2, results.Count);
+      Assert.Equal(1, results[0]);
+      Assert.Equal(3, results[1]);
+    }
+
+    subscription.Dispose();
+  }
+
+  [Fact(Timeout = 30000)]
+  public async Task SampleWithImmediate_ElementPassesImmediatelyAfterIntervalElapsed()
+  {
+    var interval = TimeSpan.FromMilliseconds(200);
+    var subject = new Subject<int>();
+
+    var results = new List<(int Value, long ElapsedMs)>();
+    var sw = Stopwatch.StartNew();
+
+    var subscription = subject
+      .SampleWithImmediate(interval)
+      .Subscribe(_value =>
+      {
+        lock (results)
+          results.Add((_value, sw.ElapsedMilliseconds));
+      });
+
+    subject.OnNext(1);
+    await Task.Delay(300);
+    subject.OnNext(2);
+
+    await Task.Delay(100);
+
+    lock (results)
+    {
+      Assert.Equal(2, results.Count);
+      Assert.Equal(1, results[0].Value);
+      Assert.Equal(2, results[1].Value);
+      var gap = results[1].ElapsedMs - results[0].ElapsedMs;
+      Assert.True(gap >= 280 && gap < 350, $"Second element should pass immediately after interval, gap was {gap}ms");
+    }
+
+    subscription.Dispose();
+  }
+
+  [Fact(Timeout = 30000)]
+  public async Task SampleWithImmediate_CompletionEmitsPendingValue()
+  {
+    var interval = TimeSpan.FromMilliseconds(300);
+    var subject = new Subject<int>();
+
+    var results = new List<int>();
+    var completed = false;
+
+    var subscription = subject
+      .SampleWithImmediate(interval)
+      .Synchronize()
+      .Subscribe(
+        _value =>
+        {
+          lock (results)
+            results.Add(_value);
+        },
+        () => completed = true);
+
+    subject.OnNext(1);
+    await Task.Delay(50);
+    subject.OnCompleted();
+
+    await Task.Delay(500);
+
+    lock (results)
+    {
+      Assert.Single(results);
+      Assert.Equal(1, results[0]);
+    }
+    Assert.True(completed);
+
+    subscription.Dispose();
+  }
+
+  [Fact(Timeout = 30000)]
+  public async Task SampleWithImmediate_CompletionWithoutPendingCompletesImmediately()
+  {
+    var interval = TimeSpan.FromMilliseconds(300);
+    var subject = new Subject<int>();
+
+    var results = new List<int>();
+    var completed = false;
+
+    var subscription = subject
+      .SampleWithImmediate(interval)
+      .Synchronize()
+      .Subscribe(
+        _value =>
+        {
+          lock (results)
+            results.Add(_value);
+        },
+        () => completed = true);
+
+    subject.OnNext(1);
+    await Task.Delay(400);
+    subject.OnCompleted();
+
+    await Task.Delay(100);
+
+    lock (results)
+    {
+      Assert.Single(results);
+      Assert.Equal(1, results[0]);
+    }
+    Assert.True(completed);
+
+    subscription.Dispose();
+  }
+
+  [Fact(Timeout = 30000)]
+  public async Task SampleWithImmediate_ErrorPropagatedImmediately()
+  {
+    var interval = TimeSpan.FromMilliseconds(300);
+    var subject = new Subject<int>();
+
+    Exception? caughtError = null;
+
+    var subscription = subject
+      .SampleWithImmediate(interval)
+      .Subscribe(
+        _ => { },
+        _error => caughtError = _error);
+
+    var expectedError = new InvalidOperationException("Test error");
+    subject.OnNext(1);
+    await Task.Delay(50);
+    subject.OnError(expectedError);
+
+    await Task.Delay(100);
+
+    Assert.Equal(expectedError, caughtError);
+
+    subscription.Dispose();
+  }
+
+  [Fact(Timeout = 30000)]
+  public async Task SampleWithImmediate_EmptySourceCompletesImmediately()
+  {
+    var interval = TimeSpan.FromMilliseconds(300);
+    var completed = false;
+
+    Observable
+      .Empty<int>()
+      .SampleWithImmediate(interval)
+      .Subscribe(
+        _ => { },
+        () => completed = true);
+
+    await Task.Delay(100);
+
+    Assert.True(completed);
+  }
+
+  [Fact(Timeout = 30000)]
+  public async Task SampleWithImmediate_RapidBurstEmitsLastAfterInterval()
+  {
+    var interval = TimeSpan.FromMilliseconds(200);
+    var subject = new Subject<int>();
+
+    var results = new List<int>();
+
+    var subscription = subject
+      .SampleWithImmediate(interval)
+      .Synchronize()
+      .Subscribe(_value =>
+      {
+        lock (results)
+          results.Add(_value);
+      });
+
+    subject.OnNext(1);
+    await Task.Delay(20);
+    subject.OnNext(2);
+    await Task.Delay(20);
+    subject.OnNext(3);
+    await Task.Delay(20);
+    subject.OnNext(4);
+    await Task.Delay(20);
+    subject.OnNext(5);
+
+    await Task.Delay(400);
+
+    lock (results)
+    {
+      Assert.Equal(2, results.Count);
+      Assert.Equal(1, results[0]);
+      Assert.Equal(5, results[1]);
+    }
+
+    subscription.Dispose();
   }
 }
