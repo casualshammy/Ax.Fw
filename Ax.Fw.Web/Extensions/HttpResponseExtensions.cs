@@ -24,20 +24,7 @@ public static class HttpResponseExtensions
   /// </summary>
   public static async Task WriteSseMsgAsync(
     this HttpResponse _response,
-    SseBaseIdMsg _msg,
-    CancellationToken _ct)
-  {
-    var msg = $"id: {_msg.Id}\nevent: {_msg.Type}\ndata: {_msg.JsonData}\n\n";
-    await _response.WriteAsync(msg, _ct);
-    await _response.Body.FlushAsync(_ct);
-  }
-
-  /// <summary>
-  /// Write SSE message to connection without 'event' field.
-  /// </summary>
-  public static async Task WriteSseMsgWithoutEventAsync(
-    this HttpResponse _response,
-    SseBaseIdMsg _msg,
+    SsePreparedMsg _msg,
     CancellationToken _ct)
   {
     var msg = $"id: {_msg.Id}\ndata: {_msg.JsonData}\n\n";
