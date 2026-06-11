@@ -31,7 +31,7 @@ public sealed class SseSession<TClientData, TClientGroup>
   public TClientGroup ClientGroup { get; }
 
   internal void Write(SseMsgJson _msg)
-    => p_channel.Writer.TryWrite(new SsePreparedMsg(Interlocked.Increment(ref p_msgCounter), _msg.MsgType, _msg.JsonData));
+    => p_channel.Writer.TryWrite(new SsePreparedMsg(Interlocked.Increment(ref p_msgCounter), _msg.MsgType, _msg.JsonData, _msg.IsComment));
 
   /// <summary>
   /// Gets the channel reader used to receive server-sent event messages.

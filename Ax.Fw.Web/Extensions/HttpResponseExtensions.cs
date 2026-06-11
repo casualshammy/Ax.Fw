@@ -1,5 +1,6 @@
 ﻿using Ax.Fw.Web.Data.SseServer;
 using Microsoft.AspNetCore.Http;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -27,7 +28,12 @@ public static class HttpResponseExtensions
     SsePreparedMsg _msg,
     CancellationToken _ct)
   {
-    var msg = $"id: {_msg.Id}\ndata: {_msg.JsonData}\n\n";
+    string msg;
+    if (!_msg.IsComment)
+      msg = $"id: {_msg.Id}\ndata: {_msg.JsonData}\n\n";
+    else
+      msg = $": {_msg.JsonData}\n\n";
+
     await _response.WriteAsync(msg, _ct);
     await _response.Body.FlushAsync(_ct);
   }
@@ -48,10 +54,19 @@ public static class HttpResponseExtensions
     JsonSerializerContext _jsonCtx,
     CancellationToken _ct)
   {
-    var json = JsonSerializer.Serialize(_msg, typeof(T), _jsonCtx);
-    var msg = $"id: {_id}\ndata: {json}\n\n";
-    await _response.WriteAsync(msg, _ct);
-    await _response.Body.FlushAsync(_ct);
+    var type = typeof(T);
+    var json = JsonSerializer.Serialize(_msg, type, _jsonCtx);
+    var msg = new SsePreparedMsg(_id, type.Name, json, false);
+    await WriteSseMsgAsync(_response, msg, _ct);
+  }
+
+  public static async Task WriteSseCommentAsync(
+    this HttpResponse _response,
+    string _comment,
+    CancellationToken _ct)
+  {
+    var msg = new SsePreparedMsg(0L, "comment", _comment, true);
+    await WriteSseMsgAsync(_response, msg, _ct);
   }
 
 }

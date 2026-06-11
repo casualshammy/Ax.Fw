@@ -63,7 +63,7 @@ public class SseServerImpl<TClientData, TClientGroup>
       .Interval(_aliveMsgInterval)
       .Subscribe(_ =>
       {
-        var aliveMsg = new SseMsgJson("alive", $"{{ \"msgType\": \"alive\", \"index\": {_} }}");
+        var aliveMsg = new SseMsgJson("alive", $"index: {_}", true);
         foreach (var session in p_sessions.Values)
           session.Write(aliveMsg);
       }, _lifetime);
