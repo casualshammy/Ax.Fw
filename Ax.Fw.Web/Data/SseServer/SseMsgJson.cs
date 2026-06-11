@@ -2,4 +2,5 @@
 
 internal sealed record SseMsgJson(
   string MsgType,
-  string JsonData);
+  string JsonData,
+  bool IsComment = false);

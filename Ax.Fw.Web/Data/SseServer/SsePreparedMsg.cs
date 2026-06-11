@@ -3,4 +3,5 @@
 public sealed record SsePreparedMsg(
   long Id,
   string Type,
-  string JsonData);
+  string JsonData,
+  bool IsComment);
