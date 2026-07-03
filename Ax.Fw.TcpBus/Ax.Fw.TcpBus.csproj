@@ -16,7 +16,7 @@
 		</PropertyGroup>
 
 		<ItemGroup>
-				<PackageReference Include="WatsonTcp" Version="6.0.12" />
+				<PackageReference Include="WatsonTcp" Version="6.3.1" />
 		</ItemGroup>
 
 		<ItemGroup>
