@@ -145,7 +145,7 @@ public class FiniteStateMachineTests
   {
     var fsm = BuildSimpleMachine();
 
-    // Idle Å® Stopped is not defined
+    // Idle ‚Üí Stopped is not defined
     Assert.Throws<InvalidOperationException>(() => fsm.DoTransition("Stopped"));
   }
 
@@ -226,6 +226,28 @@ public class FiniteStateMachineTests
   }
 
   [Fact]
+  public void FSM_DoTransition_OnPreEnter_ReceivesCursorWithNewStateAndPrevious()
+  {
+    string? seenState = null;
+    string? seenPrevious = null;
+    var fsm = FiniteStateMachineBuilder<int>.Create()
+      .WithState("A", _default: true)
+      .WithState("B", _onPreEnter: data =>
+      {
+        seenState = data.State;
+        seenPrevious = data.PreviousState;
+        return data.Data;
+      })
+      .WithTransition("A", "B")
+      .Build(0);
+
+    fsm.DoTransition("B");
+
+    Assert.Equal("B", seenState);
+    Assert.Equal("A", seenPrevious);
+  }
+
+  [Fact]
   public void FSM_DoTransition_OnPreLeave_ModifiesData()
   {
     var fsm = FiniteStateMachineBuilder<int>.Create()
@@ -256,7 +278,7 @@ public class FiniteStateMachineTests
   [Fact]
   public void FSM_DoTransition_BothCallbacks_DataFlowIsOnPreLeaveFirst()
   {
-    // Data must flow: initial Å® OnPreLeave(A) Å® OnPreEnter(B) Å® CurrentState.Data
+    // Data must flow: initial ‚Üí OnPreLeave(A) ‚Üí OnPreEnter(B) ‚Üí CurrentState.Data
     var fsm = FiniteStateMachineBuilder<int>.Create()
       .WithState("A", _onPreLeave: data => data.Data + 10, _default: true)
       .WithState("B", _onPreEnter: data => data.Data * 2)
@@ -278,10 +300,119 @@ public class FiniteStateMachineTests
       .WithTransition("A", "B")
       .Build(0);
 
-    // Idle Å® Stopped is invalid, callbacks must not fire
+    // Idle ‚Üí Stopped is invalid, callbacks must not fire
     try { fsm.DoTransition("Stopped"); } catch (InvalidOperationException) { }
 
     Assert.False(leaveCalled);
+  }
+
+  // ---- FSM: observers ----
+
+  [Fact]
+  public void FSM_Subscribe_ImmediatelyReceivesCurrentCursor()
+  {
+    var fsm = BuildSimpleMachine(123);
+    StateMachineCursor<int>? received = null;
+
+    using (fsm.StateTransition.Subscribe(c => received = c))
+    {
+      Assert.NotNull(received);
+      Assert.Equal("Idle", received!.State);
+      Assert.Equal(123, received.Data);
+      Assert.Null(received.PreviousState);
+    }
+  }
+
+  [Fact]
+  public void FSM_DoTransition_NotifiesObserversWithNewCursor()
+  {
+    var fsm = BuildSimpleMachine();
+    var cursors = new List<StateMachineCursor<int>>();
+
+    using (fsm.StateTransition.Subscribe(cursors.Add))
+    {
+      fsm.DoTransition("Running");
+    }
+
+    // First entry is the initial snapshot, second is the transition
+    Assert.Equal(2, cursors.Count);
+    Assert.Equal("Idle", cursors[0].State);
+    Assert.Equal("Running", cursors[1].State);
+    Assert.Equal("Idle", cursors[1].PreviousState);
+  }
+
+  [Fact]
+  public void FSM_Subscribe_AfterTransition_DoesNotReceivePastTransitions()
+  {
+    var fsm = BuildSimpleMachine();
+    fsm.DoTransition("Running");
+
+    var cursors = new List<StateMachineCursor<int>>();
+    using (fsm.StateTransition.Subscribe(cursors.Add))
+    {
+    }
+
+    Assert.Single(cursors);
+    Assert.Equal("Running", cursors[0].State);
+  }
+
+  [Fact]
+  public void FSM_Subscribe_Dispose_StopsReceivingNotifications()
+  {
+    var fsm = BuildSimpleMachine();
+    var cursors = new List<StateMachineCursor<int>>();
+
+    var sub = fsm.StateTransition.Subscribe(cursors.Add);
+    fsm.DoTransition("Running");
+    sub.Dispose();
+    fsm.DoTransition("Stopped");
+    fsm.DoTransition("Idle");
+
+    // initial + one transition
+    Assert.Equal(2, cursors.Count);
+    Assert.Equal("Running", cursors[^1].State);
+  }
+
+  [Fact]
+  public void FSM_Subscribe_MultipleObservers_AllNotified()
+  {
+    var fsm = BuildSimpleMachine();
+    var a = new List<StateMachineCursor<int>>();
+    var b = new List<StateMachineCursor<int>>();
+
+    using (fsm.StateTransition.Subscribe(a.Add))
+    using (fsm.StateTransition.Subscribe(b.Add))
+    {
+      fsm.DoTransition("Running");
+    }
+
+    Assert.Equal(2, a.Count);
+    Assert.Equal(2, b.Count);
+    Assert.Equal(a, b);
+  }
+
+  [Fact]
+  public void FSM_DoTransition_ObserverThrows_DoesNotBreakTransition()
+  {
+    var fsm = BuildSimpleMachine();
+    var otherReceived = 0;
+    var bad = new BadObserver();
+
+    using (fsm.StateTransition.Subscribe(bad))
+    using (fsm.StateTransition.Subscribe(_ => otherReceived++))
+    {
+      fsm.DoTransition("Running");
+    }
+
+    Assert.Equal("Running", fsm.CurrentState.State);
+    Assert.Equal(2, otherReceived);
+  }
+
+  private sealed class BadObserver : IObserver<StateMachineCursor<int>>
+  {
+    public void OnNext(StateMachineCursor<int> _value) => throw new InvalidOperationException("boom");
+    public void OnError(Exception _error) { }
+    public void OnCompleted() { }
   }
 
   // ---- FSM: thread safety ----

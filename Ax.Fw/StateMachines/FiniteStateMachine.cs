@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
+using Ax.Fw.Extensions;
 
 namespace Ax.Fw.StateMachines;
 
@@ -13,13 +13,18 @@ namespace Ax.Fw.StateMachines;
 /// Represents a finite state machine that holds associated data of type <typeparamref name="T"/>.
 /// </summary>
 /// <typeparam name="T">The type of data associated with the state machine. Must be non-null.</typeparam>
-public interface IStateMachine<T> : IObservable<StateMachineCursor<T>>
+public interface IStateMachine<T>
   where T : notnull
 {
   /// <summary>
   /// Gets the current state and associated data of the state machine.
   /// </summary>
   public StateMachineCursor<T> CurrentState { get; }
+
+  /// <summary>
+  /// An observable that emits a <see cref="StateMachineCursor{T}"/> upon subscription and after each subsequent transition.
+  /// </summary>
+  public IObservable<StateMachineCursor<T>> StateTransition { get; }
 
   /// <summary>
   /// Performs a transition to the specified state.
@@ -92,8 +97,7 @@ public sealed class FiniteStateMachineBuilder<T>
     Func<StateMachineCursor<T>, T>? _onPreLeave = null,
     bool _default = false)
   {
-    var alreadyBuilt = Interlocked.Read(ref p_built);
-    if (alreadyBuilt == 1)
+    if (Interlocked.Read(ref p_built) == 1)
       throw new InvalidOperationException($"This builder has already been used to build a state machine.");
 
     if (p_states.TryGetValue(_stateName, out _))
@@ -120,8 +124,7 @@ public sealed class FiniteStateMachineBuilder<T>
     string _fromState,
     string _toState)
   {
-    var alreadyBuilt = Interlocked.Read(ref p_built);
-    if (alreadyBuilt == 1)
+    if (Interlocked.Read(ref p_built) == 1)
       throw new InvalidOperationException($"This builder has already been used to build a state machine.");
 
     if (_fromState == _toState)
@@ -147,6 +150,8 @@ public sealed class FiniteStateMachineBuilder<T>
   /// <summary>
   /// Builds and returns the state machine with the specified initial data.
   /// This method can only be called once per builder instance.
+  /// The <c>OnPreEnter</c> callback of the default state is not invoked — the initial
+  /// <see cref="StateMachineCursor{T}"/> is created directly from <paramref name="_data"/>.
   /// </summary>
   /// <param name="_data">The initial data associated with the default state.</param>
   /// <returns>A new <see cref="IStateMachine{T}"/> instance.</returns>
@@ -178,7 +183,7 @@ public sealed class FiniteStateMachine<T> : IStateMachine<T>
   where T : notnull
 {
   private readonly FrozenDictionary<string, FiniteStateMachineState<T>> p_states;
-  private readonly ConcurrentDictionary<Guid, IObserver<StateMachineCursor<T>>> p_observers = new();
+  private readonly ReplaySubject<StateMachineCursor<T>> p_stateSubj = new(1);
   private readonly object p_lock = new();
 
   internal FiniteStateMachine(
@@ -186,16 +191,23 @@ public sealed class FiniteStateMachine<T> : IStateMachine<T>
     StateMachineCursor<T> _currentState)
   {
     p_states = _states.ToFrozenDictionary();
+    p_stateSubj.OnNext(_currentState);
     CurrentState = _currentState;
+    StateTransition = p_stateSubj.ObserveOnThreadPool();
   }
 
   /// <inheritdoc/>
   public StateMachineCursor<T> CurrentState { get; private set; }
 
   /// <inheritdoc/>
+  public IObservable<StateMachineCursor<T>> StateTransition { get; }
+
+  /// <inheritdoc/>
   /// <remarks>
   /// The <c>OnPreLeave</c> callback of the current state is invoked first,
   /// followed by the <c>OnPreEnter</c> callback of the target state.
+  /// <c>OnPreEnter</c> receives a cursor whose <c>State</c> is the new state
+  /// and whose <c>PreviousState</c> is the state being left.
   /// Both callbacks run inside the transition lock — do not call <see cref="DoTransition"/>
   /// on the same instance from within a callback, as this will cause a deadlock.
   /// </remarks>
@@ -219,26 +231,8 @@ public sealed class FiniteStateMachine<T> : IStateMachine<T>
 
       var newCursor = new StateMachineCursor<T>(newData, nextState.Name, currentState.Name);
       CurrentState = newCursor;
+      p_stateSubj.OnNext(newCursor);
     }
-
-    foreach (var (_, observer) in p_observers)
-    {
-      try
-      {
-        observer.OnNext(CurrentState);
-      }
-      catch { /* don't care */ }
-    }
-  }
-
-  public IDisposable Subscribe(IObserver<StateMachineCursor<T>> _observer)
-  {
-    var guid = Guid.NewGuid();
-    p_observers[guid] = _observer;
-
-    _observer.OnNext(CurrentState);
-
-    return Disposable.Create(() => p_observers.TryRemove(guid, out _));
   }
 
 }
