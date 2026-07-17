@@ -12,17 +12,16 @@ jobs:
  
     steps:
     - name: Get dotnet
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: '10.0.x'
       
     - name: Install Python3   
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: '3.11'
-        architecture: 'x64'
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v7
       with:
         submodules: true
         fetch-depth: 0

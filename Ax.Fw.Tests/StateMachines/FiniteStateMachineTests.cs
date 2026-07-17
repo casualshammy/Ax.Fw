@@ -1,6 +1,8 @@
+using Ax.Fw.Extensions;
 using Ax.Fw.StateMachines;
 using System;
 using System.Collections.Generic;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -309,18 +311,16 @@ public class FiniteStateMachineTests
   // ---- FSM: observers ----
 
   [Fact]
-  public void FSM_Subscribe_ImmediatelyReceivesCurrentCursor()
+  public async Task FSM_Subscribe_ImmediatelyReceivesCurrentCursorAsync()
   {
+    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
     var fsm = BuildSimpleMachine(123);
-    StateMachineCursor<int>? received = null;
+    var received = await fsm.StateTransition.FirstOrDefaultAsync(cts.Token);
 
-    using (fsm.StateTransition.Subscribe(c => received = c))
-    {
-      Assert.NotNull(received);
-      Assert.Equal("Idle", received!.State);
-      Assert.Equal(123, received.Data);
-      Assert.Null(received.PreviousState);
-    }
+    Assert.NotNull(received);
+    Assert.Equal("Idle", received.State);
+    Assert.Equal(123, received.Data);
+    Assert.Null(received.PreviousState);
   }
 
   [Fact]
@@ -329,10 +329,13 @@ public class FiniteStateMachineTests
     var fsm = BuildSimpleMachine();
     var cursors = new List<StateMachineCursor<int>>();
 
-    using (fsm.StateTransition.Subscribe(cursors.Add))
-    {
-      fsm.DoTransition("Running");
-    }
+    fsm.StateTransition.Subscribe(cursors.Add);
+    fsm.DoTransition("Running");
+
+    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+    while (!cts.IsCancellationRequested)
+      if (cursors.Count == 2)
+        break;
 
     // First entry is the initial snapshot, second is the transition
     Assert.Equal(2, cursors.Count);
@@ -364,6 +367,12 @@ public class FiniteStateMachineTests
 
     var sub = fsm.StateTransition.Subscribe(cursors.Add);
     fsm.DoTransition("Running");
+
+    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+    while (!cts.IsCancellationRequested)
+      if (cursors.Count == 2)
+        break;
+
     sub.Dispose();
     fsm.DoTransition("Stopped");
     fsm.DoTransition("Idle");
@@ -384,6 +393,11 @@ public class FiniteStateMachineTests
     using (fsm.StateTransition.Subscribe(b.Add))
     {
       fsm.DoTransition("Running");
+
+      using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+      while (!cts.IsCancellationRequested)
+        if (a.Count == 2 && b.Count == 2)
+          break;
     }
 
     Assert.Equal(2, a.Count);
@@ -398,11 +412,14 @@ public class FiniteStateMachineTests
     var otherReceived = 0;
     var bad = new BadObserver();
 
-    using (fsm.StateTransition.Subscribe(bad))
-    using (fsm.StateTransition.Subscribe(_ => otherReceived++))
-    {
-      fsm.DoTransition("Running");
-    }
+    fsm.StateTransition.Subscribe(bad);
+    fsm.StateTransition.Subscribe(_ => otherReceived++);
+    fsm.DoTransition("Running");
+
+    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+    while (!cts.IsCancellationRequested)
+      if (otherReceived == 2)
+        break;
 
     Assert.Equal("Running", fsm.CurrentState.State);
     Assert.Equal(2, otherReceived);

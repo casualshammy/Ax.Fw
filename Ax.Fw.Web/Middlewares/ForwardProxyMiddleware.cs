@@ -4,6 +4,19 @@ using System.Net;
 
 namespace Ax.Fw.Web.Middlewares;
 
+/// <summary>
+/// Middleware that extracts the real client IP address from proxy headers
+/// when the application is running behind a reverse proxy or load balancer.
+/// </summary>
+/// <remarks>
+/// This middleware checks for the following headers in order:
+/// <list type="number">
+/// <item><description><c>CF-Connecting-IP</c> - Used by Cloudflare to pass the original client IP.</description></item>
+/// <item><description><c>X-Forwarded-For</c> - Standard header used by most proxies. The first IP in the comma-separated list is used.</description></item>
+/// </list>
+/// If a valid IP address is found in either header, it replaces <see cref="HttpConnection.RemoteIpAddress"/> 
+/// so that downstream middleware and controllers see the real client IP instead of the proxy's IP.
+/// </remarks>
 public sealed class ForwardProxyMiddleware : IMiddleware
 {
   public ForwardProxyMiddleware()

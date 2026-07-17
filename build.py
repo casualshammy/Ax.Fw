@@ -3,8 +3,6 @@ import build_common.git as git
 import build_common.utils as utils
 
 NUGET_API_KEY = os.environ.get('NUGET_API_KEY')
-#if (NUGET_API_KEY == None):
-#    raise LookupError(f"Env. variable 'NUGET_API_KEY' is not set!")
 BAGET_URL = os.environ.get('BAGET_URL')
 BAGET_API_KEY = os.environ.get('BAGET_API_KEY')
 
@@ -32,8 +30,8 @@ utils.callThrowIfError(f"dotnet pack -c Release /p:Version={version} -o \"{nuget
 print(f"===========================================", flush=True)
 print(f"Pushing nugets: '{version}'", flush=True)
 print(f"===========================================", flush=True)
-utils.callThrowIfError(f"dotnet nuget push \"{nugetArtifactsDir}\*.nupkg\" --api-key {NUGET_API_KEY} --source https://api.nuget.org/v3/index.json")
-utils.callThrowIfError(f"dotnet nuget push \"{nugetArtifactsDir}\*.nupkg\" --api-key {BAGET_API_KEY} --source {BAGET_URL}")
+utils.callThrowIfError(f"dotnet nuget push \"{nugetArtifactsDir}\\*.nupkg\" --api-key {NUGET_API_KEY} --source https://api.nuget.org/v3/index.json")
+utils.callThrowIfError(f"dotnet nuget push \"{nugetArtifactsDir}\\*.nupkg\" --api-key {BAGET_API_KEY} --source {BAGET_URL}")
 
 print(f"===========================================", flush=True)
 print(f"Creating tag: '{version}'", flush=True)

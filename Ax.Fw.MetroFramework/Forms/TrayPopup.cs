@@ -1,5 +1,6 @@
 ﻿using Ax.Fw.MetroFramework.Data;
 using Ax.Fw.Windows.WinAPI;
+using System.ComponentModel;
 using System.Reactive.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -65,12 +66,14 @@ public partial class TrayPopup : BorderlessForm
     });
   }
 
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public string Title
   {
     get => metroLabel1.Text;
     set => metroLabel1.Text = value;
   }
 
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public string Message
   {
     get => metroLabel2.Text;
@@ -81,6 +84,7 @@ public partial class TrayPopup : BorderlessForm
     }
   }
 
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public new Image? Icon
   {
     get => pictureBox1.Image;

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.1.11312.151 d18.0
+VisualStudioVersion = 18.1.11312.151
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw", "Ax.Fw\Ax.Fw.csproj", "{2AE663FC-71E3-43C3-B8FF-4A6D1C4ECC5B}"
 EndProject
@@ -22,8 +22,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.Storage", "Ax.Fw.Storage\Ax.Fw.Storage.csproj", "{6FA286ED-8322-469A-A1E6-2527CE26016D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ax.Fw.Storage.Tests", "Ax.Fw.Storage.Tests\Ax.Fw.Storage.Tests.csproj", "{F87BAB8C-9CE4-45E2-9140-DB951DF69EE0}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{56865ACD-2DEA-4BAE-8D23-2FC675030AA6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ax.Fw.Log", "Ax.Fw.Log\Ax.Fw.Log.csproj", "{D10FA6F2-7E94-45B8-906A-9C5AB17FC772}"
 EndProject
@@ -77,10 +75,6 @@ Global
 		{F87BAB8C-9CE4-45E2-9140-DB951DF69EE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F87BAB8C-9CE4-45E2-9140-DB951DF69EE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F87BAB8C-9CE4-45E2-9140-DB951DF69EE0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{56865ACD-2DEA-4BAE-8D23-2FC675030AA6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{56865ACD-2DEA-4BAE-8D23-2FC675030AA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{56865ACD-2DEA-4BAE-8D23-2FC675030AA6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{56865ACD-2DEA-4BAE-8D23-2FC675030AA6}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D10FA6F2-7E94-45B8-906A-9C5AB17FC772}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D10FA6F2-7E94-45B8-906A-9C5AB17FC772}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D10FA6F2-7E94-45B8-906A-9C5AB17FC772}.Release|Any CPU.ActiveCfg = Release|Any CPU

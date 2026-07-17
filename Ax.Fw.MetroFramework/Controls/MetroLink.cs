@@ -36,6 +36,7 @@ public class MetroLink : Button
   public bool IsFocused => p_isFocused;
 
   [Category("Metro Appearance")]
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public MetroLinkSize FontSize
   {
     get
@@ -50,6 +51,7 @@ public class MetroLink : Button
   }
 
   [Category("Metro Appearance")]
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public MetroLinkWeight FontWeight
   {
     get
@@ -64,6 +66,7 @@ public class MetroLink : Button
   }
 
   [Category("Metro Appearance")]
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public Color? OverridePrimaryColor
   {
     get

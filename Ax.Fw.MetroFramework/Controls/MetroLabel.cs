@@ -45,6 +45,7 @@ namespace Ax.Fw.MetroFramework.Controls
         }
 
         [Category("Metro Appearance")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public MetroLabelSize FontSize
         {
             get
@@ -59,6 +60,7 @@ namespace Ax.Fw.MetroFramework.Controls
         }
 
         [Category("Metro Appearance")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public MetroLabelWeight FontWeight
         {
             get
@@ -73,6 +75,7 @@ namespace Ax.Fw.MetroFramework.Controls
         }
 
         [Category("Metro Appearance")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public MetroLabelMode LabelMode
         {
             get

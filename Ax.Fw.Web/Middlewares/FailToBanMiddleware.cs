@@ -10,6 +10,27 @@ using System.Reactive.Subjects;
 
 namespace Ax.Fw.Web.Middlewares;
 
+/// <summary>
+/// ASP.NET Core middleware that implements a fail-to-ban mechanism to protect endpoints from brute-force attacks.
+/// </summary>
+/// <remarks>
+/// This middleware tracks failed requests (based on HTTP status codes) per IP address and temporarily bans
+/// IP addresses that exceed a configurable threshold of failed requests within a time window.
+/// 
+/// <para>
+/// The middleware uses a <see cref="FailToBanAttribute"/> applied to endpoints to configure the ban policy:
+/// <list type="bullet">
+/// <item><description><see cref="FailToBanAttribute.MaxFailedRequests"/> - Maximum failed requests before ban</description></item>
+/// <item><description><see cref="FailToBanAttribute.BanTimeSec"/> - Ban duration in seconds</description></item>
+/// <item><description><see cref="FailToBanAttribute.BannedHttpCodes"/> - HTTP status codes considered as failed attempts</description></item>
+/// </list>
+/// </para>
+/// 
+/// <para>
+/// Banned IPs receive HTTP 429 (Too Many Requests) responses. The ban list is cleaned up every minute,
+/// automatically unbanning IPs whose ban period has expired.
+/// </para>
+/// </remarks>
 public class FailToBanMiddleware : IMiddleware
 {
   readonly record struct BanInfo(
@@ -97,14 +118,14 @@ public class FailToBanMiddleware : IMiddleware
     var remoteIP = _ctx.Connection.RemoteIpAddress;
     if (remoteIP == null)
     {
-      p_log.Warn($"IP address is unknown");
-      _ctx.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+      p_log.Warn("IP address is unknown");
+      await Results.Problem(detail: "IP address is unknown", statusCode: (int)HttpStatusCode.Forbidden).ExecuteAsync(_ctx);
       return;
     }
 
     if (p_banLut.TryGetValue(remoteIP, out var banInfo) && banInfo.IsBanned)
     {
-      _ctx.Response.StatusCode = (int)HttpStatusCode.TooManyRequests;
+      await Results.Problem(detail: "Banned", statusCode: (int)HttpStatusCode.TooManyRequests).ExecuteAsync(_ctx);
       return;
     }
 

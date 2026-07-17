@@ -2,6 +2,9 @@
 
 namespace Ax.Fw;
 
+/// <summary>
+/// A time wall that allows a certain number of tickets to be issued in a given time frame.
+/// </summary>
 public class TimeWall
 {
   private readonly int?[] p_slots;
@@ -14,6 +17,11 @@ public class TimeWall
     p_slots = new int?[_ticketsAllowedInTimeFrame];
   }
 
+  /// <summary>
+  /// Tries to get a ticket. If the number of tickets allowed in the time frame has been reached, returns false.
+  /// </summary>
+  /// <remarks>Thread-safe.</remarks>
+  /// <returns></returns>
   public bool TryGetTicket()
   {
     lock (p_lock)

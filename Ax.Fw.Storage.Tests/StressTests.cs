@@ -84,7 +84,7 @@ public class StressTests
 
       var enumerable = Enumerable.Range(0, PROBLEM_SIZE);
 
-      Parallel.ForEach(enumerable, _key =>
+      _ = Parallel.ForEach(enumerable, _key =>
       {
         var i = _key;
         storage.WriteDocument("test-table", _key, $"test-data-{i}");
@@ -93,7 +93,7 @@ public class StressTests
       var list = storage.ListDocuments<string>("test-table");
       Assert.Equal(PROBLEM_SIZE, list.Count());
 
-      Parallel.ForEach(enumerable, _key =>
+      _ = Parallel.ForEach(enumerable, _key =>
       {
         var list = storage.ListDocuments<string>("test-table");
         Assert.Equal(PROBLEM_SIZE, list.Count());
