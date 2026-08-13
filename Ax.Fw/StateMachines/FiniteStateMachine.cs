@@ -194,7 +194,16 @@ public sealed class FiniteStateMachine<T> : IStateMachine<T>
     p_states = _states.ToFrozenDictionary();
     p_stateSubj.OnNext(_currentState);
     CurrentState = _currentState;
-    StateTransition = p_stateSubj.ObserveOnThreadPool();
+
+    StateTransition = Observable.Create<StateMachineCursor<T>>(_observer =>
+      p_stateSubj.Subscribe(
+        _cursor =>
+        {
+          try { _observer.OnNext(_cursor); }
+          catch { /* isolate observer exceptions */ }
+        },
+        _ex => _observer.OnError(_ex),
+        () => _observer.OnCompleted()));
   }
 
   /// <inheritdoc/>
