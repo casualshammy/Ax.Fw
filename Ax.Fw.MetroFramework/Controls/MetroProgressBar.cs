@@ -39,6 +39,7 @@ public class MetroProgressBar : ProgressBar
     }
 
     [Category("Metro Appearance")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public MetroProgressBarSize FontSize
     {
         get
@@ -52,6 +53,7 @@ public class MetroProgressBar : ProgressBar
     }
 
     [Category("Metro Appearance")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public MetroProgressBarWeight FontWeight
     {
         get
@@ -65,6 +67,7 @@ public class MetroProgressBar : ProgressBar
     }
 
     [Category("Metro Appearance")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public ContentAlignment TextAlign
     {
         get
@@ -78,6 +81,7 @@ public class MetroProgressBar : ProgressBar
     }
 
     [Category("Metro Appearance")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public bool HideProgressText
     {
         get
@@ -91,6 +95,7 @@ public class MetroProgressBar : ProgressBar
     }
 
     [Category("Metro Appearance")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public ProgressBarStyle ProgressBarStyle
     {
         get
@@ -103,6 +108,7 @@ public class MetroProgressBar : ProgressBar
         }
     }
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public new int Value
     {
         get

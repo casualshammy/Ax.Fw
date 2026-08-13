@@ -7,6 +7,11 @@ using System.Net;
 
 namespace Ax.Fw.Web.Middlewares;
 
+/// <summary>
+/// Middleware for logging HTTP requests and responses.
+/// Logs incoming requests with method, HTTP version, path, and a request index.
+/// Logs responses with status code, elapsed time, and problem details if present.
+/// </summary>
 public class LogMiddleware : IMiddleware
 {
   private static long p_reqCount = -1;

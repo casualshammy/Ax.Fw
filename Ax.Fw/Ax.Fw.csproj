@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 		<PropertyGroup>
-				<TargetFramework>net8.0</TargetFramework>
+				<TargetFramework>net10.0</TargetFramework>
 				<PackageId>$(AssemblyName)</PackageId>
 				<PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
 				<Description>A set of useful tools</Description>
@@ -19,10 +19,6 @@
 
 		<ItemGroup>
 				<None Include="..\.editorconfig" Link=".editorconfig" />
-		</ItemGroup>
-
-		<ItemGroup>
-				<PackageReference Include="System.Collections.Immutable" Version="10.0.9" />
 		</ItemGroup>
 
 		<ItemGroup>

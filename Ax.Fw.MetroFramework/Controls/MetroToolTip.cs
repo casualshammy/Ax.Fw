@@ -43,6 +43,7 @@ public class MetroToolTip : ToolTip
     }
 
     [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public new bool IsBalloon
     {
         get
@@ -56,6 +57,7 @@ public class MetroToolTip : ToolTip
     }
 
     [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public new string ToolTipTitle
     {
         get
@@ -69,6 +71,7 @@ public class MetroToolTip : ToolTip
     }
 
     [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public new ToolTipIcon ToolTipIcon
     {
         get

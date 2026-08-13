@@ -42,6 +42,7 @@ namespace Ax.Fw.MetroFramework.Controls
     }
 
     [Category("Metro Appearance")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public MetroTextBoxSize FontSize
     {
       get
@@ -56,6 +57,7 @@ namespace Ax.Fw.MetroFramework.Controls
     }
 
     [Category("Metro Appearance")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public MetroTextBoxWeight FontWeight
     {
       get
@@ -69,6 +71,7 @@ namespace Ax.Fw.MetroFramework.Controls
       }
     }
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public HorizontalAlignment TextAlign
     {
       get
@@ -81,6 +84,7 @@ namespace Ax.Fw.MetroFramework.Controls
       }
     }
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public bool ReadOnly
     {
       get
@@ -92,7 +96,8 @@ namespace Ax.Fw.MetroFramework.Controls
         p_baseTextBox.ReadOnly = value;
       }
     }
-
+    
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public bool Multiline
     {
       get
@@ -114,6 +119,7 @@ namespace Ax.Fw.MetroFramework.Controls
     }
 
     [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public string SelectedText
     {
       get

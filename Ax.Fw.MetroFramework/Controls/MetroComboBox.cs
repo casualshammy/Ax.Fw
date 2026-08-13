@@ -36,6 +36,7 @@ public class MetroComboBox : ComboBox
   public bool IsHovered => p_isHovered;
 
   [Browsable(false)]
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public new DrawMode DrawMode
   {
     get
@@ -49,6 +50,7 @@ public class MetroComboBox : ComboBox
   }
 
   [Browsable(false)]
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public new ComboBoxStyle DropDownStyle
   {
     get
@@ -62,6 +64,7 @@ public class MetroComboBox : ComboBox
   }
 
   [Category("Metro Appearance")]
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public MetroLinkSize FontSize
   {
     get
@@ -75,6 +78,7 @@ public class MetroComboBox : ComboBox
   }
 
   [Category("Metro Appearance")]
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public MetroLinkWeight FontWeight
   {
     get
@@ -112,6 +116,7 @@ public class MetroComboBox : ComboBox
     }
   }
 
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public string OverlayText
   {
     get

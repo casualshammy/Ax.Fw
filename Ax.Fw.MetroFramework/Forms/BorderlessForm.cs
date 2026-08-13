@@ -37,6 +37,7 @@ public class BorderlessForm : Form
   }
 
   [Category("Metro Appearance")]
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public bool Resizable
   {
     get

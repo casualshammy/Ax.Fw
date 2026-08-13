@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Collections.Frozen;
+using System.Net;
 
 namespace Ax.Fw.Web.Data;
 
@@ -17,10 +18,10 @@ public class FailToBanAttribute : Attribute
 
     MaxFailedRequests = _maxFailedRequests;
     BanTimeSec = _banTimeSec;
-    BannedHttpCodes = _bannedHttpCodes.ToHashSet();
+    BannedHttpCodes = _bannedHttpCodes.ToFrozenSet();
   }
 
   public int MaxFailedRequests { get; }
   public int BanTimeSec { get; }
-  public IReadOnlySet<HttpStatusCode> BannedHttpCodes { get; }
+  public FrozenSet<HttpStatusCode> BannedHttpCodes { get; }
 }

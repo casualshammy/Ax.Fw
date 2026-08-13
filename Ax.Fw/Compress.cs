@@ -16,6 +16,20 @@ namespace Ax.Fw;
 
 public static class Compress
 {
+  /// <summary>
+  /// Compresses a directory into a ZIP archive and writes it to the specified file path.
+  /// </summary>
+  /// <param name="_directory">The root directory to compress.</param>
+  /// <param name="_zipPath">The full path where the resulting ZIP file will be created.</param>
+  /// <param name="_progressReport">
+  /// An optional callback that reports progress as files are added to the archive.
+  /// Receives a <see cref="TypedProgress{FileSystemInfo}"/> instance containing the current processed size,
+  /// total estimated size, and information about the currently processed file system entry.
+  /// </param>
+  /// <param name="_ct">A cancellation token that can be used to cancel the operation.</param>
+  /// <exception cref="DirectoryNotFoundException">
+  /// Thrown when the specified directory does not exist.
+  /// </exception>
   public static async Task CompressDirectoryToZipFileAsync(
     string _directory,
     string _zipPath,
@@ -33,6 +47,20 @@ public static class Compress
     await CompressListOfFilesAsync(filesRelativePaths, _zipPath, _progressReport, _ct);
   }
 
+  /// <summary>
+  /// Compresses a directory into a ZIP archive and writes the contents to an existing output stream.
+  /// </summary>
+  /// <param name="_directory">The root directory to compress.</param>
+  /// <param name="_outputStream">A writable <see cref="Stream"/> where the compressed data will be written.</param>
+  /// <param name="_progressReport">
+  /// An optional callback that reports progress as files are added to the archive.
+  /// Receives a <see cref="TypedProgress{FileSystemInfo}"/> instance containing the current processed size,
+  /// total estimated size, and information about the currently processed file system entry.
+  /// </param>
+  /// <param name="_ct">A cancellation token that can be used to cancel the operation.</param>
+  /// <exception cref="DirectoryNotFoundException">
+  /// Thrown when the specified directory does not exist.
+  /// </exception>
   public static async Task CompressDirectoryToZipFileAsync(
     string _directory,
     Stream _outputStream,
@@ -50,6 +78,17 @@ public static class Compress
     await CompressListOfFilesAsync(filesRelativePaths, _outputStream, _progressReport, _ct);
   }
 
+  /// <summary>
+  /// Compresses a list of files into a ZIP archive and writes it to the specified file path.
+  /// </summary>
+  /// <param name="_realPathWithRelativePath">A dictionary mapping FileInfo objects to their relative paths within the archive.</param>
+  /// <param name="_zipPath">The file path where the ZIP archive will be created.</param>
+  /// <param name="_progressReport">
+  /// An optional callback that reports progress as files are added to the archive.
+  /// Receives a <see cref="TypedProgress{FileSystemInfo}"/> instance containing the current processed size,
+  /// total estimated size, and information about the currently processed file system entry.
+  /// </param>
+  /// <param name="_ct">A cancellation token that can be used to cancel the operation.</param>
   public static async Task CompressListOfFilesAsync(
     IReadOnlyDictionary<FileInfo, string> _realPathWithRelativePath,
     string _zipPath,
@@ -74,6 +113,17 @@ public static class Compress
     }
   }
 
+  /// <summary>
+  /// Compresses a list of files into a ZIP archive and writes the contents to an existing output stream.
+  /// </summary>
+  /// <param name="_realPathWithRelativePath">A dictionary mapping FileInfo objects to their relative paths within the archive.</param>
+  /// <param name="_outputStream">An existing Stream used as the destination for the compressed data.</param>
+  /// <param name="_progressReport">
+  /// An optional callback that reports progress as files are added to the archive.
+  /// Receives a <see cref="TypedProgress{FileSystemInfo}"/> instance containing the current processed size,
+  /// total estimated size, and information about the currently processed file system entry.
+  /// </param>
+  /// <param name="_ct">A cancellation token that can be used to cancel the operation.</param>
   public static async Task CompressListOfFilesAsync(
     IReadOnlyDictionary<FileInfo, string> _realPathWithRelativePath,
     Stream _outputStream,
@@ -86,7 +136,7 @@ public static class Compress
     using (var archive = new ZipArchive(_outputStream, ZipArchiveMode.Create, true, Encoding.UTF8))
     {
       var filesSizeProcessed = 0L;
-      var totalFilesSize = await Task.Run(() => _realPathWithRelativePath.Keys.Sum(_x => _x.Length));
+      var totalFilesSize = await Task.Run(() => _realPathWithRelativePath.Keys.Sum(_x => _x.Length), _ct);
       foreach (var pair in _realPathWithRelativePath)
       {
         _ct.ThrowIfCancellationRequested();
@@ -107,6 +157,21 @@ public static class Compress
     }
   }
 
+  /// <summary>
+  /// Decompresses a ZIP archive file into the specified output directory.
+  /// </summary>
+  /// <param name="_outputDirectory">The target directory where files will be extracted.</param>
+  /// <param name="_zipPath">The path to the ZIP archive file to decompress.</param>
+  /// <param name="_progressReport">
+  /// An optional callback that reports progress during extraction.
+  /// Receives a <see cref="TypedProgress{FileSystemInfo}"/> instance containing the current processed size,
+  /// total estimated size, and information about the currently extracted file system entry.
+  /// </param>
+  /// <param name="_ct">A cancellation token that can be used to cancel the operation.</param>
+  /// <exception cref="FileNotFoundException">
+  /// Thrown when the specified ZIP archive does not exist.
+  /// </exception>
+
   public static async Task DecompressZipFileAsync(
     string _outputDirectory,
     string _zipPath,
@@ -120,6 +185,20 @@ public static class Compress
       await DecompressZipFileAsync(_outputDirectory, zipToOpen, _progressReport, _ct);
   }
 
+  /// <summary>
+  /// Decompresses a ZIP archive from an existing input stream into the specified output directory.
+  /// </summary>
+  /// <param name="_outputDirectory">The target directory where files will be extracted.</param>
+  /// <param name="_inputStream">A readable Stream containing the compressed data.</param>
+  /// <param name="_progressReport">
+  /// An optional callback that reports progress during extraction.
+  /// Receives a <see cref="TypedProgress{FileSystemInfo}"/> instance containing the current processed size,
+  /// total estimated size, and information about the currently extracted file system entry.
+  /// </param>
+  /// <param name="_ct">A cancellation token that can be used to cancel the operation.</param>
+  /// <exception cref="ArgumentException">
+  /// Thrown if the provided input stream is not readable.
+  /// </exception>
   public static async Task DecompressZipFileAsync(
     string _outputDirectory,
     Stream _inputStream,
@@ -136,7 +215,7 @@ public static class Compress
     using (var archive = new ZipArchive(_inputStream, ZipArchiveMode.Read, true, Encoding.UTF8))
     {
       var processedSize = 0L;
-      var totalSize = archive.Entries.Select(_x => _x.Length).Sum();
+      var totalSize = archive.Entries.Sum(_x => _x.Length);
       foreach (var entry in archive.Entries)
       {
         _ct.ThrowIfCancellationRequested();
@@ -185,7 +264,7 @@ public static class Compress
   /// Serialize to JSON and then gzip to output stream
   /// </summary>
   public static async Task CompressToGzippedJsonAsync<T>(
-    T _serializableObject, 
+    T _serializableObject,
     Stream _outputStream,
     JsonSerializerContext _jsonCtx,
     CancellationToken _ct)

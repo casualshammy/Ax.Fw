@@ -34,6 +34,7 @@ public class MetroCheckBox : CheckBox
   }
 
   [Category("Metro Appearance")]
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public MetroLinkSize FontSize
   {
     get
@@ -49,6 +50,7 @@ public class MetroCheckBox : CheckBox
   public bool IsFocused => isFocused;
 
   [Category("Metro Appearance")]
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public MetroLinkWeight FontWeight
   {
     get

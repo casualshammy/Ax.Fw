@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 		<PropertyGroup>
-				<TargetFramework>net8.0</TargetFramework>
+				<TargetFramework>net10.0</TargetFramework>
 				<ImplicitUsings>enable</ImplicitUsings>
 				<Nullable>enable</Nullable>
 				<LangVersion>latest</LangVersion>
@@ -10,7 +10,7 @@
 
 		<ItemGroup>
 				<PackageReference Include="LiteDB" Version="[5.0.17]" />
-				<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
+				<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
 				<PackageReference Include="System.Linq.Async" Version="7.0.1" />
 				<PackageReference Include="xunit" Version="2.9.3" />
 				<PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">

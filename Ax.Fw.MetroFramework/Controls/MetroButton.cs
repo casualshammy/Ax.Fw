@@ -30,6 +30,7 @@ public class MetroButton : Button
         }, p_lifetime);
   }
 
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
   public bool Highlight
   {
     get

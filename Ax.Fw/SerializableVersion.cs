@@ -7,6 +7,9 @@ using System.Text.Json.Serialization;
 
 namespace Ax.Fw;
 
+/// <summary>
+/// A serializable version that can be used in JSON and XML serialization.
+/// </summary>
 [TypeConverter(typeof(SerializableVersionTypeConverter))]
 [JsonConverter(typeof(SerializableVersionJsonConverter))]
 public class SerializableVersion : IEquatable<SerializableVersion>, IComparable<SerializableVersion>
