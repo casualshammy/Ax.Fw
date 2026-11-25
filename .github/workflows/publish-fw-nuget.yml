@@ -9,6 +9,8 @@ jobs:
   build:
 
     runs-on: windows-latest
+    permissions:
+      id-token: write
  
     steps:
     - name: Get dotnet
@@ -26,9 +28,15 @@ jobs:
         submodules: true
         fetch-depth: 0
         
+    - name: NuGet login
+      uses: NuGet/login@v1
+      id: login
+      with:
+        user: ${{ secrets.NUGET_USER }}
+
     - name: Build & Pack Nugets
       run: python build.py
       env:
-        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }} 
+        NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         BAGET_URL: ${{ secrets.BAGET_URL }} 
         BAGET_API_KEY: ${{ secrets.BAGET_API_KEY }} 
