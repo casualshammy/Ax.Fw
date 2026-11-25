@@ -147,8 +147,8 @@ public class PBus : IBus
       var value = await TaskObservableExtensions.ToTask(Observable
           .Merge(
               p_msgFlow.ObserveOn(p_scheduler).Where(_x => _x.Id == guid && _x.Data.GetType() == typeof(TRes)),
-              Observable.Timer(_timeout).Select(_ => new BusMsgSerial(new EmptyBusMsg(), Guid.Empty)),
-              Observable.Timer(TimeSpan.Zero).Select(_ =>
+              Observable.Timer(_timeout, p_scheduler).Select(_ => new BusMsgSerial(new EmptyBusMsg(), Guid.Empty)),
+              Observable.Timer(TimeSpan.Zero, p_scheduler).Select(_ =>
               {
                 PostMsg(new BusMsgSerial(_req, guid));
                 return new BusMsgSerial(new EmptyBusMsg(), ignoredGuid);
